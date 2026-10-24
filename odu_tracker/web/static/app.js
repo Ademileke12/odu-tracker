@@ -409,12 +409,11 @@ async function pollStatus() {
 /* ---------------------------------------------------------------- usage & rates */
 async function pollUsage() {
   try {
-    const d = await api(`/api/usage?hours=${S.usageHours}`);
+    const monthMode = S.usageHours === "month";
+    const d = await api(monthMode ? "/api/usage?month=1"
+                                  : `/api/usage?hours=${S.usageHours}`);
     const rows = d.series || [];
-    const bucket = bucketize(rows, S.usageHours);
     const total = rows.reduce((a, r) => a + (r.delta || 0), 0);
-    $("#usageNote").textContent =
-      `${fmtG(total)} used in the last ${S.usageHours} h · sampled every 15 s`;
     const cfgType = {bar: "bar", line: "line", area: "area", donut: "donut"}[S.usageType];
     if (cfgType === "donut") {
       const st = S.lastStatus?.flow || {};
@@ -424,9 +423,19 @@ async function pollUsage() {
           {label: "Download (month)", value: dl},
           {label: "Upload (month)", value: ul},
         ].filter(p => p.value > 0),
-        fmt: v => fmtGB(v), center: "month"});
+        fmt: v => fmtGB(v), center: monthMode ? "month total" : "month"});
+    } else if (monthMode) {
+      const labeled = rows.map(r => ({ts: r.ts, v: r.delta,
+        label: new Date(r.ts * 1000).toLocaleDateString([], {day: "numeric", month: "short"})}));
+      $("#usageNote").textContent =
+        `${fmtG(total)} this month${d.first ? ` · recording since ${fmtDT(d.first)}` : ""}` +
+        (rows.length ? "" : " — no samples recorded yet");
+      chart($("#usageChart"), {type: cfgType, series: labeled, unit: "GB",
+        height: 210, color: "#3fd68e", fmt: v => v.toFixed(v >= 10 ? 1 : 2) + " GB"});
     } else {
-      chart($("#usageChart"), {type: cfgType, series: bucket,
+      $("#usageNote").textContent =
+        `${fmtG(total)} used in the last ${S.usageHours} h · sampled every 15 s`;
+      chart($("#usageChart"), {type: cfgType, series: bucketize(rows, S.usageHours),
         unit: "GB", height: 210, fmt: v => v.toFixed(v >= 10 ? 1 : 2) + " GB"});
     }
   } catch { /* transient */ }
@@ -718,7 +727,14 @@ $("#btnLogout").onclick = async () => {
   location.reload();
 };
 
-/* ---------------------------------------------------------------- seg control */
+/* seg control helpers */
+function autoType(group, type) {
+  const seg = $(`.seg[data-charts="${group}"]`);
+  if (!seg) return;
+  $$("button", seg).forEach(b => b.classList.toggle("active", b.dataset.ctype === type));
+  if (group === "usage") { S.usageType = type; localStorage.setItem("odu.usageType", type); }
+  else { S.ratesType = type; localStorage.setItem("odu.ratesType", type); }
+}
 $$(".seg[data-charts]").forEach(seg => {
   seg.querySelectorAll("button").forEach(b => b.onclick = () => {
     seg.querySelectorAll("button").forEach(x => x.classList.remove("active"));
@@ -737,7 +753,11 @@ $$(".seg[data-charts]").forEach(seg => {
 // restore chosen chart types from storage
 $$('[data-charts="usage"] button').forEach(b => b.classList.toggle("active", b.dataset.ctype === S.usageType));
 $$('[data-charts="rates"] button').forEach(b => b.classList.toggle("active", b.dataset.ctype === S.ratesType));
-$("#usageRange").onchange = e => { S.usageHours = +e.target.value; pollUsage(); };
+$("#usageRange").onchange = e => {
+  S.usageHours = e.target.value;
+  if (S.usageHours === "month") autoType("usage", "line");   // month reads best as a line
+  pollUsage();
+};
 $("#ratesRange").onchange = e => { S.ratesMinutes = +e.target.value; pollRates(); };
 $("#sitesHours").onchange = () => pollSites();
 

@@ -274,6 +274,8 @@ def create_app(cfg: Config, poller: Poller):
     @app.get("/api/usage")
     @require_auth
     def usage():
+        if request.args.get("month"):
+            return jsonify(usage_month_to_date())
         hours = int(request.args.get("hours", 24))
         rows = store.q("SELECT ts, used, unit FROM usage_samples WHERE ts>=? ORDER BY ts",
                        (store.now() - hours * 3600,))
@@ -286,6 +288,28 @@ def create_app(cfg: Config, poller: Poller):
                                "cum": r["used"], "unit": r["unit"]})
             prev = r
         return jsonify({"hours": hours, "series": series})
+
+    def usage_month_to_date():
+        """Daily buckets for this calendar month, resilient to counter resets."""
+        import datetime as dt
+        t = time.localtime()
+        month_start = time.mktime((t.tm_year, t.tm_mon, 1, 0, 0, 0, 0, 0, -1))
+        rows = store.q("SELECT ts, used, unit FROM usage_samples WHERE ts>=? ORDER BY ts",
+                       (month_start,))
+        byday = {}
+        prev = None
+        for r in rows:
+            if prev is not None and r["unit"] == prev["unit"] and r["used"] >= prev["used"]:
+                day = dt.datetime.fromtimestamp(prev["ts"]).strftime("%Y-%m-%d")
+                byday[day] = byday.get(day, 0.0) + (r["used"] - prev["used"])
+            prev = r
+        series = []
+        for day in sorted(byday):
+            y, m, d = (int(x) for x in day.split("-"))
+            series.append({"ts": time.mktime((y, m, d, 0, 0, 0, 0, 0, -1)),
+                           "delta": round(byday[day], 2), "unit": "GB"})
+        return {"month": True, "series": series,
+                "first": rows[0]["ts"] if rows else None}
 
     # ------------------------------------------------------------- events
     @app.get("/api/events")
