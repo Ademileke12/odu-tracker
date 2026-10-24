@@ -243,33 +243,85 @@ function showAuth() {
   $("#authView").hidden = false;
   $("#mainView").hidden = true;
 }
+
+const SPLASH_MIN_MS = 1500;
+
 async function boot() {
   initTheme();
+  const t0 = Date.now();
   try {
     const meta = await api("/api/meta");
-    if (meta.authed) return enterMain();
-    showAuth();
-    $("#authTitle").textContent = meta.setup_done ? "Welcome back" : "Set up your tracker";
-    $("#authSub").textContent = meta.setup_done
-      ? "Sign in with your ODU admin password — one time, then this PC is remembered for 30 days."
-      : "Create the link to your router: enter the ODU admin password (it is stored only on this PC).";
-    const lockWarn = meta.lock_secs && meta.lock_secs > 3600
-      ? `⚠ Router login locked ${(meta.lock_secs / 3600).toFixed(1)} h remaining`
-      : (meta.lock_secs ? `Router login cooldown — try again in ${meta.lock_secs}s` : "");
-    const lowWarn = meta.attempts_left != null && meta.attempts_left <= 2
-      ? `⚠ Only ${meta.attempts_left} login attempt${meta.attempts_left === 1 ? "" : "s"} left before a 24h router lock — only type the correct password`
-      : "";
-    const warn = lockWarn || lowWarn;
-    if (warn) {
-      const c = $("#authAttempts");
-      c.hidden = false; c.classList.add("warn");
-      c.textContent = warn;
-    }
-    $("#brandIp").textContent = `Router ${meta.router_ip} · local only · nothing leaves your LAN`;
+    const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - t0));
+    setTimeout(() => route(meta), wait);
   } catch (e) {
-    showAuth();
-    $("#authErr").textContent = "Backend unreachable — is the server running?";
+    $("#splashStatus").textContent = "tracker service unreachable…";
+    setTimeout(boot, 2500);
   }
+}
+
+function fadeSplash() {
+  const s = $("#splashView");
+  s.classList.add("fade");
+  setTimeout(() => { s.hidden = true; }, 420);
+}
+
+function showNoOdu() {
+  fadeSplash();
+  $("#noOduView").hidden = false;
+  startOduWatch();
+}
+
+let oduWatchTmr = null;
+function startOduWatch() {
+  if (oduWatchTmr) clearInterval(oduWatchTmr);
+  oduWatchTmr = setInterval(async () => {
+    try {
+      const c = await api("/api/check");
+      if (c.odu) { clearInterval(oduWatchTmr); oduWatchTmr = null; $("#noOduView").hidden = true; boot(); }
+    } catch { /* keep watching */ }
+  }, 4000);
+}
+$("#noOduRetry").onclick = async () => {
+  $("#noOduStatus").textContent = "checking…";
+  try {
+    const c = await api("/api/check");
+    if (c.odu) {
+      $("#noOduView").hidden = true;
+      if (oduWatchTmr) { clearInterval(oduWatchTmr); oduWatchTmr = null; }
+      boot();
+    } else {
+      $("#noOduStatus").textContent =
+        `still nothing at ${c.ip || "192.168.0.1"} — are you on the ODU Wi-Fi?`;
+      setTimeout(() => $("#noOduStatus").textContent =
+        "Waiting for the ODU network… rechecking every 4 s", 3000);
+    }
+  } catch (e) {
+    $("#noOduStatus").textContent = "tracker backend unreachable";
+  }
+};
+
+async function route(meta) {
+  if (!meta.reachable || !meta.odu) { showNoOdu(); return; }
+  fadeSplash();
+  if (meta.authed) { enterMain(); return; }
+  showAuth();
+  $("#authTitle").textContent = meta.setup_done ? "Welcome back" : "Set up your tracker";
+  $("#authSub").textContent = meta.setup_done
+    ? "Sign in with your ODU admin password — one time, then this PC is remembered for 30 days."
+    : "Create the link to your router: enter the ODU admin password (it is stored only on this PC).";
+  const lockWarn = meta.lock_secs && meta.lock_secs > 3600
+    ? `⚠ Router login locked ${(meta.lock_secs / 3600).toFixed(1)} h remaining`
+    : (meta.lock_secs ? `Router login cooldown — try again in ${meta.lock_secs}s` : "");
+  const lowWarn = meta.attempts_left != null && meta.attempts_left <= 2
+    ? `⚠ Only ${meta.attempts_left} login attempt${meta.attempts_left === 1 ? "" : "s"} left before a 24h router lock — only type the correct password`
+    : "";
+  const warn = lockWarn || lowWarn;
+  if (warn) {
+    const c = $("#authAttempts");
+    c.hidden = false; c.classList.add("warn");
+    c.textContent = warn;
+  }
+  $("#brandIp").textContent = `Router ${meta.router_ip} · local only · nothing leaves your LAN`;
 }
 
 $("#authForm").addEventListener("submit", async ev => {

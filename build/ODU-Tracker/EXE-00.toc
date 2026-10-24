@@ -48,7 +48,7 @@
  [],
  False,
  False,
- 1792840734,
+ 1792842202,
  [('run',
    '/home/ademileke/odu-tracker/.venv/lib/python3.12/site-packages/PyInstaller/bootloader/Linux-64bit-intel/run',
    'EXECUTABLE')],

@@ -229,3 +229,29 @@ polled twice.
 - The router's wrong-attempt counter is precious: the app stores your
   password locally and silently re-logs in as needed — never type a wrong
   password anywhere.
+
+## Installers (packaged app)
+
+**Debian/Ubuntu/Mint** (`dpkg-deb` builds it for you):
+
+    python tools/build_app.py --deb          # → dist/odu-tracker_1.1.0_all.deb
+    sudo dpkg -i dist/odu-tracker_1.1.0_all.deb
+    odu-tracker                              # or the "ODU Tracker" menu icon
+
+**Any distro (portable)**: `dist/odu-tracker-1.1.0-linux-portable.tar.gz`
+— unpack anywhere, run `START`.
+
+**Windows**: on the Windows PC, run `tools\build_windows.bat`
+(builds `dist\ODU-Tracker\` portable exe; if [Inno Setup 6](https://jrsoftware.org/isdl.php)
+is installed it also produces `dist\installer\ODU-Tracker-setup.exe` with
+desktop shortcut + optional start-on-login).
+
+## Startup behaviour
+
+The app opens with a splash screen, then checks whether this PC is on the
+MTN ODU's network: it probes 192.168.0.1 and confirms the device actually
+speaks the ZLT handshake. Not connected → "Connect to ODU WiFi / Ethernet"
+screen (auto-rechecks every 4 s, plus a manual retry). Only when the ODU is
+found do you get the sign-in / dashboard. Splash and page footer credit:
+
+> Created by **anakincoco** — contact: srimpkoyonko@gmail.com

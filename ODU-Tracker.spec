@@ -33,7 +33,6 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['/home/ademileke/odu-tracker/assets/icon.ico'],
-    contents_directory='_internal',
 )
 coll = COLLECT(
     exe,

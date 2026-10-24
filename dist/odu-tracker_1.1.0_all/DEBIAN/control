@@ -1,0 +1,12 @@
+Package: odu-tracker
+Version: 1.1.0
+Section: net
+Priority: optional
+Architecture: all
+Installed-Size: 80000
+Depends: chromium | chromium-browser | google-chrome (>=66) | xdg-utils
+Maintainer: anakincoco <srimpkoyonko@gmail.com>
+Homepage: mailto:srimpkoyonko@gmail.com
+Description: MTN ODU (ZLT X17U) data & device tracker
+ Full local monitor of data usage, connected devices, security alerts,
+ speed tests and per-device website activity. Created by anakincoco.

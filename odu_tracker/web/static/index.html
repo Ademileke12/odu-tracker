@@ -28,6 +28,26 @@
   </symbol>
 </svg>
 
+<!-- ========================================================== splash -->
+<div id="splashView" class="splash">
+  <div class="splash-logo"><svg><use href="#i-logo"/></svg></div>
+  <div class="splash-name">ODU <em>TRACKER</em></div>
+  <div class="splash-bar"><span></span></div>
+  <div class="splash-status" id="splashStatus">Searching for your MTN ODU…</div>
+  <div class="credit">Created by <b>anakincoco</b> · <a href="mailto:srimpkoyonko@gmail.com">srimpkoyonko@gmail.com</a></div>
+</div>
+
+<!-- ==================================================== odu required -->
+<div id="noOduView" class="splash nodu" hidden>
+  <div class="splash-logo offline"><svg><use href="#i-logo"/></svg></div>
+  <div class="splash-name">No MTN ODU detected</div>
+  <p class="nodu-text">Connect this computer to your ODU's Wi-Fi or Ethernet<br>(network 192.168.0.1) so the tracker can reach it.</p>
+  <div class="splash-bar"><span></span></div>
+  <div class="splash-status" id="noOduStatus">Waiting for the ODU network… rechecking every 4 s</div>
+  <button class="btn" id="noOduRetry">↻ Check again now</button>
+  <div class="credit">Created by <b>anakincoco</b> · <a href="mailto:srimpkoyonko@gmail.com">srimpkoyonko@gmail.com</a></div>
+</div>
+
 <!-- ============================================================ auth -->
 <div id="authView" class="auth" hidden>
   <aside class="auth-brand">
@@ -47,6 +67,7 @@
       </div>
     </div>
     <div class="tagline" id="brandIp">Router 192.168.0.1 · local only · nothing leaves your LAN</div>
+    <div class="credit" style="margin-top:18px">Created by <a href="mailto:srimpkoyonko@gmail.com"><b>anakincoco</b></a> · MTN ZLT X17U / W154R compatible</div>
   </aside>
 
   <div class="auth-form">
@@ -87,6 +108,7 @@
     <div class="side-foot">
       <div class="conn"><span class="dot off" id="connDot"></span><span id="connText">connecting…</span></div>
       <button class="theme-btn" id="themeBtn"><svg id="themeIco" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8.5 8.5 0 1 0 10 10z"/></svg><span id="themeLabel">Dark</span></button>
+      <div class="credit inapp">Created by <a href="mailto:srimpkoyonko@gmail.com"><b>anakincoco</b></a></div>
     </div>
   </aside>
 

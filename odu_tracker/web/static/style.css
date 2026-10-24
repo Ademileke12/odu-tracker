@@ -62,6 +62,48 @@ body{
 .logo .st{font-size:.63rem;color:var(--faint);letter-spacing:1.8px;text-transform:uppercase;font-weight:600}
 .lg-hero .logo svg{width:56px;height:56px}
 
+/* ---------- splash / odu gate ---------- */
+.splash{
+  position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;text-align:center;
+  background:var(--bg);background-image:var(--glow);background-attachment:fixed;
+  transition:opacity .4s;
+  opacity:1;
+}
+.splash.fade{opacity:0;pointer-events:none}
+.splash-logo{animation:logoPulse 2.2s ease-in-out infinite}
+.splash-logo svg{width:92px;height:92px;filter:drop-shadow(0 10px 34px rgba(255,182,50,.45))}
+.splash-logo.offline{filter:grayscale(.9);animation:none;opacity:.75}
+@keyframes logoPulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.045)}
+}
+.splash-name{
+  font-family:var(--font-d);font-size:1.5rem;font-weight:700;letter-spacing:.8px;margin-top:6px;
+}
+.splash-name em{color:var(--accent);font-style:normal}
+.splash-status{color:var(--muted);font-size:.85rem;min-height:1.2em}
+.splash-bar{
+  width:min(240px,60vw);height:4px;border-radius:99px;overflow:hidden;
+  background:var(--panel3);position:relative;
+}
+.splash-bar span{
+  position:absolute;inset:0;width:36%;border-radius:99px;
+  background:linear-gradient(90deg,var(--accent2),var(--accent));
+  animation:shimmer 1.15s ease-in-out infinite;
+}
+@keyframes shimmer{
+  0%{left:-36%}
+  100%{left:100%}
+}
+.nodu-text{color:var(--muted);font-size:.94rem;line-height:1.65}
+.nodu .btn{margin-top:10px}
+.credit{color:var(--muted);font-size:.78rem;margin-top:26px}
+.credit a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--line2)}
+.credit a:hover{color:var(--accent);border-color:var(--accent)}
+.credit b{color:var(--text);font-weight:700}
+.credit.inapp{margin:2px 4px 0;padding-top:8px;font-size:.68rem;text-align:left}
+
 /* ---------- auth (split-screen) ---------- */
 .auth{display:grid;grid-template-columns:1.05fr 1fr;min-height:100vh}
 .auth-brand{

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+chmod +x /opt/odu-tracker/app/ODU-Tracker /usr/bin/odu-tracker
+exit 0

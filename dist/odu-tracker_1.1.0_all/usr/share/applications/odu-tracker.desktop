@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ODU Tracker
+Comment=MTN ODU data usage, devices & website monitor
+Exec=/usr/bin/odu-tracker
+TryExec=/opt/odu-tracker/app/ODU-Tracker
+Icon=odu-tracker
+Categories=Network;Monitor;
+StartupWMClass=ODU-Tracker

@@ -99,27 +99,56 @@ def create_app(cfg: Config, poller: Poller):
         session.pop("auth", None)
         return jsonify({"ok": True})
 
+    # ------------------------------------------------ ODU presence probe
+    def _odu_probe(ip=None, timeout=2.5):
+        """(tcp_ok, is_odu) — is 192.168.0.1 up *and* does it speak ZLT?"""
+        ip = ip or cfg.get("router_ip")
+        import socket as _s
+        try:
+            s = _s.create_connection((ip, 80), timeout=timeout)
+            s.close()
+        except OSError:
+            return False, False
+        try:
+            probe = OduRouter(ip=ip, timeout=timeout)
+            resp = probe.build(232, "GET")
+            keys = set(resp or {}) if isinstance(resp, dict) else set()
+            odu = not not (keys & {"sessionid", "buffer", "token", "boot_time",
+                                   "netx_login_time", "success"})
+            return True, odu
+        except Exception:
+            return True, False
+
+    @app.get("/api/check")
+    def check_conn():
+        tcp_ok, odu = _odu_probe()
+        return jsonify({"reachable": tcp_ok, "odu": odu, "ip": cfg.get("router_ip")})
+
     @app.get("/api/meta")
     def meta():
         """Used by the UI before auth: does a password exist?
            Boot with or without."""
         st = poller.status()
         lock = {"attempts_left": None, "lock_secs": None}
-        try:
-            probe = OduRouter(ip=cfg.get("router_ip"))
-            resp = probe.build(232, "GET")   # unauthenticated handshake (safe)
-            lock = {
-                "attempts_left": int(resp.get("buffer")) if resp.get("buffer") else None,
-                "lock_secs": int(resp.get("netx_login_time")) if resp.get("netx_login_time") else None,
-            }
-        except Exception:
-            pass
+        reachable, is_odu = _odu_probe(timeout=3)
+        if reachable and is_odu:
+            try:
+                probe = OduRouter(ip=cfg.get("router_ip"))
+                resp = probe.build(232, "GET")   # unauthenticated handshake (safe)
+                lock = {
+                    "attempts_left": int(resp.get("buffer")) if resp.get("buffer") else None,
+                    "lock_secs": int(resp.get("netx_login_time")) if resp.get("netx_login_time") else None,
+                }
+            except Exception:
+                pass
         return jsonify({
             "setup_done": cfg.get("setup_done") and cfg.has_password,
             "authed": bool(session.get("auth")),
             "router_ip": cfg.get("router_ip"),
             "poll_running": st["running"],
             "router_logged_in": st["logged_in"],
+            "reachable": reachable,
+            "odu": is_odu,
             **lock,
         })
 
