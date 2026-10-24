@@ -266,6 +266,23 @@ def speed_history(limit=30):
     }
 
 
+# ---------------------------------------------------------------- settings
+def setting_get(key, default=None):
+    r = q("SELECT value FROM settings_data WHERE key=?", (key,), fetch="one")
+    if not r:
+        return default
+    try:
+        return json.loads(r["value"])
+    except json.JSONDecodeError:
+        return default
+
+
+def setting_set(key, value):
+    exec("INSERT INTO settings_data(key, value) VALUES(?, ?) "
+         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+         (key, json.dumps(value)))
+
+
 # ---------------------------------------------------------------- raw cache
 def cache_raw(name, body):
     exec("INSERT INTO raw_cache(name, ts, body) VALUES(?,?,?) "

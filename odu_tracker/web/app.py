@@ -126,6 +126,24 @@ def create_app(cfg: Config, poller: Poller):
             first, last = rows[0], rows[-1]
             if first["unit"] == last["unit"] and last["used"] >= first["used"]:
                 day_used = round(last["used"] - first["used"], 2)
+
+        # usage counted from the user's last manual reset (local baseline)
+        base = store.setting_get("usage_baseline")
+        since_reset = None
+        if base:
+            total_mb = None
+            if flow.get("mon_download_flow"):
+                try:
+                    total_mb = float(flow.get("mon_download_flow"))
+                except (TypeError, ValueError):
+                    pass
+            if total_mb is None and usage_now and usage_now.get("unit") == "GB":
+                total_mb = usage_now["used"] * 1024.0
+            if total_mb is not None:
+                since_reset = {
+                    "ts": base.get("ts"),
+                    "gb": round(max(0.0, total_mb - float(base.get("total_mb") or 0)) / 1024.0, 2),
+                }
         return jsonify({
             "now": time.time(),
             "poll": st,
@@ -160,6 +178,7 @@ def create_app(cfg: Config, poller: Poller):
             },
             "usage": usage_now,
             "day_usage": day_used,
+            "since_reset": since_reset,
             "rates": {"current": poller.current_rate,
                       "avg_hour": poller.avg_rate(3600),
                       "avg_10m": poller.avg_rate(600)},
@@ -354,6 +373,31 @@ def create_app(cfg: Config, poller: Poller):
             return jsonify({"error": str(exc)}), 401
         poller.update_router_creds(password=pw)
         return jsonify({"ok": True})
+
+    # ------------------------------------------------------- usage baseline
+    @app.post("/api/usage/reset")
+    @require_auth
+    def usage_reset():
+        """Start counting usage from now (local baseline; the router's own
+        monthly counter can't be wiped from its web API)."""
+        total_mb = None
+        try:
+            resp = poller.router.cmd(337, "GET")
+            total_mb = float(resp.get("mon_download_flow") or 0)
+        except Exception:
+            pass
+        if total_mb is None:   # fall back to last cached value
+            raw = store.q("SELECT body FROM raw_cache WHERE name='fast'", fetch="one")
+            try:
+                fast = json.loads(raw["body"]) if raw else {}
+                total_mb = float((fast.get("flow") or {}).get("mon_download_flow") or 0)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                total_mb = 0.0
+        ts = time.time()
+        store.setting_set("usage_baseline", {"ts": ts, "total_mb": total_mb})
+        store.add_alert("info", "Usage counter reset",
+                        f"Counting from now (baseline {round(total_mb / 1024, 2)} GB)")
+        return jsonify({"ok": True, "ts": ts, "total_mb": total_mb})
 
     # ------------------------------------------------------- speed tests
     @app.post("/api/speedtest/run")
