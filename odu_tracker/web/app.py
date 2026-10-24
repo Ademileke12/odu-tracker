@@ -32,6 +32,7 @@ def create_app(cfg: Config, poller: Poller):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_HTTPONLY=True,
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+        SEND_FILE_MAX_AGE_DEFAULT=0,   # always serve the newest UI
     )
     from odu_tracker.speedtest import SpeedTestRunner
     runner = SpeedTestRunner()
