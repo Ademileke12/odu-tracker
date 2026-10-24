@@ -13,6 +13,7 @@ from flask import Flask, jsonify, request, session, send_from_directory
 from odu_tracker import store
 from odu_tracker.config import Config
 from odu_tracker.dns_proxy import start_proxy
+from odu_tracker import dns_proxy as _dp
 from odu_tracker.poller import Poller
 from odu_tracker.router import OduRouter, RouterError, LoginLocked
 from odu_tracker.security import normalize_mac
@@ -25,6 +26,13 @@ def create_app(cfg: Config, poller: Poller):
     app = Flask("odu_tracker", static_folder=STATIC_DIR)
     app.secret_key = cfg.session_secret
     app.json.sort_keys = False
+    from datetime import timedelta
+    app.config.update(
+        SESSION_COOKIE_NAME="odu_session",
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_HTTPONLY=True,
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+    )
     from odu_tracker.speedtest import SpeedTestRunner
     runner = SpeedTestRunner()
 
@@ -47,6 +55,7 @@ def create_app(cfg: Config, poller: Poller):
     @app.post("/api/login")
     def login():
         pw = (request.json or {}).get("password", "")
+        remember = bool((request.json or {}).get("remember", True))
         if not pw:
             return jsonify({"error": "password required"}), 400
         probe = OduRouter(ip=cfg.get("router_ip"),
@@ -66,7 +75,7 @@ def create_app(cfg: Config, poller: Poller):
         poller.update_router_creds(password=pw)
         poller.start()
         session["auth"] = True
-        session.permanent = True
+        session.permanent = remember          # persistent cookie => no re-login
         return jsonify({"ok": True})
 
     @app.post("/api/logout")
@@ -92,6 +101,7 @@ def create_app(cfg: Config, poller: Poller):
             pass
         return jsonify({
             "setup_done": cfg.get("setup_done") and cfg.has_password,
+            "authed": bool(session.get("auth")),
             "router_ip": cfg.get("router_ip"),
             "poll_running": st["running"],
             "router_logged_in": st["logged_in"],
@@ -158,8 +168,10 @@ def create_app(cfg: Config, poller: Poller):
                 "wired_link_list": sys_status.get("wired_link_list"),
             },
             "signal": {
-                "rssi": home.get("RSSI"), "rsrp": home.get("RSRP"),
-                "rssi_5g": home.get("RSSI_5G"), "rsrp_5g": home.get("RSRP_5G"),
+                "rssi": home.get("RSSI") or home.get("rssi"),
+                "rsrp": home.get("RSRP") or home.get("rsrp"),
+                "rssi_5g": home.get("RSSI_5G") or home.get("rssi_5g"),
+                "rsrp_5g": home.get("RSRP_5G") or home.get("rsrp_5g"),
             },
             "wan": {"wan_ip": home.get("wan_ip"), "uptime": home.get("uptime"),
                     "ssid24": home.get("ssid24"), "ssid58": home.get("ssid58"),
@@ -293,14 +305,22 @@ def create_app(cfg: Config, poller: Poller):
         store.exec("UPDATE alerts SET read=1")
         return jsonify({"ok": True})
 
-    # -------------------------------------------------------------- sites
+    # ------------------------------------------------------ sites + ranks
     @app.get("/api/sites")
     @require_auth
     def sites():
         hours = int(request.args.get("hours", 6))
         domain_rows = store.site_summary(hours=hours)
-        clients = store.site_client_summary(hours=hours)
-        # Pull URL filter list for reference of "blocked domains"
+        client_rows = store.site_client_summary(hours=hours)
+        # join client_ip -> device names/mac from DHCP inventory
+        devs = {d["last_ip"]: d for d in
+                store.q("SELECT mac, last_ip, last_hostname, vendor FROM devices")}
+        for row in client_rows:
+            d = devs.get(row["client_ip"])
+            row["hostname"] = d["last_hostname"] if d else "unknown device"
+            row["mac"] = d["mac"] if d else ""
+        # per-device usage ranking (DNS activity; firmware keeps no per-IP bytes)
+        ranking = sorted(client_rows, key=lambda r: (-r["hits"], r["hostname"]))
         raw = store.q("SELECT body FROM raw_cache WHERE name='url_filter'", fetch="one")
         url_rules = []
         if raw:
@@ -313,7 +333,8 @@ def create_app(cfg: Config, poller: Poller):
                                           "enabled": it.get("enable", it.get("enableRule"))})
             except json.JSONDecodeError:
                 pass
-        return jsonify({"domains": domain_rows, "clients": clients,
+        return jsonify({"domains": domain_rows, "clients": client_rows,
+                        "ranking": ranking,
                         "hours": hours, "url_rules": url_rules})
 
     # ------------------------------------------------------ raw (advanced)
@@ -323,39 +344,6 @@ def create_app(cfg: Config, poller: Poller):
         name = request.args.get("name", "fast")
         row = store.q("SELECT body FROM raw_cache WHERE name=?", (name,), fetch="one")
         return jsonify({"name": name, "body": row.get("body") if row else None})
-
-    # ------------------------------------------------------- dns proxy cfg
-    @app.get("/api/dnscfg")
-    @require_auth
-    def dnscfg_get():
-        import socket
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 53))
-            my_ip = s.getsockname()[0]
-            s.close()
-        except OSError:
-            my_ip = None
-        from odu_tracker import dns_proxy as _dp
-        return jsonify({
-            "enabled": bool(_dp._singleton and _dp._singleton.is_alive()),
-            "port": cfg.get("dns_proxy_port"),
-            "upstream": cfg.get("dns_upstream"),
-            "myIp": my_ip,
-        })
-
-    @app.post("/api/dnscfg")
-    @require_auth
-    def dnscfg_set():
-        enabled = bool((request.json or {}).get("enabled"))
-        cfg.set("dns_proxy_enabled", enabled)
-        if enabled:
-            start_proxy(cfg)
-            port = cfg.get("dns_proxy_port")
-            return jsonify({"ok": True, "enabled": True, "port": port})
-        if _dp._singleton:
-            _dp._singleton.stop()
-        return jsonify({"ok": True, "enabled": False})
 
     # ---------------------------------------------------------- change pw
     @app.post("/api/changepw")
@@ -378,26 +366,148 @@ def create_app(cfg: Config, poller: Poller):
     @app.post("/api/usage/reset")
     @require_auth
     def usage_reset():
-        """Start counting usage from now (local baseline; the router's own
-        monthly counter can't be wiped from its web API)."""
-        total_mb = None
+        """Reset data-usage counting from now.
+
+        Tries the firmware's own statistics-clear (cmd 337 POST with
+        statisticsReset=1, as the vendor UI does); falls back to a local
+        baseline if the firmware refuses.
+        """
+        fw = {"attempted": False, "ok": False, "after_mb": None}
         try:
-            resp = poller.router.cmd(337, "GET")
-            total_mb = float(resp.get("mon_download_flow") or 0)
-        except Exception:
-            pass
-        if total_mb is None:   # fall back to last cached value
-            raw = store.q("SELECT body FROM raw_cache WHERE name='fast'", fetch="one")
+            resp = poller.router.cmd(337, "POST",
+                                     {"statisticsReset": "1", "usedFlow": "0"})
+            fw["attempted"] = True
+            fw["ok"] = bool(resp.get("success"))
+        except Exception as exc:
+            fw["error"] = str(exc)
+        if fw["attempted"] and fw["ok"]:
             try:
-                fast = json.loads(raw["body"]) if raw else {}
-                total_mb = float((fast.get("flow") or {}).get("mon_download_flow") or 0)
-            except (json.JSONDecodeError, TypeError, ValueError):
-                total_mb = 0.0
-        ts = time.time()
-        store.setting_set("usage_baseline", {"ts": ts, "total_mb": total_mb})
+                check = poller.router.cmd(337, "GET")
+                fw["after_mb"] = check.get("mon_download_flow")
+            except Exception:
+                pass
+        if not (fw.get("ok") and (fw.get("after_mb") in (None, "0", "0.00") or
+                                  _is_small(fw.get("after_mb")))):
+            # local baseline fallback / in addition
+            total_mb = _current_total_mb()
+            ts = time.time()
+            store.setting_set("usage_baseline", {"ts": ts, "total_mb": total_mb})
+        else:
+            store.setting_set("usage_baseline",
+                              {"ts": time.time(), "total_mb": 0.0})
         store.add_alert("info", "Usage counter reset",
-                        f"Counting from now (baseline {round(total_mb / 1024, 2)} GB)")
-        return jsonify({"ok": True, "ts": ts, "total_mb": total_mb})
+                        "Counting started from now "
+                        + ("(router counters cleared)" if fw.get("ok") else "(local baseline)"))
+        return jsonify({"ok": True, "firmware": fw})
+
+    def _is_small(v):
+        try:
+            return float(v) < 1024   # less than ~1 GB residual
+        except (TypeError, ValueError):
+            return False
+
+    def _current_total_mb():
+        try:
+            r = poller.router.cmd(337, "GET")
+            return float(r.get("mon_download_flow") or 0)
+        except Exception:
+            return 0.0
+
+    # ------------------------------------------------ router DNS for sites
+    @app.get("/api/dnscfg")
+    @require_auth
+    def dnscfg_get():
+        import socket as _s
+        try:
+            s = _s.socket(_s.AF_INET, _s.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 53))
+            my_ip = s.getsockname()[0]
+            s.close()
+        except OSError:
+            my_ip = None
+        from odu_tracker.dns_proxy import _singleton
+        raw = store.q("SELECT body FROM raw_cache WHERE name='fast'", fetch="one")
+        dhcp = {}
+        if raw:
+            try:
+                dhcp = (json.loads(raw["body"]).get("dhcp_data") or {})
+            except (json.JSONDecodeError, AttributeError):
+                dhcp = {}
+        return jsonify({
+            "enabled": bool(_dp._singleton and _dp._singleton.is_alive()),
+            "port": cfg.get("dns_proxy_port"),
+            "upstream": cfg.get("dns_upstream"),
+            "myIp": my_ip,
+            "router_dns_main": dhcp.get("main_dns") or "",
+            "router_dns_vice": dhcp.get("vice_dns") or "",
+            "dns_pointed_at_app": (my_ip and dhcp.get("main_dns") == my_ip),
+        })
+
+    @app.post("/api/dnscfg")
+    @require_auth
+    def dnscfg_set():
+        enabled = bool((request.json or {}).get("enabled"))
+        cfg.set("dns_proxy_enabled", enabled)
+        if enabled:
+            start_proxy(cfg)
+            port = cfg.get("dns_proxy_port")
+            return jsonify({"ok": True, "enabled": True, "port": port})
+        if _dp._singleton:
+            _dp._singleton.stop()
+        return jsonify({"ok": True, "enabled": False})
+
+    @app.post("/api/dnscfg/router")
+    @require_auth
+    def dnscfg_router():
+        """Point the router's DHCP DNS at this app (per-device site tracking)
+        or restore the values the router had before we changed anything."""
+        mode = (request.json or {}).get("mode", "app")
+        cur = poller.router.cmd(3, "GET")
+        import socket as _s
+        try:
+            s = _s.socket(_s.AF_INET, _s.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 53))
+            my_ip = s.getsockname()[0]
+            s.close()
+        except OSError:
+            return jsonify({"ok": False, "error": "cannot determine this PC's IP"}), 500
+        if mode == "app":
+            if cur.get("main_dns") == my_ip:
+                start_proxy(cfg)
+                return jsonify({"ok": True, "mode": mode,
+                                "message": f"router DNS already points at {my_ip}"})
+            # remember the pre-change values so "restore" is faithful
+            if not store.setting_get("dns_original"):
+                store.setting_set("dns_original", {
+                    "main_dns": cur.get("main_dns") or "",
+                    "vice_dns": cur.get("vice_dns") or "",
+                })
+            new_main, new_vice = my_ip, "8.8.8.8"
+            note = (f"router DHCP DNS now prefers this app ({my_ip}) "
+                    f"with 8.8.8.8 fallback")
+        else:
+            orig = store.setting_get("dns_original") or {}
+            new_main = orig.get("main_dns") or cfg.get("router_ip")
+            new_vice = orig.get("vice_dns") or ""
+            note = "router DHCP DNS restored to its previous settings"
+        payload = {
+            "lanIp": cur.get("lanIp", ""),
+            "netMask": cur.get("netMask", ""),
+            "dhcpServer": cur.get("dhcpServer", "1"),
+            "main_dns": new_main,
+            "vice_dns": new_vice,
+            "ipBegin": cur.get("ipBegin", ""),
+            "ipEnd": cur.get("ipEnd", ""),
+            "expireTime": cur.get("expireTime", "24h"),
+        }
+        resp = poller.router.cmd(3, "POST", payload)
+        if mode == "app":
+            start_proxy(cfg)
+        ok = bool(resp.get("success", bool(resp.get("message") is None)))
+        store.add_alert("info" if ok else "warning", "Router DNS updated"
+                        if ok else "Router DNS change failed", note)
+        return jsonify({"ok": ok, "mode": mode, "router_resp": resp,
+                        "message": note})
 
     # ------------------------------------------------------- speed tests
     @app.post("/api/speedtest/run")

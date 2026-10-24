@@ -1,12 +1,12 @@
 """Optional DNS logging proxy.
 
-Enable it, then set the router's DHCP DNS to this PC's LAN IP (or set it on
-each client). Every DNS query made by a LAN client is logged here, giving a
-"visited websites" timeline per device without touching the router firmware.
+Enable it (one click after enabling router DNS auto-config) and every LAN
+client's DNS lookup flows through this app — giving a real per-device
+"visited websites" view without touching the firmware.
 
-Runs a tiny UDP listener that:
-  receives a DNS query      -> log (ts, client_ip, domain)
-  forwards to upstream DNS  -> replies to the client normally.
+  UDP 5353: receive query -> log (ts, client_ip, domain) for A/AAAA lookups
+            -> forward to upstream -> reply.
+Non-address types (MX/TXT/SRV...) are forwarded transparently, never blocked.
 """
 import socket
 import struct
@@ -15,38 +15,73 @@ import time
 
 from . import store
 
+# reverse / local zones are infrastructure, not "websites"
+IGNORE_SUFFIX = (".in-addr.arpa", ".ip6.arpa", ".local", ".lan", ".arpa", ".home")
+
 
 def parse_query_name(data: bytes, offset: int):
-    """Extract the question name at offset, carefully skipping compression."""
+    """Extract the question name at offset (skips compression pointers)."""
     labels = []
-    jumped = False
     end = offset
     for _ in range(64):
+        if end >= len(data):
+            break
         l = data[end]
         if l == 0:
             end += 1
             break
-        if l & 0xC0 == 0xC0:
+        if l & 0xC0:
             end += 2
-            jumped = True
             break
         labels.append(data[end + 1:end + 1 + l].decode("ascii", "replace"))
         end += 1 + l
     return ".".join(labels), end
 
 
+def _worker(sock, data, addr, upstream, upstream_port):
+    """Per-query forwarder thread — LAN clients never wait on us."""
+    reply = None
+    up = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    up.settimeout(3.0)
+    try:
+        up.sendto(data, (upstream, upstream_port))
+        reply, _ = up.recvfrom(4096)
+    except OSError:
+        reply = None
+    finally:
+        up.close()
+    if reply:
+        try:
+            sock.sendto(reply, addr)
+        except OSError:
+            pass
+    else:
+        # SERVFAIL so clients fail fast to their secondary DNS
+        try:
+            if len(data) > 12:
+                flags = struct.unpack(">H", data[2:4])[0]
+                resp = data[:2] + struct.pack(">H", (flags | 0x0002) & 0xFFDF
+                                              | 0x0002 | (flags & 0x0080))
+                resp += data[4:12] + b"\x00\x00\x00\x00"
+                sock.sendto(resp, addr)
+        except OSError:
+            pass
+
+
 class DnsProxy(threading.Thread):
+    A_OR_AAAA = (1, 28)
+
     def __init__(self, port=5353, upstream="8.8.8.8"):
         super().__init__(daemon=True, name="odu-dnslog")
         self.port = port
         self.upstream = upstream
-        self._stop = threading.Event()
+        self.upstream_port = 53
+        self._stop_evt = threading.Event()
         self.sock = None
-        self.qtype_names = {1: "A", 28: "AAAA", 5: "CNAME", 2: "NS", 16: "TXT"}
-        self._skipped = 0
+        self.logged = 0
 
     def stop(self):
-        self._stop.set()
+        self._stop_evt.set()
         if self.sock:
             try:
                 self.sock.close()
@@ -57,47 +92,38 @@ class DnsProxy(threading.Thread):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(1.0)
         try:
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.bind(("0.0.0.0", self.port))
         except OSError:
             return
-        sessions = {}
-        while not self._stop.is_set():
+        while not self._stop_evt.is_set():
             try:
                 data, addr = self.sock.recvfrom(4096)
             except socket.timeout:
                 continue
             except OSError:
                 break
-            try:
-                self.handle(data, addr, sessions)
-            except Exception:
-                pass
+            threading.Thread(target=self.handle, args=(data, addr),
+                             daemon=True).start()
 
-    def handle(self, data: bytes, addr, sessions):
-        if len(data) < 12:
-            return
-        tid, flags, qd = struct.unpack(">HHH", data[:6])
-        if not qd:
-            return
-        domain, qend = parse_query_name(data, 12)
-        qtype = struct.unpack(">H", data[qend:qend + 2])[0] if len(data) >= qend + 2 else 0
-        if not domain:
-            return
-        # Only log A/AAAA lookups (site visits), skip reverse lookups
-        if qtype not in (1, 28):
-            self._skipped += 1
-            kind = self.qtype_names.get(qtype, f"t{qtype}")
-            if kind in ("TXT", "NS", "CNAME"):
-                return
-        store.add_site(int(time.time()), addr[0], None, domain.lower())
-        upstream = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        upstream.settimeout(3.0)
+    def handle(self, data: bytes, addr):
         try:
-            upstream.sendto(data, (self.upstream, 53))
-            resp, _ = upstream.recvfrom(4096)
-            self.sock.sendto(resp, addr)
-        finally:
-            upstream.close()
+            if len(data) < 12:
+                return
+            qd = struct.unpack(">H", data[4:6])[0]
+            if not qd:
+                return
+            domain, qend = parse_query_name(data, 12)
+            qtype = (struct.unpack(">H", data[qend:qend + 2])[0]
+                     if len(data) >= qend + 2 else 0)
+            dom = (domain or "").lower()
+            if dom and qtype in self.A_OR_AAAA and not dom.endswith(IGNORE_SUFFIX) \
+               and not dom.startswith(("192.168.", "10.", "172.16.")):
+                store.add_site(int(time.time()), addr[0], None, dom)
+                self.logged += 1
+            _worker(self.sock, data, addr, self.upstream, self.upstream_port)
+        except Exception:
+            pass
 
 
 _singleton = None

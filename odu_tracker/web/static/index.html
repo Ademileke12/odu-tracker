@@ -1,254 +1,325 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ODU Tracker — MTN Broadband Monitor</title>
+<title>ODU Tracker — MTN data & device monitor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%23ffb632'/%3E%3Cpath d='M16 33v-9' stroke='%23221701' stroke-width='3.6' stroke-linecap='round'/%3E%3Cpath d='M16 24a7 7 0 0 1 8.5 8.6M16 24a13 13 0 0 1 15.4 15.1' stroke='%23221701' stroke-width='3.6' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='16' cy='33' r='3.1' fill='%23221701'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<div id="loginView" class="auth-wrap" style="display:none">
-  <div class="auth-card">
-    <div class="logo"><span class="logo-bolt">⚡</span>
-      <div><b>ODU</b> TRACKER<div class="logo-sub">MTN Broadband monitor</div></div>
+<!-- ======================================================= icon library -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="lgGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd35e"/><stop offset="1" stop-color="#ff9d2e"/>
+    </linearGradient>
+  </defs>
+  <symbol id="i-logo" viewBox="0 0 48 48">
+    <rect width="48" height="48" rx="11" fill="url(#lgGold)"/>
+    <path d="M16 33v-9" stroke="#221701" stroke-width="3.6" stroke-linecap="round"/>
+    <path d="M16 24a7 7 0 0 1 8.5 8.6" stroke="#221701" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+    <path d="M16 24a13 13 0 0 1 15.4 15.1" stroke="#221701" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+    <circle cx="16" cy="33" r="3.1" fill="#221701"/>
+  </symbol>
+</svg>
+
+<!-- ============================================================ auth -->
+<div id="authView" class="auth" hidden>
+  <aside class="auth-brand">
+    <div class="logo lg-hero">
+      <svg><use href="#i-logo"/></svg>
+      <div><div class="t">ODU <em>TRACKER</em></div><div class="st">MTN · Data · Devices</div></div>
     </div>
-    <h1>Sign in to your ODU</h1>
-    <p>Use your router admin password once — it's stored securely on this computer only.</p>
-    <div class="err" id="loginErr"></div>
-    <div class="field">
-      <label>Router password</label>
-      <input type="password" id="pw" placeholder="admin password" autocomplete="current-password">
+    <div>
+      <h2>Know your data.<br>Trust your <em>network</em>.</h2>
+      <p class="lede">Live usage from your ZLT ODU, connected-device watch with risk flags,
+         per-device website activity and real speed tests — all on your own machine.</p>
+      <div class="feat">
+        <div class="f"><div class="fi">↓</div>Usage totals, hourly charts &amp; reset-from-now counter</div>
+        <div class="f"><div class="fi">◉</div>New &amp; dangerous device alerts (MAC risk engine)</div>
+        <div class="f"><div class="fi">⊘</div>One-click device block via the router's firewall</div>
+        <div class="f"><div class="fi">⊙</div>DNS-logged visited websites per device</div>
+      </div>
     </div>
-    <button class="btn primary block" id="loginBtn" onclick="doLogin()">Connect to router</button>
-    <div class="auth-foot tagline">
-      <span id="attemptInfo"></span>
-      <span>target <span class="mono" id="routerip">192.168.0.1</span></span>
-    </div>
+    <div class="tagline" id="brandIp">Router 192.168.0.1 · local only · nothing leaves your LAN</div>
+  </aside>
+
+  <div class="auth-form">
+    <form class="auth-card" id="authForm">
+      <svg style="width:26px;height:26px"><use href="#i-logo"/></svg>
+      <h1 id="authTitle">Sign in</h1>
+      <p class="sub" id="authSub">Use your router admin password. It stays on this PC.</p>
+      <div class="field">
+        <label for="authPass">Router admin password</label>
+        <div class="pwholder">
+          <input type="password" id="authPass" placeholder="••••••••" autocomplete="current-password" required>
+          <button type="button" class="eye" id="eyeBtn" title="Show password">◉</button>
+        </div>
+      </div>
+      <label class="remember"><input type="checkbox" id="authRemember" checked><span class="sw"></span>Keep me signed in for 30 days</label>
+      <div class="err" id="authErr"></div>
+      <button class="btn primary block" id="authBtn" type="submit">Sign in →</button>
+      <div class="attempt-chip" id="authAttempts" hidden></div>
+    </form>
   </div>
 </div>
 
-<div id="mainView" style="display:none">
+<!-- ============================================================ main -->
+<div id="mainView" hidden>
   <aside class="sidebar">
-    <div class="logo"><span class="logo-bolt">⚡</span>
-      <div><b>ODU</b> TRACKER<div class="logo-sub">MTN Broadband</div></div>
+    <div class="logo">
+      <svg><use href="#i-logo"/></svg>
+      <div><div class="t">ODU <em>TRACKER</em></div><div class="st">Local dashboard</div></div>
     </div>
-    <nav>
-      <div class="navlink active" data-tab="dashboard"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm2-8h4v6H5V5zm0 10h4v6H5v-6zm8-12h8v10h-8V3zm2 2h4v6h-4V5zm0 10h4v6h-4v-6z"/></svg><span>Dashboard</span></div>
-      <div class="navlink" data-tab="devices"><svg viewBox="0 0 24 24"><path d="M4 6h16v4H4V6zm0 8h16v4H4v-4zm2-6a1 1 0 100 2 1 1 0 000-2z"/></svg><span>Devices</span></div>
-      <div class="navlink" data-tab="traffic"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2zm1-6h3v5H5v-5zm5-8h3v13h-3V5zm5 4h3v9h-3V9z"/></svg><span>Traffic &amp; Speed</span></div>
-      <div class="navlink" data-tab="websites"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v6l4 2-1 1.7-5-2.7V7z"/></svg><span>Websites</span></div>
-      <div class="navlink" data-tab="alerts"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 00-6 6v4l-2 3v1h16v-1l-2-3V9a6 6 0 00-6-6zm-2 15h4a2 2 0 11-4 0z"/></svg><span>Alerts</span><span class="nav-badge" id="alertBadge" style="display:none"></span></div>
-      <div class="navlink" data-tab="settings"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 4a7 7 0 01-.1 1.2l2 1.6-2 3.4-2.4-.9a7 7 0 01-2 1.2l-.4 2.5h-4l-.4-2.5a7 7 0 01-2-1.2l-2.4.9-2-3.4 2-1.6A7 7 0 013 12"/></svg><span>Settings</span></div>
+    <nav data-tabs>
+      <div class="navlink active" data-tab="dashboard"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span>Dashboard</span></div>
+      <div class="navlink" data-tab="devices"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="14" height="9" rx="2"/><path d="M6.5 18h6"/><path d="M9.5 14v4"/><rect x="18" y="9" width="3.5" height="9" rx="1.4"/></svg><span>Devices</span></div>
+      <div class="navlink" data-tab="websites"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3.4 3 14.6 0 18-3-3.4-3-14.6 0-18z"/></svg><span>Websites</span></div>
+      <div class="navlink" data-tab="speed"><svg viewBox="0 0 24 24"><path d="M4 16a8.5 8.5 0 1 1 16 0"/><path d="M12 16l4.5-5.5"/><circle cx="12" cy="16" r="1.6"/></svg><span>Speed test</span></div>
+      <div class="navlink" data-tab="alerts"><svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5z"/><path d="M10 19a2.2 2.2 0 0 0 4 0"/></svg><span>Alerts</span><span class="nav-badge" id="navAlertBadge" hidden>0</span></div>
+      <div class="navlink" data-tab="settings"><svg viewBox="0 0 24 24"><path d="M4 7h9"/><circle cx="16.5" cy="7" r="2.2"/><path d="M4 15h4"/><circle cx="11" cy="15" r="2.2"/><path d="M16 15h4"/></svg><span>Settings</span></div>
     </nav>
     <div class="side-foot">
-      <div class="pill"><span class="dot" id="pollDot"></span><span id="pollText">connecting…</span></div>
-      <div class="tagline mono" id="cfgIp"></div>
+      <div class="conn"><span class="dot off" id="connDot"></span><span id="connText">connecting…</span></div>
+      <button class="theme-btn" id="themeBtn"><svg id="themeIco" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8.5 8.5 0 1 0 10 10z"/></svg><span id="themeLabel">Dark</span></button>
     </div>
   </aside>
 
   <div class="content">
     <header class="tophead">
-      <div>
-        <h1 id="pageTitle">Dashboard</h1>
-        <div class="tagline" id="pageSub">Live view of your MTN ODU</div>
-      </div>
+      <div><h1 id="pageTitle">Dashboard</h1><div class="sub" id="pageSub">Live view of your ODU</div></div>
       <div class="head-chips">
-        <div class="chip"><span class="chip-ic ok">⇅</span><b id="devCount">–</b><span>devices</span></div>
-        <div class="chip"><span class="chip-ic warn">∑</span><b id="headUsage">–</b><span>month</span></div>
-        <div class="chip"><span class="chip-ic info">⏱</span><b id="headRate">–</b><span>avg 1h</span></div>
+        <div class="chip" id="chipStatus"><span class="chip-ic warn">•</span><span>Link</span></div>
+        <div class="chip"><b id="chipSignal">—</b><span id="chipNet">—</span></div>
+        <div class="chip"><span>Month</span><b id="chipMonth">—</b></div>
+        <button class="btn ghost xs" id="btnLogout" title="Sign out">⎋&nbsp;Exit</button>
       </div>
     </header>
 
     <main>
-      <!-- ================= DASHBOARD ================= -->
-      <section id="tab-dashboard" class="grid g4">
-        <div class="card kpi">
-          <div class="kpi-top"><span class="kpi-label">Monthly data usage</span><span class="kpi-ic">📶</span></div>
-          <div class="kpi-val" id="usageTotal">–</div>
-          <div class="meter lg"><div id="usageMeter"></div></div>
-          <div class="kpi-sub" id="usageSub">–</div>
-        </div>
-        <div class="card kpi">
-          <div class="kpi-top"><span class="kpi-label">Usage since reset</span>
-            <button class="btn ghost xs" id="resetUsageBtn" title="Start a fresh counter from now">↺ reset</button></div>
-          <div class="kpi-val accent" id="usageSince">–</div>
-          <div class="kpi-sub" id="sinceSub">never reset</div>
-        </div>
-        <div class="card kpi">
-          <div class="kpi-top"><span class="kpi-label">Throughput now</span><span class="kpi-ic">⇅</span></div>
-          <div class="kpi-val" id="rateNow">–</div>
-          <div class="kpi-sub" id="rateAvg">avg: –</div>
-        </div>
-        <div class="card kpi">
-          <div class="kpi-top"><span class="kpi-label">Network signal</span><span class="kpi-ic">📡</span></div>
-          <div class="kpi-val" id="signal">–</div>
-          <div class="kpi-sub" id="netType">–</div>
-        </div>
-
-        <div class="card span2">
-          <div class="card-head"><h3>Devices online</h3><span class="tagline" id="onlineCount"></span></div>
-          <div class="chips-wrap" id="onlineCards"></div>
-          <div class="empty" id="noOnline">Waiting for the first poll…</div>
-        </div>
-        <div class="card span2">
-          <div class="card-head"><h3>ODU health</h3><span class="tagline" id="odUptime"></span></div>
-          <div class="kv" id="runtimeKv"></div>
-          <div class="sep"></div>
-          <div class="kv" id="wanKv"></div>
+      <!-- ═══════════════════════ dashboard ═══════════════════════ -->
+      <section data-view="dashboard">
+        <div class="grid g4">
+          <div class="card kpi">
+            <div class="kpi-top"><span class="kpi-label">This month</span><span class="kpi-ic">Σ</span></div>
+            <div class="kpi-val accent" id="kpiMonth">—</div>
+            <div class="meter" id="kpiMonthMeter"><div></div></div>
+            <div class="kpi-sub" id="kpiMonthSub">—</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-top"><span class="kpi-label">Since reset</span><span class="kpi-ic">↺</span></div>
+            <div class="kpi-val okv" id="kpiReset">—</div>
+            <div class="meter" style="display:none"></div>
+            <div class="kpi-sub" id="kpiResetSub">Counting from your last reset</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-top"><span class="kpi-label">Today</span><span class="kpi-ic">☀</span></div>
+            <div class="kpi-val" id="kpiToday">—</div>
+            <div class="kpi-sub" id="kpiTodaySub">Since 00:00 (router clock)</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-top"><span class="kpi-label">Throughput</span><span class="kpi-ic">≈</span></div>
+            <div class="kpi-val" id="kpiRateNow">—</div>
+            <div class="kpi-sub" id="kpiRateSub">1-h avg: —</div>
+          </div>
         </div>
 
-        <div class="card span4">
-          <div class="card-head"><h3>Recent activity</h3><a class="link" href="#alerts" onclick="showTab('alerts')">all →</a></div>
-          <table>
-            <thead><tr><th>time</th><th>event</th><th class="right">detail</th></tr></thead>
-            <tbody id="recentEvents"></tbody>
-          </table>
+        <div class="grid g2" style="margin-top:16px">
+          <div class="card span2">
+            <div class="card-head">
+              <h3>Data usage</h3>
+              <select id="usageRange" style="width:auto">
+                <option value="6">last 6 h</option>
+                <option value="24" selected>last 24 h</option>
+                <option value="72">last 3 days</option>
+                <option value="168">last week</option>
+              </select>
+              <div class="seg" data-charts="usage">
+                <button data-ctype="bar" class="active">Bar</button>
+                <button data-ctype="line">Line</button>
+                <button data-ctype="area">Area</button>
+                <button data-ctype="donut">Donut</button>
+              </div>
+            </div>
+            <div class="chartbox" id="usageChart"></div>
+            <div class="chart-note" id="usageNote">—</div>
+          </div>
+        </div>
+
+        <div class="grid g2" style="margin-top:16px">
+          <div class="card">
+            <div class="card-head">
+              <h3>Live throughput</h3>
+              <select id="ratesRange" style="width:auto">
+                <option value="30" selected>last 30 min</option>
+                <option value="60">last hour</option>
+                <option value="120">last 2 h</option>
+              </select>
+              <div class="seg" data-charts="rates">
+                <button data-ctype="area" class="active">Area</button>
+                <button data-ctype="bar">Bar</button>
+                <button data-ctype="line">Line</button>
+              </div>
+            </div>
+            <div class="chartbox" id="ratesChart"></div>
+            <div class="chart-note" id="ratesNote">—</div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Devices online</h3><span class="tagline" id="devOnlineCount">—</span></div>
+            <div id="devChips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            <div class="chart-note" style="margin-top:14px"><a class="link" data-tab="devices">Open device monitor →</a></div>
+            <div class="card-head" style="margin-top:20px"><h3>System</h3></div>
+            <div class="kv" id="sysKv"></div>
+          </div>
         </div>
       </section>
 
-      <!-- ================= DEVICES ================= -->
-      <section id="tab-devices" style="display:none">
-        <div class="grid g4" style="margin-bottom:14px">
-          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Known devices</span></div><div class="kpi-val" id="dvTotal">–</div></div>
-          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Online now</span></div><div class="kpi-val okv" id="dvOnline">–</div></div>
-          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Flagged (risk ≥ medium)</span></div><div class="kpi-val warnv" id="dvFlagged">–</div></div>
-          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Blocked</span></div><div class="kpi-val dangerv" id="dvBlocked">–</div></div>
+      <!-- ═══════════════════════ devices ═══════════════════════ -->
+      <section data-view="devices" hidden>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-head"><h3>Top data activity</h3><span class="tagline">ranked by DNS lookups through this app</span></div>
+          <div class="lbr" id="devRankList"></div>
+          <div class="chart-note" style="margin-top:12px">This firmware keeps no per-device byte counters — enable <a class="link" data-tab="websites">Website tracking</a> for the per-device activity this ranks. Router-reported usage appears automatically when the ODU provides it.</div>
         </div>
         <div class="card">
           <div class="card-head">
-            <h3>Device inventory</h3>
-            <input id="devFilter" class="search" placeholder="filter name · ip · mac…">
+            <h3>Connected &amp; known devices</h3>
+            <input class="search" id="devSearch" placeholder="Filter by name, IP or MAC…">
           </div>
-          <div class="tablewrap">
-          <table>
-            <thead><tr>
-              <th></th><th>name</th><th>ip address</th><th>mac</th><th>vendor</th><th>link</th>
-              <th>first seen</th><th>last seen</th><th>risk</th><th class="right">actions</th>
-            </tr></thead><tbody id="devTbody"></tbody>
-          </table>
-          </div>
+          <div class="tablewrap"><table id="devTable">
+            <thead><tr><th>Device</th><th>IP</th><th>MAC</th><th>Status</th><th>Risk</th><th>First seen</th><th class="right">Actions</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
         </div>
       </section>
 
-      <!-- ================= TRAFFIC ================= -->
-      <section id="tab-traffic" class="grid g2" style="display:none">
-        <div class="card">
-          <div class="card-head"><h3>Speed test</h3><span class="tagline">measured on the ODU link · uses data</span></div>
+      <!-- ═══════════════════════ websites ═══════════════════════ -->
+      <section data-view="websites" hidden>
+        <div class="card" id="sitesBanner" style="margin-bottom:16px"></div>
+        <div class="grid g2">
+          <div class="card">
+            <div class="card-head">
+              <h3>Websites by device</h3>
+              <select id="sitesHours" style="width:auto">
+                <option value="1">last hour</option>
+                <option value="6" selected>last 6 h</option>
+                <option value="24">last day</option>
+                <option value="168">last week</option>
+              </select>
+            </div>
+            <div class="tablewrap"><table id="siteClientTable">
+              <thead><tr><th>Device</th><th class="right">Lookups</th><th class="right">Domains</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Most visited domains</h3></div>
+            <div class="tablewrap"><table id="siteDomTable">
+              <thead><tr><th>Domain</th><th class="right">Hits</th><th class="right">Devices</th><th class="right">Last</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-head"><h3>Router URL-block list</h3><span class="tagline">source: ODU access control (cmd 26)</span></div>
+          <div id="siteRules" class="empty">no entries</div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════ speed ═══════════════════════ -->
+      <section data-view="speed" hidden>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-head"><h3>Run a speed test</h3></div>
           <div class="st-row">
-            <select id="stSize">
-              <option value="2">Quick — ~2 MB</option>
-              <option value="8" selected>Lite — ~8 MB</option>
-              <option value="25">Standard — ~25 MB</option>
-              <option value="50">Full — ~50 MB</option>
-            </select>
-            <button class="btn primary" id="stBtn" onclick="runSpeedTest()">▶&nbsp; Run test</button>
+            <div style="flex:1;min-width:150px">
+              <label class="kpi-label" style="display:block;margin-bottom:6px">Download size</label>
+              <select id="stDown"><option value="2">2 MB (tiny)</option><option value="6" selected>6 MB</option><option value="12">12 MB</option><option value="25">25 MB</option><option value="50">50 MB</option></select>
+            </div>
+            <div style="flex:1;min-width:150px">
+              <label class="kpi-label" style="display:block;margin-bottom:6px">Upload size</label>
+              <select id="stUp"><option value="0">skip upload</option><option value="1" selected>1 MB</option><option value="2">2 MB</option><option value="5">5 MB</option></select>
+            </div>
+            <button class="btn primary" id="btnSpeed">▶ Run test</button>
           </div>
-          <div class="err" id="stErr"></div>
-          <div class="grid g4" id="stResult"></div>
+          <div class="chart-note" style="margin-top:12px">⚠ Runs over your metered MTN connection — data consumed equals roughly the sizes above.</div>
+        </div>
+        <div class="grid g4" style="margin-bottom:16px">
+          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Download</span></div><div class="kpi-val accent" id="stDownVal">—</div></div>
+          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Upload</span></div><div class="kpi-val" id="stUpVal">—</div></div>
+          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Ping</span></div><div class="kpi-val" id="stPing">—</div></div>
+          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Average (all tests)</span></div><div class="kpi-val" id="stAvg">—</div><div class="kpi-sub" id="stAvgUp">—</div></div>
         </div>
         <div class="card">
-          <div class="card-head"><h3>Live throughput</h3><span class="tagline">from router counters · no data used</span></div>
-          <div class="kv" id="ratesKv"></div>
-          <div class="bars sm" id="rateBars"></div>
-          <div class="tagline">Mbps sampled every 15 s — this is the average speed your link is actually delivering</div>
-        </div>
-
-        <div class="card span2">
-          <div class="card-head"><h3>Hourly usage — last 24 h</h3><span class="tagline" id="usageHeadRight"></span></div>
-          <div class="bars lg" id="usageBars"></div>
-          <div class="sep"></div>
-          <div class="kv cols3" id="usageKv"></div>
-        </div>
-
-        <div class="card span2">
-          <div class="card-head"><h3>Speed test history</h3>
-            <span class="tagline" id="stAvg"></span></div>
-          <div class="tablewrap">
-          <table>
-            <thead><tr><th>time</th><th class="right">download</th><th class="right">upload</th><th class="right">ping</th><th class="right">used</th></tr></thead>
-            <tbody id="stTbody"></tbody>
-          </table>
-          </div>
+          <div class="card-head"><h3>Status</h3><span class="tagline" id="stStatus">idle</span></div>
+          <div class="meter" style="margin-top:0;margin-bottom:16px"><div id="stBar"></div></div>
+          <div class="tablewrap"><table id="stHistory">
+            <thead><tr><th>When</th><th class="right">Down (Mbps)</th><th class="right">Up (Mbps)</th><th class="right">Ping (ms)</th><th class="right">Data used</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
         </div>
       </section>
 
-      <!-- ================= WEBSITES ================= -->
-      <section id="tab-websites" class="grid g2" style="display:none">
-        <div class="card span2">
-          <div class="card-head"><h3>Per-device browsing (DNS)</h3>
-            <span class="tagline">requires the optional DNS proxy — enable in Settings</span></div>
-          <div class="tablewrap">
-          <table>
-            <thead><tr><th>domain</th><th class="right">hits</th><th class="right">clients</th><th>last seen</th></tr></thead>
-            <tbody id="sitesTbody"></tbody>
-          </table>
-          </div>
-          <div class="empty" id="noSites">No DNS data yet — enable the proxy in Settings, then point the router's DHCP DNS at this PC.</div>
-        </div>
+      <!-- ═══════════════════════ alerts ═══════════════════════ -->
+      <section data-view="alerts" hidden>
         <div class="card">
-          <div class="card-head"><h3>Router URL block list</h3></div>
-          <div class="tablewrap">
-          <table><thead><tr><th>url</th><th class="right">state</th></tr></thead><tbody id="urlRulesTbody"></tbody></table>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Top browsing clients</h3></div>
-          <div class="tablewrap">
-          <table><thead><tr><th>client ip</th><th class="right">requests</th><th class="right">domains</th></tr></thead><tbody id="siteClients"></tbody></table>
-          </div>
+          <div class="card-head"><h3>Alert feed</h3><button class="btn xs" id="btnAlertsRead">Mark all read</button></div>
+          <div id="alertsList"></div>
         </div>
       </section>
 
-      <!-- ================= ALERTS ================= -->
-      <section id="tab-alerts" style="display:none">
-        <div class="card">
-          <div class="card-head"><h3>Security &amp; activity alerts</h3>
-            <button class="btn ghost xs" onclick="markAlertsRead()">mark all read</button></div>
-          <div class="tablewrap">
-          <table><thead><tr><th>time</th><th>level</th><th>alert</th><th>detail</th></tr></thead><tbody id="alertsTbody"></tbody></table>
+      <!-- ═══════════════════════ settings ═══════════════════════ -->
+      <section data-view="settings" hidden>
+        <div class="grid g2">
+          <div class="card">
+            <div class="card-head"><h3>Data-usage counter</h3></div>
+            <p style="color:var(--muted);font-size:.88rem;margin-bottom:14px">
+              Reset the counter so “Since reset” starts from <b>now</b>. When possible this also clears
+              the router's own statistics (firmware statistics-reset); otherwise a local baseline is used.</p>
+            <button class="btn danger" id="resetBtn">↺ Reset usage from now</button>
+            <div class="chart-note" id="resetNote" style="margin-top:12px">—</div>
           </div>
-        </div>
-      </section>
-
-      <!-- ================= SETTINGS ================= -->
-      <section id="tab-settings" class="grid g2" style="display:none">
-        <div class="card">
-          <div class="card-head"><h3>Router connection</h3></div>
-          <div class="kv" id="settingsRouterKv"></div>
-          <div class="st-row" style="margin-top:12px">
-            <input id="newPw" type="password" placeholder="change stored router password">
-            <button class="btn" onclick="changePw()">Update</button>
+          <div class="card">
+            <div class="card-head"><h3>Router password</h3></div>
+            <p style="color:var(--muted);font-size:.88rem;margin-bottom:14px">
+              Update the password the tracker uses to sign in to your ODU.
+              The router verifies it first — a wrong one burns a login attempt.</p>
+            <div class="field"><div class="pwholder"><input type="password" id="newPw" placeholder="new router admin password"><button type="button" class="eye" id="eyeBtn2">◉</button></div></div>
+            <div class="err" id="pwErr"></div>
+            <button class="btn" id="btnChangePw">Save password</button>
           </div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>DNS logging proxy</h3><span class="tagline">websites feature</span></div>
-          <label class="switchrow">
-            <input type="checkbox" id="dnsEnabled">
-            <span class="switch"></span>
-            <span>capture per-device DNS lookups</span>
-          </label>
-          <div class="kv" style="margin-top:8px">
-            <span>listen port</span><b id="dnsPort" class="mono"></b>
-            <span>upstream</span><b id="dnsUpstream" class="mono"></b>
-            <span>this PC's IP</span><b id="dnsHow" class="mono"></b>
+          <div class="card">
+            <div class="card-head"><h3>Website log (DNS proxy)</h3></div>
+            <label class="switchrow" style="margin-bottom:12px"><input type="checkbox" id="dnsEnable"><span class="sw2"></span>Broadcast DNS logging (port <span id="dnsPort">5353</span>)</label>
+            <p style="color:var(--muted);font-size:.84rem;margin-bottom:12px">
+              For per-device website tracking, the router's DHCP must hand out this PC as the DNS server.
+              This app can set that itself through the router's API — one click, fully reversible.</p>
+            <div class="st-row">
+              <button class="btn primary" id="btnDnsPoint">Connect router DNS → this PC</button>
+              <button class="btn" id="btnDnsRestore">Restore router default</button>
+            </div>
+            <div class="chart-note" id="dnsStatus" style="margin-top:12px">—</div>
           </div>
-          <div class="tagline" style="margin-top:8px">Enable it, then set the router's DHCP DNS to the IP above — every LAN lookup is then logged per device.</div>
-        </div>
-        <div class="card span2">
-          <div class="card-head"><h3>Raw router data <span class="tagline">(inspection)</span></h3>
-            <div id="rawLinks" class="chips-wrap"></div></div>
-          <pre id="rawBody" class="rawpre">select a feed above to inspect the live JSON from the router</pre>
+          <div class="card">
+            <div class="card-head"><h3>Advanced · raw router data</h3></div>
+            <div class="st-row" style="margin-bottom:12px">
+              <select id="rawName" style="flex:1;min-width:130px"><option value="fast">fast snapshot</option><option value="slow">slow snapshot</option><option value="url_filter">URL filter</option><option value="mac_filter">MAC filter</option></select>
+              <button class="btn" id="btnRawLoad">Load</button>
+            </div>
+            <div class="rawpre" id="rawPre">—</div>
+          </div>
         </div>
       </section>
     </main>
   </div>
 </div>
 
-<div id="toast" class="toast"></div>
+<div class="toast" id="toast"></div>
+<div class="chart-tip" id="chartTip"></div>
 <script src="/static/app.js"></script>
 </body>
 </html>

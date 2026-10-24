@@ -1,518 +1,749 @@
-/* ODU Tracker dashboard logic (vanilla JS, zero dependencies) */
-const $ = (id) => document.getElementById(id);
-let TAB = "dashboard";
-let tick = null;
+/* ================================================================
+   ODU TRACKER · UI v3  — vanilla JS, no dependencies
+   charts: bar / line / area / donut (+ toast, theme, live pollers)
+   ================================================================ */
+"use strict";
 
-const TITLES = {
-  dashboard: ["Dashboard", "Live view of your MTN ODU"],
-  devices: ["Devices", "Everything that has ever joined your network"],
-  traffic: ["Traffic & Speed", "Data usage, live throughput and speed tests"],
-  websites: ["Websites", "DNS activity and router block lists"],
-  alerts: ["Alerts", "Security and activity notifications"],
-  settings: ["Settings", "Router connection, proxy and diagnostics"],
+/* ---------------------------------------------------------------- utils */
+const $  = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+const fmtGB    = mb => mb == null ? "—" : (mb / 1024).toFixed(mb >= 10240 ? 1 : 2) + " GB";
+const fmtG     = g  => g == null ? "—" : (+g >= 100 ? (+g).toFixed(1) : (+g).toFixed(2)) + " GB";
+const fmtMbp   = v  => (+v || 0) >= 100 ? (+v).toFixed(0) : (+v || 0).toFixed(2);
+const fmtT     = ts => ts ? new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : "—";
+const fmtDT    = ts => ts ? new Date(ts * 1000).toLocaleString([], {day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"}) : "—";
+const ago      = ts => {
+  if (!ts) return "never";
+  const s = Date.now() / 1000 - ts;
+  if (s < 60) return `${s | 0}s ago`;
+  if (s < 3600) return `${(s / 60) | 0}m ago`;
+  if (s < 86400) return `${(s / 3600) | 0}h ago`;
+  return `${(s / 86400) | 0}d ago`;
 };
 
-function fmtTime(ts) {
-  if (!ts) return "–";
-  return new Date(ts * 1000).toLocaleString([], {
-    month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+let toastTmr = null;
+function toast(msg, ms = 3500) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.style.display = "block";
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => el.style.display = "none", ms);
 }
-function fmtWhen(ts) {
-  if (!ts) return "–";
-  const d = Date.now() / 1000 - ts;
-  if (d < 60) return "just now";
-  if (d < 3600) return Math.floor(d / 60) + "m ago";
-  if (d < 86400) return Math.floor(d / 3600) + "h ago";
-  return Math.floor(d / 86400) + "d ago";
+
+async function api(path, opts) {
+  const r = await fetch(path, Object.assign({headers: {"Content-Type": "application/json"}}, opts));
+  if (r.status === 401) { showAuth(); throw new Error("signed out"); }
+  let body = null;
+  try { body = await r.json(); } catch { /* no body */ }
+  if (!r.ok) throw Object.assign(new Error((body && body.error) || `HTTP ${r.status}`), {status: r.status, body});
+  return body;
 }
-function fmtMb(mb) {
-  const v = parseFloat(mb);
-  if (isNaN(v)) return "–";
-  return v >= 1024 ? (v / 1024).toFixed(2) + " GB" : v.toFixed(0) + " MB";
+
+/* ---------------------------------------------------------------- theme */
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("#themeLabel").textContent = t === "dark" ? "Dark" : "Light";
+  $("#themeIco").innerHTML = t === "dark"
+    ? '<path d="M20 14A8.5 8.5 0 0 1 10 4a8.5 8.5 0 1 0 10 10z"/>'
+    : '<circle cx="12" cy="12" r="4.4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/>';
+  localStorage.setItem("odu.theme", t);
+}
+function initTheme() {
+  const saved = localStorage.getItem("odu.theme");
+  applyTheme(saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+  $("#themeBtn").onclick = () =>
+    applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+}
+
+/* ---------------------------------------------------------------- charts
+   chart(boxElement, cfg)
+   cfg: {type:"bar"|"line"|"area"|"donut", series:[{ts,v}]
+         parts:[{label,value}], color, fill, unit, height, fmt}
+   ---------------------------------------------------------------- */
+const tip = () => $("#chartTip");
+
+function showTip(evt, box, text) {
+  const t = tip(), r = box.getBoundingClientRect();
+  t.innerHTML = text;
+  t.style.display = "block";
+  const x = evt.clientX - r.left + 14, y = evt.clientY - r.top - 34;
+  t.style.left = Math.max(2, Math.min(x, r.width - t.offsetWidth - 4)) + "px";
+  t.style.top  = Math.max(2, y) + "px";
+}
+function hideTip() { tip().style.display = "none"; }
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (v <= m * p) return m * p;
+  return 10 * p;
+}
+
+function chart(box, cfg) {
+  box.innerHTML = "";
+  hideTip();
+  const H = cfg.height || 200, W = 760;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  box.appendChild(svg);
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (n, at) => {
+    const e = document.createElementNS(NS, n);
+    for (const k in at) e.setAttribute(k, at[k]);
+    return e;
+  };
+  const uid = "g" + (chart.uid = (chart.uid || 0) + 1);
+  const gold = cfg.color || "var(--accent)";
+  if (cfg.type === "donut") { donut(box, cfg, NS, el, uid); return; }
+  const cfg_fill_color = cfg.color || (cfg.type === "bar" ? "#ffb632" : "#6fa7ff");
+  const defs = el("defs", {});
+  defs.innerHTML =
+    `<linearGradient id="${uid}b" x1="0" y1="0" x2="0" y2="1">
+       <stop offset="0" stop-color="${cfg_fill_color}" stop-opacity=".95"/>
+       <stop offset="1" stop-color="${cfg_fill_color}" stop-opacity=".28"/>
+     </linearGradient>`;
+  svg.appendChild(defs);
+
+  const series = (cfg.series || []).map(p => ({...p, v: Math.max(0, +p.v || 0)}));
+  if (!series.length) {
+    box.innerHTML = '<div class="empty">no data yet — the poller is filling samples</div>';
+    return;
+  }
+  const padL = 46, padR = 10, padT = 12, padB = 24;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const max = niceMax(Math.max(...series.map(p => p.v)) * 1.15);
+  const fmt = cfg.fmt || (v => v.toFixed(2) + " " + (cfg.unit || ""));
+  // grid + y labels
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + ih - ih * i / 4;
+    svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: y, y2: y,
+      stroke: "var(--grid-line)", "stroke-width": 1}));
+    const t = el("text", {x: padL - 8, y: y + 3.5, "text-anchor": "end",
+      fill: "var(--faint)", "font-size": 10});
+    t.textContent = fmt(max * i / 4);
+    svg.appendChild(t);
+  }
+  const xLabel = (i, t) => {
+    const x = padL + iw * (i + .5) / series.length;
+    const e = el("text", {x, y: H - 8, "text-anchor": "middle",
+      fill: "var(--faint)", "font-size": 10});
+    e.textContent = t;
+    svg.appendChild(e);
+  };
+  const xAt = (i) => padL + iw * (i + .5) / series.length;
+
+  if (cfg.type === "bar") {
+    const gap = iw / series.length;
+    const bw = Math.min(46, Math.max(3, gap * 0.62));
+    series.forEach((p, i) => {
+      const h = Math.max(1.5, ih * p.v / max);
+      const r = el("rect", {x: xAt(i) - bw / 2, y: padT + ih - h, width: bw, height: h,
+        rx: Math.min(5, bw / 3), fill: `url(#${uid}b)`, class: "cbar"});
+      r.style.transition = "opacity .15s";
+      const tipTxt = `<b>${fmt(p.v)}</b> · ${p.label}`;
+      r.addEventListener("mousemove", e => { r.style.opacity = 0.75; showTip(e, box, tipTxt); });
+      r.addEventListener("mouseleave", () => { r.style.opacity = 1; hideTip(); });
+      svg.appendChild(r);
+      if (series.length <= 14 || i % Math.ceil(series.length / 9) === 0) xLabel(i, p.label);
+    });
+  } else {                                    // line / area
+    const pts = series.map((p, i) => [padL + iw * (series.length === 1 ? .5 : i / (series.length - 1)),
+                                      padT + ih - Math.max(1, ih * p.v / max)]);
+    let d = "M" + pts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L");
+    if (cfg.type === "area") {
+      const area = d + ` L${pts[pts.length - 1][0].toFixed(1)} ${padT + ih} L${pts[0][0].toFixed(1)} ${padT + ih} Z`;
+      svg.appendChild(el("path", {d: area, fill: `url(#${uid}b)`, stroke: "none"}));
+    }
+    svg.appendChild(el("path", {d, fill: "none", stroke: cfg_fill_color,
+      "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round"}));
+    if (series.length <= 40) pts.forEach((p, i) => {
+      const c = el("circle", {cx: p[0], cy: p[1], r: 3, fill: "var(--panel)",
+        stroke: cfg_fill_color, "stroke-width": 2});
+      c.addEventListener("mousemove", e => showTip(e, box, `<b>${fmt(series[i].v)}</b> · ${series[i].label}`));
+      c.addEventListener("mouseleave", hideTip);
+      svg.appendChild(c);
+    });
+    const step = Math.max(1, Math.ceil(series.length / 8));
+    series.forEach((p, i) => { if (i % step === 0 || i === series.length - 1) xLabel(i, p.label); });
+  }
+}
+
+function donut(box, cfg, NS, el, uid) {
+  const parts = (cfg.parts || []).filter(p => p.value > 0);
+  if (!parts.length) {
+    box.innerHTML = '<div class="empty">no usage yet in this window</div>';
+    return;
+  }
+  const total = parts.reduce((a, p) => a + p.value, 0);
+  const H = cfg.height || 200, R = 64, cx = 110, cy = H / 2, C = 2 * Math.PI * R;
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${cx * 2 + 330} ${H}`);
+  svg.setAttribute("width", "100%");
+  box.appendChild(svg);
+  const colors = ["var(--accent)", "#6fa7ff", "#3fd68e", "#b18cff", "#ff7b72"];
+  let off = 0;
+  parts.forEach((p, i) => {
+    const frac = p.value / total;
+    const ring = el("circle", {cx, cy, r: R, fill: "none",
+      stroke: colors[i % colors.length], "stroke-width": 21,
+      "stroke-dasharray": `${Math.max(0.5, frac * C - 2)} ${C}`, "stroke-dashoffset": -off + C / 4,
+      "stroke-linecap": "butt"});
+    ring.addEventListener("mousemove", e =>
+      showTip(e, box, `<b>${((frac * 100)).toFixed(1)}%</b> · ${p.label} (${fmt(p.value)})`));
+    ring.addEventListener("mouseleave", hideTip);
+    svg.appendChild(ring);
+    off += frac * C;
+  });
+  const center = el("text", {x: cx, y: cy - 2, "text-anchor": "middle", fill: "var(--text)",
+    "font-size": 20, "font-weight": 700});
+  center.textContent = cfg.fmt ? cfg.fmt(total) : total.toFixed(1);
+  svg.appendChild(center);
+  const cl = el("text", {x: cx, y: cy + 16, "text-anchor": "middle", fill: "var(--faint)", "font-size": 10});
+  cl.textContent = cfg.center || "total";
+  svg.appendChild(cl);
+  // legend
+  let ly = cy - parts.length * 11 + 22;
+  parts.forEach((p, i) => {
+    const col = colors[i % colors.length];
+    svg.appendChild(el("rect", {x: 262, y: ly - 8, width: 11, height: 11, rx: 3, fill: col}));
+    const t = el("text", {x: 282, y: ly + 1, fill: "var(--text)", "font-size": 12.5});
+    t.textContent = p.label;
+    const v = el("text", {x: cx * 2 + 318, y: ly + 1, fill: "var(--faint)", "font-size": 12, "text-anchor": "end"});
+    v.textContent = cfg.fmt ? cfg.fmt(p.value) : p.value;
+    svg.appendChild(t); svg.appendChild(v);
+    ly += 23;
+  });
+}
+
+/* leaderboard (horizontal HTML bars) for per-device activity */
+function leaderboard(box, rows, valFmt) {
+  if (!rows.length) { box.innerHTML = '<div class="empty">no activity recorded yet</div>'; return; }
+  const max = Math.max(...rows.map(r => r.value), 1);
+  box.innerHTML = rows.map(r =>
+    `<div class="row"><div class="nm">${esc(r.name)}<small>${esc(r.sub || "")}</small></div>` +
+    `<div class="bar-track"><div class="bar-fill" style="width:${(r.value / max * 100).toFixed(1)}%"></div></div>` +
+    `<div class="val">${valFmt(r.value)}</div></div>`).join("");
 }
 function esc(s) {
-  return (s != null ? String(s) : "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-function toast(msg, ms = 2600) {
-  const t = $("toast");
-  t.innerHTML = msg; t.style.display = "block";
-  clearTimeout(toast._h);
-  toast._h = setTimeout(() => (t.style.display = "none"), ms);
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-/* ------------------------------------------------ tabs */
-document.querySelectorAll(".navlink").forEach((el) => {
-  el.onclick = () => showTab(el.dataset.tab);
-});
-function showTab(name) {
-  TAB = name;
-  document.querySelectorAll(".navlink").forEach(
-    (n) => n.classList.toggle("active", n.dataset.tab === name));
-  ["dashboard", "devices", "traffic", "websites", "alerts", "settings"].forEach((t) => {
-    $("tab-" + t).style.display = t === name ? "" : "none";
-  });
-  const [t, s2] = TITLES[name] || ["", ""];
-  $("pageTitle").textContent = t;
-  $("pageSub").textContent = s2;
-  history.replaceState(null, "", "#" + name);
-  refresh();
-}
+/* ---------------------------------------------------------------- state */
+const S = {
+  usageType: localStorage.getItem("odu.usageType") || "bar",
+  ratesType: localStorage.getItem("odu.ratesType") || "area",
+  usageHours: 24, ratesMinutes: 30,
+  lastStatus: null, devices: [],
+  tmrs: {},
+};
 
-/* ------------------------------------------------ api + auth */
-async function api(path, opts = {}) {
-  const r = await fetch(path, {
-    headers: { "Content-Type": "application/json" }, ...opts });
-  if (r.status === 401) { showLogin(); throw new Error("auth required"); }
-  return r.json();
+/* ---------------------------------------------------------------- auth */
+function showAuth() {
+  $("#authView").hidden = false;
+  $("#mainView").hidden = true;
 }
-async function doLogin() {
-  const pw = $("pw").value;
-  if (!pw) { $("loginErr").textContent = "password required"; return; }
-  $("loginBtn").textContent = "Connecting…";
-  $("loginBtn").disabled = true;
-  const res = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: pw }),
-  }).then((r) => r.json()).catch((e) => ({ error: String(e) }));
-  $("loginBtn").textContent = "Connect to router";
-  $("loginBtn").disabled = false;
-  if (res.error) { $("loginErr").textContent = res.error; return; }
-  $("loginErr").textContent = "";
-  $("pw").value = "";
-  enterMain();
-}
-function showLogin() {
-  $("loginView").style.display = "";
-  $("mainView").style.display = "none";
-  if (tick) clearInterval(tick);
-  bootMeta();
-}
-async function enterMain() {
-  $("loginView").style.display = "none";
-  $("mainView").style.display = "";
-  if (!tick) tick = setInterval(() => refresh(), 5000);
-  const hash = (location.hash || "").replace("#", "");
-  if (hash && TITLES[hash]) showTab(hash); else refresh();
-}
-
-/* ------------------------------------------------ refresh loop */
-async function refresh() {
-  if ($("mainView").style.display === "none") return;
+async function boot() {
+  initTheme();
   try {
-    await Promise.all([refreshMeta(), refreshStatus()]);
-    if (TAB === "dashboard") refreshDashboard();
-    if (TAB === "devices") refreshDevices();
-    if (TAB === "traffic") refreshTraffic();
-    if (TAB === "websites") refreshSites();
-    if (TAB === "alerts") refreshAlerts(true);
-    if (TAB === "settings") refreshSettings();
-  } catch (e) { /* handled by api() */ }
-}
-
-async function bootMeta() {
-  const m = await fetch("/api/meta").then((r) => (r.ok ? r.json() : {}));
-  $("routerip").textContent = m.router_ip || "192.168.0.1";
-  if (m.attempts_left != null) {
-    $("attemptInfo").textContent = m.attempts_left <= 2
-      ? `⚠ only ${m.attempts_left} wrong attempt(s) left — enter the exact password`
-      : `router accepts ${m.attempts_left} more attempts in this window`;
-  }
-}
-
-async function refreshMeta() {
-  const m = await api("/api/meta");
-  $("cfgIp").textContent = m.router_ip;
-  const dot = $("pollDot"), txt = $("pollText");
-  if (m.poll_running && m.router_logged_in) {
-    dot.className = "dot on"; txt.textContent = "LIVE · " + m.router_ip;
-  } else if (m.poll_running) {
-    dot.className = "dot warn"; txt.textContent = "signing in…";
-  } else {
-    dot.className = "dot off"; txt.textContent = "polling stopped";
-  }
-  if (m.attempts_left != null && m.attempts_left <= 2) {
-    txt.textContent += ` · ⚠ ${m.attempts_left} attempts left`;
-  }
-}
-
-/* ------------------------------------------------ status refresh */
-let LAST_STATUS = null;
-async function refreshStatus() {
-  LAST_STATUS = await api("/api/status");
-  const s = LAST_STATUS;
-
-  /* month usage */
-  const f = s.flow || {};
-  const totalGb = f.total_mb != null ? parseFloat(f.total_mb) / 1024 : null;
-  $("usageTotal").textContent = totalGb != null ? totalGb.toFixed(2) + " GB" : "–";
-  $("headUsage").textContent = totalGb != null ? totalGb.toFixed(1) + " GB" : "–";
-  const dn = f.down_mb != null ? parseFloat(f.down_mb) / 1024 : null;
-  const up = f.up_mb != null ? parseFloat(f.up_mb) / 1024 : null;
-  const quota = f.limit_switch === "1" && f.limit_size
-    ? `plan ${(f.limit_size)} GB · **meter on**` : "no quota limit set";
-  $("usageSub").innerHTML =
-    (dn != null ? `↓ ${dn.toFixed(2)} GB` : "") +
-    (up != null ? ` · ↑ ${up.toFixed(2)} GB` : "") + ` · ${quota}`.replace("**meter on**", `<b class="mono">meter on</b>`);
-  if (f.limit_switch === "1" && f.limit_size && totalGb != null) {
-    $("usageMeter").style.width =
-      Math.min(100, (totalGb / parseFloat(f.limit_size)) * 100).toFixed(0) + "%";
-  } else if (totalGb != null) {
-    $("usageMeter").style.width = Math.min(96, totalGb).toFixed(0) + "%";
-  }
-
-  /* since-reset counter */
-  const sr = s.since_reset;
-  if (sr) {
-    $("usageSince").textContent = sr.gb.toFixed(2) + " GB";
-    $("sinceSub").textContent = "counting since " + fmtTime(sr.ts) + " — router counter untouched";
-  } else {
-    const today = s.day_usage;
-    $("usageSince").textContent = today != null ? today.toFixed(2) + " GB" : "–";
-    $("sinceSub").textContent = "today (tap reset to start a fresh counter)";
-  }
-
-  /* rates */
-  const r = s.rates || {};
-  $("rateNow").textContent = r.current != null ? r.current.toFixed(1) + " Mbps" : "idle";
-  $("rateAvg").textContent =
-    `avg 10 min: ${r.avg_10m != null ? r.avg_10m + " Mbps" : "–"} ` +
-    `· avg 1 h: ${r.avg_hour != null ? r.avg_hour + " Mbps" : "–"}`;
-  $("headRate").textContent = r.avg_hour != null ? r.avg_hour + " Mbps" : "–";
-
-  /* signal */
-  const sys = s.sys || {};
-  const lvl = Math.max(1, +(sys.signal_lvl || 1));
-  $("signal").textContent = "▮".repeat(lvl) + "▯".repeat(5 - lvl);
-  $("netType").textContent =
-    [sys.network_type_str, sys.network_operator,
-     `RSRP ${s.signal.rsrp ?? "?"} dBm`].filter(Boolean).join(" · ");
-
-  /* health */
-  const rt = s.wan || {};
-  $("runtimeKv").innerHTML = [
-    ["model", `${sys.board_type || "?"} ${sys.idu_dev_type ? "· " + esc(sys.idu_dev_type) : ""}`],
-    ["firmware", rt.fw || "–"],
-    ["serial", rt.device_sn || "–"],
-    ["cpu load", esc((rt.cpuload || "–").split(",").slice(0, 3).join("  "))],
-  ].map((kv) => `<span>${kv[0]}</span><b>${kv[1]}</b>`).join("");
-  $("odUptime").textContent = rt.uptime ? "up " + fmtUptime(rt.uptime) : "";
-  $("wanKv").innerHTML = [
-    ["WAN IP", `<span class="mono">${esc(rt.wan_ip || "–")}</span>`],
-    ["Wi-Fi 2.4G", `<span class="mono">${esc(rt.ssid24 || "–")}</span>`],
-    ["Wi-Fi 5G", `<span class="mono">${esc(rt.ssid58 || "–")}</span>`],
-    ["LAN", `<span class="mono">${esc(rt.lan_ip || "–")}</span>`],
-  ].map((kv) => `<span>${kv[0]}</span><b>${kv[1]}</b>`).join("");
-}
-function fmtUptime(sec) {
-  sec = +sec || 0;
-  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600),
-        m = Math.floor((sec % 3600) / 60);
-  return (d ? d + "d " : "") + h + "h " + m + "m";
-}
-
-/* ------------------------------------------------ usage counter reset */
-async function resetUsage() {
-  if (!confirm("Start counting data usage from now?\n(The router's own monthly counter is not touched.)")) return;
-  const r = await api("/api/usage/reset", { method: "POST", body: "{}" });
-  if (r.ok) toast(`<b>Counter started from now</b><br><span class="tagline">baseline set at ${fmtTime(r.ts)}</span>`);
-  refreshStatus();
-}
-
-/* ------------------------------------------------ dashboard */
-async function refreshDashboard() {
-  const d = await api("/api/devices");
-  $("devCount").textContent = d.devices.filter((x) => x.online).length + "/" + d.count;
-  const online = d.devices.filter((x) => x.online);
-  $("onlineCount").textContent = `${online.length} online · ${d.count} known`;
-  $("noOnline").style.display = online.length ? "none" : "";
-  $("onlineCards").innerHTML = online.map((x) => `
-    <div class="dev-chip">
-      <div class="row"><div class="nm">${esc(x.last_hostname || "(unnamed)")}</div></div>
-      <div class="muted">${esc(x.last_ip || "")} · ${esc(x.mac)}</div>
-      <div class="row">${riskPill(x.risklevel)}${trustTag(x.trusted, x.blocked)}</div>
-    </div>`).join("");
-  const ev = await api("/api/events?limit=10");
-  $("recentEvents").innerHTML = ev.events.length ? ev.events.slice().reverse().map((e) => `
-    <tr><td style="white-space:nowrap">${fmtTime(e.ts)}</td>
-    <td><b>${esc(eventLabel(e.kind))}</b></td>
-    <td class="right" style="color:var(--muted)">${esc(e.detail || "")}</td></tr>`).join("")
-    : `<tr><td colspan="3"><div class="empty">no activity yet</div></td></tr>`;
-}
-function eventLabel(kind) {
-  return { new_device: "New device", leave: "Device left", join: "Joined",
-           ip_change: "IP changed", block_change: "Block changed",
-           trust_change: "Trust changed" }[kind] || kind;
-}
-function trustTag(trusted, blocked) {
-  if (blocked) return `<span class="badge red">blocked</span>`;
-  if (trusted) return `<span class="badge green">trusted</span>`;
-  return "";
-}
-
-/* ------------------------------------------------ devices */
-function riskPill(level) {
-  const cls = { high: "tr-high", medium: "tr-medium", low: "tr-low", unknown: "tr-unknown" }[level || "unknown"];
-  return `<span class="tr-pill ${cls}">${esc(level || "unknown")} risk</span>`;
-}
-let DEVICES = null;
-async function refreshDevices() {
-  const d = await api("/api/devices");
-  DEVICES = d;
-  const on = d.devices.filter((x) => x.online);
-  const flagged = d.devices.filter((x) => ["medium", "high"].includes(x.risklevel)).length;
-  const blocked = d.devices.filter((x) => x.blocked).length;
-  $("dvTotal").textContent = d.count;
-  $("dvOnline").textContent = on.length;
-  $("dvFlagged").textContent = flagged;
-  $("dvBlocked").textContent = blocked;
-  renderDevices();
-  if (!$("devFilter").dataset.bound) {
-    $("devFilter").dataset.bound = "1";
-    $("devFilter").oninput = renderDevices;
-  }
-}
-function renderDevices() {
-  const filter = ($("devFilter").value || "").toLowerCase();
-  const rows = (DEVICES.devices || []).filter((x) => {
-    if (!filter) return true;
-    return [x.last_hostname, x.last_ip, x.mac, x.vendor].join(" ").toLowerCase().includes(filter);
-  });
-  $("devTbody").innerHTML = rows.length ? rows.map((x) => `
-    <tr>
-      <td><span class="badge ${x.online ? "green" : "gray"}" title="${x.online ? "online" : "offline"}">${x.online ? "up" : "off"}</span></td>
-      <td><b>${esc(x.last_hostname || "(unnamed)")}</b></td>
-      <td class="mono">${esc(x.last_ip || "–")}</td>
-      <td class="mono" style="font-size:.76rem">${esc(x.mac)}</td>
-      <td>${esc(x.vendor || "unlisted")}</td>
-      <td>${esc(x.last_iface || "–")}</td>
-      <td style="color:var(--muted)">${fmtWhen(x.first_seen)}</td>
-      <td style="color:var(--muted)">${fmtWhen(x.last_seen)}</td>
-      <td>${riskPill(x.risklevel)}</td>
-      <td class="right" style="white-space:nowrap">
-        <button class="btn xs ${x.blocked ? "" : "danger"}" onclick="toggleBlock('${x.mac}', ${!x.blocked})"
-          title="Push/unpush MAC filter on the router">${x.blocked ? "unblock" : "block"}</button>
-        <button class="btn xs" onclick="toggleTrust('${x.mac}', ${!x.trusted})"
-          title="Mark device as household-trusted">${x.trusted ? "untrust" : "trust"}</button>
-      </td>
-    </tr>`).join("")
-    : `<tr><td colspan="10"><div class="empty">no devices match the filter</div></td></tr>`;
-}
-async function toggleTrust(mac, v) {
-  await api(`/api/devices/${mac}/trust`, { method: "POST", body: JSON.stringify({ trusted: v }) });
-  toast(v ? "Device marked trusted" : "Device untrusted");
-  refreshDevices();
-}
-async function toggleBlock(mac, v) {
-  if (v && !confirm(`Block ${mac} on the router via MAC filter?`)) return;
-  const r = await api(`/api/devices/${mac}/block`, { method: "POST", body: JSON.stringify({ blocked: v }) });
-  if (r.router && r.router.ok === false) toast("Router refused: " + esc(r.router.error || "unknown"), 3500);
-  else toast(v ? "<b>Device blocked</b> — MAC filter applied" : "Device unblocked");
-  refreshDevices();
-}
-
-/* ------------------------------------------------ traffic + speed test */
-async function refreshTraffic() {
-  const s = LAST_STATUS || {};
-  const f = s.flow || {};
-
-  /* hourly buckets */
-  const u = await api("/api/usage?hours=24");
-  const buckets = new Array(24).fill(0);
-  const nowH = Date.now() / 1000;
-  u.series.forEach((x) => {
-    const h = Math.floor((nowH - x.ts) / 3600);
-    if (h >= 0 && h < 24) buckets[23 - h] += Math.max(0, x.delta || 0);
-  });
-  const unitGB = u.series[0] ? true : false;
-  const maxB = Math.max(...buckets, 1e-9);
-  $("usageBars").innerHTML = buckets.map((v, i) => {
-    const pct = Math.min(100, v > 0 ? 6 + (v / maxB) * 94 : 1.5);
-    return `<div class="bar" style="height:${pct}%" title="${v.toFixed(3)} GB — ${23 - i}h ago"></div>`;
-  }).join("");
-  $("usageHeadRight").textContent = totalFromBucket(buckets) + " GB in the last 24 h";
-
-  $("usageKv").innerHTML = [
-    ["month total", f.total_mb != null ? (f.total_mb / 1024).toFixed(2) + " GB" : "–"],
-    ["month ↓", f.down_mb != null ? (f.down_mb / 1024).toFixed(2) + " GB" : "–"],
-    ["month ↑", f.up_mb != null ? (f.up_mb / 1024).toFixed(2) + " GB" : "–"],
-    ["quota", f.limit_switch === "1" ? (f.limit_size || "?") + " GB <span class='tagline'>(meter on)</span>" : "unlimited (meter off)"],
-    ["usage since reset", s.since_reset ? s.since_reset.gb.toFixed(2) + " GB" : "not started"],
-  ].map((kv) => `<span>${kv[0]}</span><b>${kv[1]}</b>`).join("");
-
-  /* live rate bars */
-  const r = s.rates || {};
-  $("ratesKv").innerHTML = [
-    ["current", r.current != null ? r.current + " Mbps" : "idle — no traffic"],
-    ["avg 10 min", r.avg_10m != null ? r.avg_10m + " Mbps" : "–"],
-    ["avg 1 hour", r.avg_hour != null ? r.avg_hour + " Mbps" : "–"],
-  ].map((kv) => `<span>${kv[0]}</span><b>${esc(kv[1])}</b>`).join("");
-  const rr = await api("/api/rates?minutes=30");
-  const vals = rr.series.map((x) => x.mbps);
-  const rmax = Math.max(...vals, 1e-9);
-  $("rateBars").innerHTML = rr.series.length ? rr.series.map((x) => {
-    const pct = Math.max(2, (x.mbps / rmax) * 100);
-    return `<div class="bar r" style="height:${pct}%" title="${x.mbps} Mbps — ${fmtWhen(x.ts)}"></div>`;
-  }).join("") : `<div class="empty" style="width:100%">collecting samples…</div>`;
-
-  await renderSpeedTest();
-}
-function totalFromBucket(b) { return b.reduce((a, x) => a + x, 0).toFixed(2); }
-
-async function renderSpeedTest() {
-  const st = await api("/api/speedtest?limit=12");
-  const last = st.last || null;
-  if (!st.running) {
-    $("stBtn").textContent = "▶  Run test";
-    $("stBtn").disabled = false;
-    if (last && renderSpeedTest._lastTs !== last.ts) {
-      $("stResult").innerHTML = last.down_mbps != null ? [
-        ["download", last.down_mbps + " Mbps", "ok"],
-        ["upload", last.up_mbps != null ? last.up_mbps + " Mbps" : "–", "info"],
-        ["ping", last.ping_ms != null ? (+last.ping_ms).toFixed(0) + " ms" : "–", "warn"],
-        ["data used", ((last.bytes_used || 0) / 1048576).toFixed(1) + " MB", "warn"],
-      ].map(([lbl, val]) => `<div class="card"><div class="lbl">${lbl}</div><div class="val">${esc(val)}</div></div>`).join("")
-        : `<div class="empty" style="grid-column:1/-1">no test yet — pick a size above and run one</div>`;
-      renderSpeedTest._lastTs = last.ts;
-    } else if (!last) {
-      $("stResult").innerHTML = `<div class="empty" style="grid-column:1/-1">no test yet — pick a size above and run one</div>`;
+    const meta = await api("/api/meta");
+    if (meta.authed) return enterMain();
+    showAuth();
+    $("#authTitle").textContent = meta.setup_done ? "Welcome back" : "Set up your tracker";
+    $("#authSub").textContent = meta.setup_done
+      ? "Sign in with your ODU admin password — one time, then this PC is remembered for 30 days."
+      : "Create the link to your router: enter the ODU admin password (it is stored only on this PC).";
+    const lockWarn = meta.lock_secs && meta.lock_secs > 3600
+      ? `⚠ Router login locked ${(meta.lock_secs / 3600).toFixed(1)} h remaining`
+      : (meta.lock_secs ? `Router login cooldown — try again in ${meta.lock_secs}s` : "");
+    const lowWarn = meta.attempts_left != null && meta.attempts_left <= 2
+      ? `⚠ Only ${meta.attempts_left} login attempt${meta.attempts_left === 1 ? "" : "s"} left before a 24h router lock — only type the correct password`
+      : "";
+    const warn = lockWarn || lowWarn;
+    if (warn) {
+      const c = $("#authAttempts");
+      c.hidden = false; c.classList.add("warn");
+      c.textContent = warn;
     }
-  } else {
-    $("stBtn").textContent = "⏳ " + (st.phase || "testing") + "…";
-    $("stBtn").disabled = true;
-  }
-  $("stAvg").textContent = st.avg_down != null
-    ? `average of ${st.count}: ↓ ${st.avg_down} Mbps · ↑ ${st.avg_up ?? "–"} Mbps`
-    : "no averages yet";
-  $("stTbody").innerHTML = (st.history || []).length ? st.history.map((h) => `
-    <tr>
-      <td style="color:var(--muted);white-space:nowrap">${fmtTime(h.ts)}</td>
-      <td class="right"><b style="color:var(--ok)">${h.down_mbps ?? "–"} Mbps</b></td>
-      <td class="right">${h.up_mbps ?? "–"} Mbps</td>
-      <td class="right">${h.ping_ms != null ? (+h.ping_ms).toFixed(0) + " ms" : "–"}</td>
-      <td class="right" style="color:var(--faint)">${((h.bytes_used || 0) / 1048576).toFixed(1)} MB</td>
-    </tr>`).join("")
-    : `<tr><td colspan="5"><div class="empty">history empty</div></td></tr>`;
-}
-
-async function runSpeedTest() {
-  const size = +$("stSize").value;
-  resetStResult();
-  $("stBtn").textContent = "⏳ starting…";
-  $("stBtn").disabled = true;
-  const r = await api("/api/speedtest/run", { method: "POST", body: JSON.stringify({ size_mb: size, up_mb: 1 }) });
-  if (!r.ok) { $("stErr").textContent = r.error || "failed to start"; $("stBtn").disabled = false; return; }
-}
-function resetStResult() {
-  $("stErr").textContent = "";
-  $("stResult").innerHTML = `<div class="card"><div class="lbl">phase</div><div class="val">starting…</div></div>
-  <div class="empty" style="grid-column:2/-1">measuring through the ODU — this uses real data</div>`;
-}
-
-/* ------------------------------------------------ websites */
-async function refreshSites() {
-  const s2 = await api("/api/sites?hours=6");
-  $("sitesTbody").innerHTML = s2.domains.length ? s2.domains.slice(0, 150).map((d) => `
-    <tr><td><b>${esc(d.domain)}</b></td><td class="right">${d.hits}</td>
-    <td class="right">${d.clients}</td><td style="color:var(--muted)">${fmtWhen(d.last_seen)}</td></tr>`).join("")
-    : `<tr><td colspan="4"><div class="empty">no dns activity recorded</div></td></tr>`;
-  $("noSites").style.display = s2.domains.length ? "none" : "";
-  $("urlRulesTbody").innerHTML = (s2.url_rules || []).slice(0, 80).map((r) => `
-    <tr><td class="mono" style="font-size:.78rem">${esc(r.url)}</td>
-    <td class="right"><span class="badge ${r.enabled ? "green" : "gray"}">${r.enabled ? "on" : "off"}</span></td></tr>`).join("")
-    || `<tr><td colspan="2"><div class="empty">no url rules found</div></td></tr>`;
-  $("siteClients").innerHTML = (s2.clients || []).map((c) => `
-    <tr><td class="mono">${esc(c.client_ip)}</td><td class="right">${c.hits}</td>
-    <td class="right">${c.domains}</td></tr>`).join("")
-    || `<tr><td colspan="3"><div class="empty">no client data</div></td></tr>`;
-}
-
-/* ------------------------------------------------ alerts */
-function levelBadge(level) {
-  const cls = { danger: "red", warning: "yellow", success: "green", info: "gray" }[level] || "gray";
-  return `<span class="badge ${cls}">${esc(level || "info")}</span>`;
-}
-async function refreshAlerts(updateBadge) {
-  const a = await api("/api/alerts");
-  if (updateBadge) {
-    const unread = (a.alerts || []).filter((x) => !x.read).length;
-    const b = $("alertBadge");
-    b.style.display = unread ? "" : "none";
-    b.textContent = unread;
-  }
-  $("alertsTbody").innerHTML = a.alerts.length ? a.alerts.map((x) => `
-    <tr ${x.read ? 'style="opacity:.5"' : ""}>
-      <td style="white-space:nowrap;color:var(--muted)">${fmtTime(x.ts)}</td>
-      <td>${levelBadge(x.level)}</td>
-      <td><b>${esc(x.title)}</b></td>
-      <td style="color:var(--muted)">${esc(x.detail || "")}</td>
-    </tr>`).join("")
-    : `<tr><td colspan="4"><div class="empty">no alerts</div></td></tr>`;
-}
-async function markAlertsRead() {
-  await api("/api/alerts/read", { method: "POST" });
-  refreshAlerts(true);
-}
-
-/* ------------------------------------------------ settings */
-async function refreshSettings() {
-  const m = await api("/api/meta");
-  const st = LAST_STATUS || {};
-  const sys = st.sys || {};
-  $("settingsRouterKv").innerHTML = [
-    ["router ip", `<span class="mono">${esc(m.router_ip)}</span>`],
-    ["model", `${esc(sys.board_type || "–")}`],
-    ["logged in", m.router_logged_in ? "yes" : "no"],
-    ["poll interval", esc(stUsageInterval())],
-  ].map((kv) => `<span>${kv[0]}</span><b>${kv[1]}</b>`).join("");
-  ["fast", "slow", "url_filter"].forEach((n) => {});
-  $("rawLinks").innerHTML = ["fast", "slow", "url_filter"].map((n) =>
-    `<button class="btn xs" data-name="${n}" onclick="showRaw('${n}')">${n}</button>`).join("");
-  if (!$("dnsEnabled").dataset.bound) {
-    $("dnsEnabled").dataset.bound = "1";
-    $("dnsEnabled").onchange = saveDns;
-  }
-  const cfg = await api("/api/dnscfg");
-  $("dnsEnabled").checked = !!cfg.enabled;
-  $("dnsPort").textContent = cfg.port;
-  $("dnsUpstream").textContent = cfg.upstream;
-  $("dnsHow").textContent = cfg.myIp || "?";
-}
-function stUsageInterval() { return "15 s fast · 5 min deep"; }
-
-async function saveDns() {
-  const on = $("dnsEnabled").checked;
-  const r = await api("/api/dnscfg", { method: "POST", body: JSON.stringify({ enabled: on }) });
-  toast(r.enabled ? "<b>DNS proxy running</b> on port " + r.port : "DNS proxy stopped");
-}
-async function showRaw(name) {
-  const r = await api(`/api/raw?name=${name}`);
-  try {
-    $("rawBody").textContent = JSON.stringify(JSON.parse(r.body || "{}"), null, 2).slice(0, 24000);
+    $("#brandIp").textContent = `Router ${meta.router_ip} · local only · nothing leaves your LAN`;
   } catch (e) {
-    $("rawBody").textContent = r.body || "(empty)";
+    showAuth();
+    $("#authErr").textContent = "Backend unreachable — is the server running?";
   }
-}
-async function changePw() {
-  const pw = $("newPw").value;
-  if (!pw) { toast("type a password first"); return; }
-  const r = await fetch("/api/changepw", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: pw }) });
-  const j = await r.json();
-  if (j.ok) { toast("password updated"); $("newPw").value = ""; }
-  else toast("failed: " + esc(j.error || "?"));
 }
 
-/* ------------------------------------------------ boot */
-(async function boot() {
-  await bootMeta();
-  showLogin();
-  $("pw").focus();
-  $("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-  if (!$("resetUsageBtn").dataset.bound) {
-    $("resetUsageBtn").dataset.bound = "1";
-    $("resetUsageBtn").onclick = resetUsage;
+$("#authForm").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const btn = $("#authBtn");
+  btn.disabled = true; btn.textContent = "Signing in…";
+  $("#authErr").textContent = "";
+  try {
+    await api("/api/login", {method: "POST", body: JSON.stringify({
+      password: $("#authPass").value,
+      remember: $("#authRemember").checked,
+    })});
+    enterMain();
+  } catch (e) {
+    $("#authErr").textContent = e.message.replace("password required", "Enter a password");
+  } finally {
+    btn.disabled = false; btn.textContent = "Sign in →";
   }
-})();
+});
+$("#eyeBtn").onclick = () => {
+  const p = $("#authPass");
+  p.type = p.type === "password" ? "text" : "password";
+};
+
+function enterMain() {
+  $("#authView").hidden = true;
+  $("#mainView").hidden = false;
+  bindNav();
+  refreshAll();
+  startTimers();
+}
+
+/* ---------------------------------------------------------------- nav */
+let navBound = false;
+function bindNav() {
+  if (navBound) return;
+  navBound = true;
+  $$("[data-tabs] .navlink").forEach(el => el.onclick = () => go(el.dataset.tab));
+  document.addEventListener("click", e => {          // inline links jump to tabs
+    const l = e.target.closest("a.link[data-tab]");
+    if (l) go(l.dataset.tab);
+  });
+}
+function go(tab) {
+  $$("[data-tabs] .navlink").forEach(el => el.classList.toggle("active", el.dataset.tab === tab));
+  $$("main [data-view]").forEach(el => el.hidden = el.dataset.view !== tab);
+  const titles = {
+    dashboard: ["Dashboard", "Live view of your ODU"],
+    devices:   ["Devices", "Every device this ODU has seen"],
+    websites:  ["Websites", "Per-device browsing activity (DNS log)"],
+    speed:     ["Speed test", "Real throughput over your MTN line"],
+    alerts:    ["Alerts", "New devices, blocks and router events"],
+    settings:  ["Settings", "Counter resets, DNS log, raw data"],
+  };
+  const t = titles[tab] || ["ODU Tracker", ""];
+  $("#pageTitle").textContent = t[0];
+  $("#pageSub").textContent = t[1];
+  loadTab(tab);
+}
+function loadTab(tab) {
+  if (tab === "devices") pollDevices();
+  if (tab === "websites") { pollSites(); pollDnscfg(); }
+  if (tab === "speed") { pollSpeed(); pollAlertBadge(); }
+  if (tab === "alerts") pollAlerts();
+  if (tab === "settings") { pollDnscfg(); renderResetNote(); }
+}
+
+/* ---------------------------------------------------------------- timers */
+function startTimers() {
+  const every = (ms, fn, key) => {
+    if (S.tmrs[key]) clearInterval(S.tmrs[key]);
+    S.tmrs[key] = setInterval(() => { if (!document.hidden) fn(); }, ms);
+  };
+  every(10000, pollStatus, "status");
+  every(20000, pollUsage, "usage");
+  every(30000, pollDevices, "devices");
+  every(30000, pollSites, "sites");
+  every(20000, pollAlertBadge, "alerts");
+  every(5000, () => { if (visibleTabIs("dashboard")) pollRates(); }, "rates");
+  every(5000, () => { if (speedRunning()) pollSpeed(true); }, "speed");
+}
+const visibleTabIs = t => !$$(`main [data-view="${t}"]`)[0].hidden;
+
+/* ---------------------------------------------------------------- status */
+async function pollStatus() {
+  try {
+    const d = await api("/api/status");
+    S.lastStatus = d;
+    const st = d.flow || {};
+    const u = d.usage || {};
+    // KPIs
+    $("#kpiMonth").textContent = d.rates ? fmtGB(st.total_mb) : "—";
+    const limitGB = st.limit_switch === "1" || st.limit_switch === 1
+      ? parseFloat(st.limit_size) : null;
+    const usedGB = st.total_mb != null ? st.total_mb / 1024 : null;
+    if (limitGB > 0 && usedGB != null) {
+      const pct = Math.min(100, usedGB / limitGB * 100);
+      $("#kpiMonthMeter > div").style.width = pct.toFixed(1) + "%";
+      $("#kpiMonthSub").textContent = `${pct.toFixed(0)}% of ${parseFloat(limitGB).toFixed(0)} GB plan · down ${fmtGB(st.down_mb)} / up ${fmtGB(st.up_mb)}`;
+    } else {
+      $("#kpiMonthMeter > div").style.width = "0%";
+      $("#kpiMonthSub").textContent = `down ${fmtGB(st.down_mb)} · up ${fmtGB(st.up_mb)} (meter off)`;
+    }
+    $("#kpiReset").textContent = d.since_reset ? fmtG(d.since_reset.gb) : "—";
+    $("#kpiResetSub").textContent = d.since_reset ? "since " + fmtDT(d.since_reset.ts) : "no reset yet";
+    $("#kpiToday").textContent = d.day_usage != null ? fmtG(d.day_usage) : "—";
+    $("#kpiRateNow").textContent = fmtMbp(d.rates?.current) + " Mbps";
+    $("#kpiRateSub").textContent = `1-h avg ${fmtMbp(d.rates?.avg_hour)} · 10-m ${fmtMbp(d.rates?.avg_10m)}`;
+    // chips
+    const lvl = d.sys?.signal_lvl, op = d.sys?.network_operator;
+    $("#chipSignal").textContent = lvl != null ? `▮ ${lvl}/5` : "—";
+    $("#chipNet").textContent = `${d.sys?.network_type_str || "—"} · ${op || ""}`;
+    const ok = d.poll?.logged_in && !d.poll?.error;
+    $("#chipStatus").innerHTML = ok
+      ? '<span class="chip-ic ok">✓</span><span>Live</span>'
+      : `<span class="chip-ic warn">•</span><span>Link down</span>`;
+    $("#chipMonth").textContent = fmtGB(st.total_mb);
+    // system kv
+    const net = d.network || {};
+    const rows = [
+      ["Board", `${d.sys?.board_type || "—"}`],
+      ["IDU", d.sys?.idu_dev_type || "—"],
+      ["Firmware", d.wan?.fw || "—"],
+      ["WAN IP", d.wan?.wan_ip || "—"],
+      ["Uptime", (d.wan?.uptime != null && d.wan.uptime !== "") ? Math.round(d.wan.uptime / 3600) + " h" : "—"],
+      ["SSID", `${d.wan?.ssid24 || ""}${d.wan?.ssid58 ? " · " + d.wan.ssid58 : ""}`],
+      ["RSRP", d.signal?.rsrp != null ? d.signal.rsrp + " dBm" : (d.signal?.rsrp_5g != null ? d.signal.rsrp_5g + " dBm (5G)" : "—")],
+      ["Battery", d.battery && d.battery.battery_capacity ? d.battery.battery_capacity + "%" : "—"],
+    ].concat(net.temp != null ? [["Temp", net.temp + " °C"]] : []);
+    $("#sysKv").innerHTML = rows.map(r => `<span>${esc(r[0])}</span><b>${esc(r[1])}</b>`).join("");
+    // conn dot
+    $("#connDot").className = "dot " + (ok ? "on" : "off");
+    $("#connText").textContent = ok ? "router connected" : "router offline";
+  } catch { /* transient */ }
+}
+
+/* ---------------------------------------------------------------- usage & rates */
+async function pollUsage() {
+  try {
+    const d = await api(`/api/usage?hours=${S.usageHours}`);
+    const rows = d.series || [];
+    const bucket = bucketize(rows, S.usageHours);
+    const total = rows.reduce((a, r) => a + (r.delta || 0), 0);
+    $("#usageNote").textContent =
+      `${fmtG(total)} used in the last ${S.usageHours} h · sampled every 15 s`;
+    const cfgType = {bar: "bar", line: "line", area: "area", donut: "donut"}[S.usageType];
+    if (cfgType === "donut") {
+      const st = S.lastStatus?.flow || {};
+      const dl = +st.down_mb || 0, ul = +st.up_mb || 0;
+      chart($("#usageChart"), {type: "donut", height: 210,
+        parts: [
+          {label: "Download (month)", value: dl},
+          {label: "Upload (month)", value: ul},
+        ].filter(p => p.value > 0),
+        fmt: v => fmtGB(v), center: "month"});
+    } else {
+      chart($("#usageChart"), {type: cfgType, series: bucket,
+        unit: "GB", height: 210, fmt: v => v.toFixed(v >= 10 ? 1 : 2) + " GB"});
+    }
+  } catch { /* transient */ }
+}
+/* aggregate usage deltas into labelled buckets based on window size */
+function bucketize(rows, hours) {
+  if (!rows.length) return [];
+  const per = hours <= 6 ? 900 : hours <= 24 ? 3600 : hours <= 72 ? 10800 : 21600;
+  const map = new Map();
+  for (const r of rows) {
+    const k = Math.floor(r.ts / per) * per;
+    map.set(k, (map.get(k) || 0) + (r.delta || 0));
+  }
+  const out = [];
+  for (const [ts, v] of map) {
+    const d = new Date(ts * 1000);
+    out.push({ts, v,
+      label: hours >= 72
+        ? d.toLocaleDateString([], {day: "2-digit", month: "short"})
+        : d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})});
+  }
+  return out.sort((a, b) => a.ts - b.ts);
+}
+
+async function pollRates() {
+  try {
+    const d = await api(`/api/rates?minutes=${S.ratesMinutes}`);
+    const rows = (d.series || []).map(r => ({ts: r.ts, v: r.mbps || 0, label: fmtT(r.ts)}));
+    $("#ratesNote").textContent = rows.length
+      ? `peak ${fmtMbp(Math.max(...rows.map(r => r.v)))} Mbps · avg ${fmtMbp(rows.reduce((a, r) => a + r.v, 0) / rows.length)} Mbps`
+      : "waiting for throughput samples…";
+    chart($("#ratesChart"), {type: S.ratesType, series: rows.slice(), unit: "Mbps",
+      height: 200, color: "#6fa7ff", fmt: v => v.toFixed(2)});
+  } catch { /* transient */ }
+}
+
+/* ---------------------------------------------------------------- devices */
+async function pollDevices() {
+  try {
+    const d = await api("/api/devices");
+    S.devices = d.devices || [];
+    $("#devOnlineCount").textContent = `${S.devices.filter(x => x.online).length} online / ${S.devices.length} known`;
+    // dashboard chips
+    const online = S.devices.filter(x => x.online);
+    $("#devChips").innerHTML = online.map(x =>
+      `<span class="chip"><b style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.last_hostname || "device")}</b>${esc(x.last_ip || "")}</span>`).join("")
+      || '<span class="empty" style="padding:6px">none right now</span>';
+    renderDevTable();
+    // leaderboard driven by the sites/rank cache (refreshed by its own timer)
+    renderRank();
+  } catch { /* transient */ }
+}
+function renderDevTable() {
+  const q = ($("#devSearch").value || "").toLowerCase();
+  const rows = S.devices.filter(x =>
+    !q || `${x.last_hostname} ${x.last_ip} ${x.mac} ${x.vendor}`.toLowerCase().includes(q));
+  $("#devTable tbody").innerHTML = rows.map(x => {
+    const lvl = (x.risklevel || "unknown").toLowerCase();
+    const badge = x.online ? '<span class="badge green">online</span>'
+      : '<span class="badge gray">offline</span>';
+    const flags = [];
+    if (x.trusted) flags.push('<span class="badge green">trusted</span>');
+    if (x.blocked) flags.push('<span class="badge red">blocked</span>');
+    if (!x.trusted && x.age_days < 7) flags.push('<span class="badge yellow">new</span>');
+    return `<tr>
+      <td><b>${esc(x.last_hostname || "unknown")}</b><br><span class="tagline">${esc(x.vendor || (x.mac.startsWith("2E") || x.mac.startsWith("62") ? "randomized MAC" : "unknown vendor"))}</span></td>
+      <td class="mono">${esc(x.last_ip || "—")}</td>
+      <td class="mono" style="font-size:.72rem">${esc(x.mac)}</td>
+      <td>${badge}<div style="margin-top:4px">${flags.join(" ")}</div></td>
+      <td><span class="tr-pill tr-${lvl}" title="score ${(+x.riskscore).toFixed(2)}">${lvl}</span></td>
+      <td>${fmtDT(x.first_seen)}</td>
+      <td class="right">
+        <button class="btn xs" data-act="trust" data-mac="${esc(x.mac)}">${x.trusted ? "Untrust" : "Trust"}</button>
+        <button class="btn xs ${x.blocked ? "" : "danger"}" data-act="block" data-mac="${esc(x.mac)}">${x.blocked ? "Unblock" : "Block"}</button>
+      </td></tr>`;
+  }).join("") || '<tr><td colspan="7"><div class="empty">no devices matched</div></td></tr>';
+}
+$("#devSearch").addEventListener("input", renderDevTable);
+document.addEventListener("click", async e => {
+  const b = e.target.closest('button[data-act="trust"],button[data-act="block"]');
+  if (!b) return;
+  const {act, mac} = b.dataset;
+  try {
+    if (act === "trust") {
+      const dev = S.devices.find(x => x.mac === mac);
+      await api(`/api/devices/${mac}/trust`, {method: "POST",
+        body: JSON.stringify({trusted: !(dev && dev.trusted)})});
+      toast("Trust updated");
+    } else {
+      const dev = S.devices.find(x => x.mac === mac);
+      await api(`/api/devices/${mac}/block`, {method: "POST",
+        body: JSON.stringify({blocked: !(dev && dev.blocked)})});
+      toast(dev && dev.blocked ? "Device unblocked on router" : "Device blocked on router ⛔");
+    }
+    pollDevices();
+  } catch (err) { toast("Failed: " + err.message); }
+});
+
+/* rank cache fed from /api/sites.clients (device names joined server-side) */
+let RANK = [];
+async function pollSites() {
+  try {
+    const d = await api(`/api/sites?hours=${$("#sitesHours").value}`);
+    RANK = d.ranking || [];
+    if (visibleTabIs("devices")) renderRank();
+    renderSites(d);
+  } catch { /* transient */ }
+}
+function renderRank() {
+  const rows = RANK.slice(0, 6).map(r => ({
+    name: r.hostname || "unknown",
+    sub: r.client_ip,
+    value: r.hits,
+  }));
+  leaderboard($("#devRankList"), rows, v => v + " lookups");
+}
+function renderSites(d) {
+  const c = d.clients || [], dom = d.domains || [];
+  $("#siteClientTable tbody").innerHTML = c.map(r =>
+    `<tr><td><b>${esc(r.hostname || "unknown device")}</b><br><span class="tagline mono">${esc(r.client_ip)}</span></td>
+     <td class="right"><b>${r.hits}</b></td><td class="right">${r.domains}</td></tr>`)
+    .join("") || '<tr><td colspan="3"><div class="empty">No lookups logged yet in this window</div></td></tr>';
+  $("#siteDomTable tbody").innerHTML = dom.map(r =>
+    `<tr><td class="mono">${esc(r.domain)}</td><td class="right"><b>${r.hits}</b></td>
+     <td class="right">${r.clients}</td><td class="right tagline">${ago(r.last_seen)}</td></tr>`)
+    .join("") || '<tr><td colspan="4"><div class="empty">No domains yet — see the notice above ⤴</div></td></tr>';
+  const rules = d.url_rules || [];
+  $("#siteRules").className = rules.length ? "" : "empty";
+  $("#siteRules").innerHTML = rules.length
+    ? rules.map(r => `<span class="badge ${r.enabled ? "red" : "gray"}" style="margin:2px">${esc(r.url)}${r.enabled ? "" : " (off)"}</span>`).join(" ")
+    : "router URL filter has no entries";
+}
+
+/* ---------------------------------------------------------------- dns cfg */
+async function pollDnscfg() {
+  try {
+    const d = await api("/api/dnscfg");
+    $("#dnsEnable").checked = !!d.enabled;
+    $("#dnsPort").textContent = d.port || 5353;
+    const pointed = !!d.dns_pointed_at_app;
+    const idx = pointed ? "✓" : "•";
+    $("#dnsStatus").innerHTML =
+      `This PC on the LAN: <b class="mono">${esc(d.myIp || "?")}</b><br>` +
+      `Router DHCP DNS: <b class="mono">${esc(d.router_dns_main || "?")}</b>` +
+      (d.router_dns_vice ? ` (backup ${esc(d.router_dns_vice)})` : "") + "<br>" +
+      (pointed
+        ? `<span class="badge green">${idx} pointed at this app</span> — devices pick it up as DHCP leases renew (toggle Wi-Fi on a device for an instant refresh).`
+        : `<span class="badge yellow">${idx} router DNS is ${d.router_dns_main || "not set"}</span> — per-device site tracking needs the one-click connect.`);
+    $("#btnDnsRestore").disabled = !pointed && !d.router_dns_main;
+  } catch { /* transient */ }
+}
+$("#dnsEnable").addEventListener("change", async e => {
+  try {
+    await api("/api/dnscfg", {method: "POST", body: JSON.stringify({enabled: e.target.checked})});
+    toast(e.target.checked ? "DNS logging running" : "DNS logging stopped");
+  } catch (err) { toast("Failed: " + err.message); }
+  pollDnscfg();
+});
+async function dnsRouter(mode) {
+  const btn = mode === "app" ? $("#btnDnsPoint") : $("#btnDnsRestore");
+  btn.disabled = true;
+  btn.classList.add("primary");
+  try {
+    const d = await api("/api/dnscfg/router", {method: "POST", body: JSON.stringify({mode})});
+    if (d.ok) toast(d.message || "Router DNS updated ✓", 5000);
+    else toast("Router refused: " + JSON.stringify(d.router_resp?.message || d.error || ""), 6000);
+  } catch (err) { toast("Failed: " + err.message, 6000); }
+  btn.classList.remove("primary");
+  btn.disabled = false;
+  pollDnscfg();
+}
+$("#btnDnsPoint").onclick = () => dnsRouter("app");
+$("#btnDnsRestore").onclick = () => dnsRouter("default");
+
+/* ---------------------------------------------------------------- speed */
+const speedRunning = () => !!(S.speedState && S.speedState.running);
+let SPEED = {};
+async function pollSpeed(silent) {
+  try {
+    const d = await api("/api/speedtest");
+    S.speedState = d; SPEED = d;
+    const st = d.running ? d.phase : (d.last ? "done" : "idle");
+    $("#stStatus").textContent = d.running ? `⏳ ${d.phase} — uses your data while running` :
+      d.last ? `last test ${fmtDT(d.last.ts)}` : "idle";
+    $("#stBar").style.width = d.running ? "50%" : d.last ? "100%" : "0%";
+    if (d.last && !d.running) {
+      $("#stDownVal").textContent = fmtMbp(d.last.down_mbps);
+      $("#stUpVal").textContent = d.last.up_mbps ? fmtMbp(d.last.up_mbps) : "skipped";
+      $("#stPing").textContent = d.last.ping_ms != null ? Math.round(d.last.ping_ms) + " ms" : "—";
+    }
+    $("#stAvg").textContent = d.avg_down ? fmtMbp(d.avg_down) + " Mbps" : "—";
+    $("#stAvgUp").textContent = d.avg_up ? "avg up " + fmtMbp(d.avg_up) + " Mbps" : `${d.count || 0} tests stored`;
+    $("#stHistory tbody").innerHTML = (d.history || []).map(r =>
+      `<tr><td>${fmtDT(r.ts)}</td><td class="right"><b>${fmtMbp(r.down_mbps)}</b></td>
+       <td class="right">${r.up_mbps ? fmtMbp(r.up_mbps) : "—"}</td>
+       <td class="right">${r.ping_ms != null ? Math.round(r.ping_ms) : "—"}</td>
+       <td class="right tagline">${r.bytes_used ? fmtGB(r.bytes_used / 1024) : "—"}</td></tr>`)
+      .join("") || '<tr><td colspan="5"><div class="empty">no tests yet — press ▶ Run test</div></td></tr>';
+  } catch (e) { if (!silent) console.warn(e); }
+}
+$("#btnSpeed").onclick = async () => {
+  const btn = $("#btnSpeed");
+  btn.disabled = true; btn.textContent = "Starting…";
+  try {
+    await api("/api/speedtest/run", {method: "POST", body: JSON.stringify({
+      size_mb: +$("#stDown").value, up_mb: +$("#stUp").value})});
+    toast("Speed test running — data is being consumed");
+    pollSpeed(true);
+  } catch (err) { toast("Failed: " + err.message); }
+  btn.disabled = false; btn.textContent = "▶ Run test";
+};
+
+/* ---------------------------------------------------------------- alerts */
+async function pollAlerts() {
+  try {
+    const d = await api("/api/alerts");
+    const a = d.alerts || [];
+    $("#alertsList").innerHTML = a.map(x =>
+      `<div style="display:flex;gap:12px;align-items:flex-start;padding:13px 4px;border-bottom:1px solid var(--line);
+        ${x.read ? "" : "background:var(--panel2)"}">
+        <span class="badge ${x.level === "warning" ? "yellow" : x.level === "danger" ? "red" : "gray"}">${esc(x.level || "info")}</span>
+        <div style="flex:1"><b style="font-size:.9rem">${esc(x.title)}</b>
+          <div class="tagline" style="margin-top:2px">${esc(x.detail || "")}</div></div>
+        <span class="tagline" style="white-space:nowrap">${ago(x.ts)}</span></div>`)
+      .join("") || '<div class="empty">no alerts — all quiet 🎉</div>';
+    pollAlertBadge();
+  } catch { /* transient */ }
+}
+async function pollAlertBadge() {
+  try {
+    const d = await api("/api/alerts");
+    const unread = (d.alerts || []).filter(x => !x.read).length;
+    const b = $("#navAlertBadge");
+    b.hidden = !unread;
+    b.textContent = unread > 99 ? "99+" : unread;
+  } catch { /* transient */ }
+}
+$("#btnAlertsRead").onclick = async () => {
+  await api("/api/alerts/read", {method: "POST"});
+  pollAlerts();
+  pollAlertBadge();
+};
+
+/* ---------------------------------------------------------------- settings */
+function renderResetNote() {
+  const s = S.lastStatus;
+  $("#resetNote").textContent = s?.since_reset
+    ? `Last reset ${fmtDT(s.since_reset.ts)} · used since: ${fmtG(s.since_reset.gb)}`
+    : "Never reset in this app";
+}
+$("#resetBtn").onclick = async () => {
+  const b = $("#resetBtn");
+  if (!confirm("Reset the usage counter so it counts from now?\nThe router's own statistics are cleared when the firmware allows it.")) return;
+  b.disabled = true; b.textContent = "Resetting…";
+  try {
+    const d = await api("/api/usage/reset", {method: "POST"});
+    toast(d.firmware?.ok
+      ? "✓ Router counters cleared — counting from 0 now"
+      : "Reset baseline saved — counting from now", 5000);
+    renderResetNote(); pollStatus(); pollUsage();
+  } catch (err) { toast("Failed: " + err.message); }
+  b.disabled = false; b.textContent = "↺ Reset usage from now";
+};
+$("#btnChangePw").onclick = async () => {
+  const pw = $("#newPw").value;
+  if (!pw) { $("#pwErr").textContent = "Type the new router password first"; return; }
+  $("#pwErr").textContent = "";
+  try {
+    await api("/api/changepw", {method: "POST", body: JSON.stringify({password: pw})});
+    $("#newPw").value = "";
+    toast("Router password updated ✓");
+  } catch (err) { $("#pwErr").textContent = err.message; }
+};
+$$(".eye").forEach(b => b.onclick = () => {
+  const inp = b.parentElement.querySelector("input");
+  inp.type = inp.type === "password" ? "text" : "password";
+});
+$("#btnRawLoad").onclick = async () => {
+  try {
+    const d = await api(`/api/raw?name=${$("#rawName").value}`);
+    let body = null;
+    try { body = JSON.stringify(JSON.parse(d.body), null, 1).replace(/\{"cmd"/g, "\n{\"cmd\""); }
+    catch { body = d.body; }
+    $("#rawPre").textContent = body || "(empty)";
+  } catch (err) { $("#rawPre").textContent = "load failed: " + err.message; }
+};
+$("#btnLogout").onclick = async () => {
+  try { await api("/api/logout", {method: "POST"}); } catch {}
+  location.reload();
+};
+
+/* ---------------------------------------------------------------- seg control */
+$$(".seg[data-charts]").forEach(seg => {
+  seg.querySelectorAll("button").forEach(b => b.onclick = () => {
+    seg.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    if (seg.dataset.charts === "usage") {
+      S.usageType = b.dataset.ctype;
+      localStorage.setItem("odu.usageType", S.usageType);
+      pollUsage();
+    } else {
+      S.ratesType = b.dataset.ctype;
+      localStorage.setItem("odu.ratesType", S.ratesType);
+      pollRates();
+    }
+  });
+});
+// restore chosen chart types from storage
+$$('[data-charts="usage"] button').forEach(b => b.classList.toggle("active", b.dataset.ctype === S.usageType));
+$$('[data-charts="rates"] button').forEach(b => b.classList.toggle("active", b.dataset.ctype === S.ratesType));
+$("#usageRange").onchange = e => { S.usageHours = +e.target.value; pollUsage(); };
+$("#ratesRange").onchange = e => { S.ratesMinutes = +e.target.value; pollRates(); };
+$("#sitesHours").onchange = () => pollSites();
+
+/* ---------------------------------------------------------------- refresh all & boot */
+function refreshAll() {
+  pollStatus(); pollUsage(); pollRates(); pollDevices(); pollSites(); pollDnscfg();
+  pollAlertBadge(); pollSpeed(true); renderResetNote();
+}
+boot();

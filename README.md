@@ -154,8 +154,7 @@ Login-lock and password hashing were validated live against the device.
 odu-tracker/
 ├── run.py                    # CLI entry (serve / probe / devices / login)
 ├── odu_tracker/
-│   ├── config.py             # settings store (~/.local/share/odu-tracker)
-│   ├── router.py             # ZLT X28 API client (login + 60 cmds)
+│   ├── config.py             # settings store (~/.local/share/odu-tracker)│   ├── router.py             # ZLT X28 API client (login + 60 cmds)
 │   ├── store.py              # SQLite persistence layer
 │   ├── security.py           # risk scoring + OUI vendor tags
 │   ├── poller.py             # fast/slow poll loops + event engine
@@ -172,3 +171,26 @@ odu-tracker/
 * *No devices appear* — Settings → ensure `router_ip` matches your gateway;
   some builds expose the device list only under `home_info` (auto-handled).
 * *Usage chart empty* — flows need a few minutes of sampling to build deltas.
+
+## What's new — UI v3
+
+- **Persistent sign-in**: the dashboard session survives refreshes and reboots
+  (30-day cookie, "Keep me signed in" on the login screen).
+- **Light & dark themes** with a polished split-screen login, custom ODU logo
+  icon, Plus Jakarta Sans / Space Grotesk / JetBrains Mono typography, and
+  generous spacing.
+- **Charts your way**: usage and throughput cards have Bar / Line / Area /
+  Donut switchers (each choice is remembered per browser).
+- **Per-device data ranking**: ranked by DNS lookups through the app
+  (this firmware exposes no per-device byte counters — a router-provided
+  byte field appears automatically if the ODU starts filling it).
+- **Real "visited websites"**: Settings → Website log — one click
+  *Connect router DNS → this PC* re-programs the ODU's DHCP-DNS (cmd 3 POST)
+  to hand out this app's IP, with 8.8.8.8 as fallback; *Restore router
+  default* puts back exactly what was configured before (saved on first
+  change). Devices pick new DNS on lease renewal (toggle Wi-Fi to refresh).
+- **Reset usage from now** now clears the router's own statistics through the
+  firmware path (`cmd 337 POST statisticsReset=1`) and keeps a local baseline
+  as fallback.
+- DNS proxy hardened: per-query worker threads, all record types forwarded
+  (only A/AAAA logged), reverse/local zones filtered.
