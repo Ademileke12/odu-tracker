@@ -6,6 +6,8 @@ Session handling:
   * the router client keeps its own session with the device
 """
 import json
+import os
+import sys
 import time
 
 from flask import Flask, jsonify, request, session, send_from_directory
@@ -19,7 +21,19 @@ from odu_tracker.router import OduRouter, RouterError, LoginLocked
 from odu_tracker.security import normalize_mac
 import os
 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+def _resolve_static_dir():
+    """Dev: <pkg>/web/static. Frozen (PyInstaller): bundled under _MEIPASS."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    cand = os.path.join(here, "static")
+    if os.path.isdir(cand):
+        return cand
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass and os.path.isdir(os.path.join(meipass, "static")):
+        return os.path.join(meipass, "static")
+    return cand
+
+
+STATIC_DIR = _resolve_static_dir()
 
 
 def create_app(cfg: Config, poller: Poller):
@@ -137,6 +151,13 @@ def create_app(cfg: Config, poller: Poller):
             first, last = rows[0], rows[-1]
             if first["unit"] == last["unit"] and last["used"] >= first["used"]:
                 day_used = round(last["used"] - first["used"], 2)
+            else:
+                # counter cleared mid-day (reboot/reset): total the monotonic
+                # segments so Today keeps meaning something
+                day_used = round(sum(
+                    b["used"] - a["used"]
+                    for a, b in zip(rows, rows[1:])
+                    if a["unit"] == b["unit"] and b["used"] >= a["used"]), 2)
 
         # usage counted from the user's last manual reset (local baseline)
         base = store.setting_get("usage_baseline")

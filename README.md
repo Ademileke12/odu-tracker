@@ -194,3 +194,38 @@ odu-tracker/
   as fallback.
 - DNS proxy hardened: per-query worker threads, all record types forwarded
   (only A/AAAA logged), reverse/local zones filtered.
+
+## Desktop app (Linux & Windows)
+
+Dev mode already behaves like an app:
+
+    python run.py app          # native window (pywebview if installed)
+    python run.py serve --open # console + browser
+    python run.py autostart    # start on login (installs removal: --remove)
+
+Packaged builds:
+
+    pip install -r requirements.txt
+    python tools/make_icon.py            # creates assets/icon.ico (Pillow)
+    python tools/build_app.py            # → dist/ODU-Tracker/  (launcher dir)
+    python tools/build_app.py --onefile  # → dist/ODU-Tracker.exe
+
+The frozen app opens its own window (pywebview → Edge/Chrome "--app" profile →
+browser fallback), logs to ~/.local/share/odu-tracker/odu-tracker.log, and
+auto-bumps the port if 8770 is busy. Run EITHER the packaged app OR the
+console server (`run.py serve`) — not both at once, so the router isn't
+polled twice.
+
+## Co-existence with the router admin page (http://192.168.0.1)
+
+- The tracker talks to the same login API the vendor UI uses, with its own
+  session; it never changes the admin password unless you explicitly ask.
+- The dashboard Website-log feature points the router's **DHCP-DNS** at this
+  PC — that only re-routes client DNS, not the admin panel, which is opened
+  by IP and stays fully reachable while this app runs (and DNS falls back to
+  8.8.8.8 when this PC is offline, so the LAN never goes blind).
+- Usage tracking is read-only (cmd 337 counters); a full statistics-reset
+  only happens when you press Reset in this app or clear it in the admin UI.
+- The router's wrong-attempt counter is precious: the app stores your
+  password locally and silently re-logs in as needed — never type a wrong
+  password anywhere.

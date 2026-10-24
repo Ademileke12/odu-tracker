@@ -1,3 +1,9 @@
 flask>=3.0
 requests>=2.31
 waitress>=3.0
+# optional (native desktop window; falls back to Edge/Chrome --app then browser)
+pywebview>=5.0
+# only needed to build the packaged desktop app (tools/build_app.py)
+pyinstaller>=6.0
+# only needed to render the app icon (tools/make_icon.py)
+pillow>=10.0

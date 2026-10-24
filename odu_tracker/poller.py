@@ -88,9 +88,12 @@ def parse_usage(resp: dict):
     except (TypeError, ValueError):
         total = None
     return {
+        # NB: `used` is ALWAYS GB (MB/1024 above) — never label it with the
+        # plan's unit. The plan keeps its own unit for the meter display.
         "used": used,
-        "unit": unit,
+        "unit": "GB",
         "total": total or None,
+        "plan_unit": unit,
         "mb_download": data.get("dl_mon_flow") or "",
         "mb_upload": data.get("ul_mon_flow") or "",
         "limit_switch": str(data.get("limitSwitch") or "0"),
@@ -211,8 +214,34 @@ class Poller:
         usage = parse_usage(snap.get("flow_new", {})) or parse_usage(snap.get("flow", {}))
         if usage:
             store.add_usage_sample(now_ts, usage["used"], usage["unit"], usage["total"] or None)
+            self._check_flow_regression(now_ts, usage)
             self._track_rate(now_ts, usage)
         self.last_fast = snap
+
+    def _check_flow_regression(self, ts, usage):
+        """Detect the router's cumulative counter going backwards.
+
+        Happens on ODU reboots/clears (or our own Reset button). Counter-based
+        charts would otherwise stick at zero or double-count, and a local
+        usage baseline from a previous counter could stay out of reach
+        forever. Keep everything anchored to what the router says now.
+        """
+        total_mb = (usage["used"] or 0) * 1024.0
+        if self._last_flow is None:
+            return
+        prev_ts, prev_mb = self._last_flow
+        if total_mb >= prev_mb - 1.0:          # monotonic as expected
+            return
+        # synthesize a clean restart for the rate ring (no fake Mbps spike)
+        self._last_flow = (ts, min(prev_mb, total_mb))
+        drop = prev_mb - total_mb
+        base = store.setting_get("usage_baseline")
+        if base and float(base.get("total_mb") or 0) > total_mb + 1:
+            store.setting_set("usage_baseline", {"ts": float(base.get("ts") or ts),
+                                                 "total_mb": total_mb})
+        store.add_alert("info", "Router usage counter reset",
+                        f"Counters dropped {drop / 1024:.2f} GB (reboot/clear); "
+                        "tracking re-anchored to the router's new counter")
 
     def _track_rate(self, ts, usage):
         """Derive average link Mbps from cumulative counter deltas.
