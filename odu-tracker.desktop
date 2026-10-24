@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=ODU Tracker
+Comment=MTN ODU data/device/usage monitor
+Exec=bash -c 'cd "%h/odu-tracker" && ./.venv/bin/python run.py serve --port 8770'

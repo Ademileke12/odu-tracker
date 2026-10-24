@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ODU Tracker — MTN Broadband Monitor</title>
+<style>
+:root{
+  --bg:#0b0f14; --panel:#121a22; --panel2:#182230; --line:#223041;
+  --text:#dbe6f0; --muted:#7d8fa3; --accent:#f9c412; --accent2:#4cc38a;
+  --danger:#ff6b6b; --warn:#ffb020; --info:#5bb4fc;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+body{background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif; min-height:100vh}
+a{color:var(--info); text-decoration:none}
+.badge{display:inline-block; padding:1px 8px; border-radius:10px; font-size:.72rem; font-weight:600}
+.badge.green{background:#123b2a; color:#4cc38a}
+.badge.red{background:#3b1d1d; color:#ff6b6b}
+.badge.yellow{background:#3b2d0d; color:#ffb020}
+.badge.gray{background:#223041; color:#7d8fa3}
+.topbar{display:flex; align-items:center; gap:18px; padding:14px 22px; border-bottom:1px solid var(--line); background:linear-gradient(180deg,#101720,#0b0f14)}
+.logo{font-weight:700; font-size:1.15rem; letter-spacing:.4px}
+.logo em{color:var(--accent); font-style:normal}
+.pill{font-size:.75rem; color:var(--muted); display:flex; gap:6px; align-items:center}
+.dot{width:8px; height:8px; border-radius:50%; background:#5bb4fc}
+.dot.on{background:#4cc38a; box-shadow:0 0 6px #4cc38a}
+.dot.off{background:#ff6b6b}
+.dot.warn{background:#ffb020; box-shadow:0 0 6px #ffb020}
+nav{display:flex; gap:4px; margin-left:auto; flex-wrap:wrap}
+nav .navlink{padding:8px 14px; border-radius:8px; color:var(--muted); cursor:pointer; font-size:.9rem; user-select:none}
+nav .navlink:hover{color:var(--text); background:#182230}
+nav .navlink.active{background:#1c2a3a; color:var(--text); border:1px solid var(--line)}
+main{max-width:1180px; margin:0 auto; padding:22px}
+.grid{display:grid; gap:14px}
+.cards4{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.cards2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px}
+.card h3{font-size:.85rem; color:var(--muted); font-weight:600; margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px}
+.big{font-size:1.9rem; font-weight:700}
+.sub{color:var(--muted); font-size:.8rem; margin-top:4px}
+table{width:100%; border-collapse:collapse; font-size:.86rem}
+th{color:var(--muted); text-align:left; font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line); font-size:.72rem; text-transform:uppercase; letter-spacing:.4px}
+td{padding:9px 10px; border-bottom:1px solid #1a2530; vertical-align:top}
+tr:hover td{background:#141e29}
+.risk-high{color:#ff6b6b; font-weight:700}
+.risk-medium{color:#ffb020; font-weight:700}
+.risk-low{color:#7a8fa6}
+.empty{color:var(--muted); text-align:center; padding:26px 0; font-size:.9rem}
+.btn{background:#1c2a3a; color:var(--text); border:1px solid var(--line); padding:7px 14px; border-radius:8px; cursor:pointer; font-size:.82rem}
+.btn:hover{background:#24344a}
+.btn.primary{background:var(--accent); color:#111; font-weight:700; border:none}
+.btn.danger{background:#3b1d1d; color:#ff6b6b; border:1px solid #553}
+.btn.small{padding:4px 10px; font-size:.75rem}
+.loginbox{max-width:380px; margin:12vh auto; background:var(--panel); border:1px solid var(--line); padding:30px; border-radius:16px}
+.loginbox h1{font-size:1.2rem; margin-bottom:6px}
+.loginbox p{color:var(--muted); font-size:.85rem; margin-bottom:18px}
+input{width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--line); background:#0d141b; color:var(--text); margin-bottom:12px; font-size:.95rem}
+input:focus{outline:none; border-color:var(--accent)}
+.err{color:var(--danger); font-size:.85rem; min-height:20px; margin-bottom:8px}
+.meter{height:10px; background:#0d141b; border-radius:6px; overflow:hidden; border:1px solid var(--line)}
+.meter > div{height:100%; background:linear-gradient(90deg,#4cc38a,#f9c412); transition:width .5s}
+.bars{display:flex; align-items:flex-end; gap:3px; height:120px; margin-top:10px}
+.bars .bar{flex:1; background:linear-gradient(180deg,#f9c412,#7a6004); border-radius:3px 3px 0 0; min-height:2px; position:relative}
+.tagline{font-size:.75rem; color:var(--muted)}
+.footer{max-width:1180px; margin:10px auto 30px; padding:0 22px; color:#4b5a6b; font-size:.72rem}
+.kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:.85rem}
+.kv span:nth-child(odd){color:var(--muted)}
+.notif{position:fixed; bottom:20px; right:20px; background:#132635; border:1px solid var(--line); color:var(--text); padding:12px 18px; border-radius:10px; box-shadow:0 6px 20px #0008; display:none}
+.section-title{display:flex; align-items:center; gap:10px; margin:18px 0 10px}
+.section-title h2{font-size:1rem}
+@media(max-width:760px){ .topbar{flex-wrap:wrap} nav{margin-left:0; width:100%} }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ============ LOGIN ============ -->
+  <div id="loginView" class="loginbox" style="display:none">
+    <h1>⚡ ODU Tracker</h1>
+    <p>Enter your MTN ODU admin password once. It is stored only on this computer and used to talk to <span id="routerip">192.168.0.1</span>.</p>
+    <div class="err" id="loginErr"></div>
+    <input type="password" id="pw" placeholder="Router admin password" autocomplete="current-password">
+    <button class="btn primary" style="width:100%" id="loginBtn" onclick="doLogin()">Sign in</button>
+    <div class="tagline" id="attemptInfo" style="margin-top:10px"></div>
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div id="mainView" style="display:none">
+    <div class="topbar">
+      <div>
+        <div class="logo">MTN <em>ODU Tracker</em></div>
+        <div class="pill"><span class="dot" id="pollDot"></span><span id="pollText">connecting…</span> · <span id="devCount"></span></div>
+      </div>
+      <nav>
+        <div class="navlink active" data-tab="dashboard">Dashboard</div>
+        <div class="navlink" data-tab="devices">Devices</div>
+        <div class="navlink" data-tab="traffic">Traffic</div>
+        <div class="navlink" data-tab="websites">Websites</div>
+        <div class="navlink" data-tab="alerts">Alerts</div>
+        <div class="navlink" data-tab="settings">Settings</div>
+      </nav>
+    </div>
+    <main>
+      <!-- dashboard -->
+      <section id="tab-dashboard" class="grid cards4">
+        <div class="card"><h3>Data usage (month)</h3><div class="big" id="usageTotal">–</div><div class="meter" style="margin-top:10px"><div id="usageMeter" style="width:0%"></div></div><div class="sub" id="usageSub"></div></div>
+        <div class="card"><h3>Today's usage</h3><div class="big" id="usageToday">–</div><div class="sub">from live traffic counters</div></div>
+        <div class="card"><h3>Signal / Network</h3><div class="big" id="signal" style="font-size:1.3rem">–</div><div class="sub" id="netType"></div></div>
+        <div class="card"><h3>Link throughput</h3><div class="big" id="rateNow">–</div><div class="sub" id="rateAvg">avg: –</div></div>
+
+        <div class="card"><h3>ODU health</h3><div class="kv" id="runtimeKv"></div></div>
+        <div class="card" style="grid-column:span 2"><h3>Sessions / WAN</h3><div class="kv" id="wanKv"></div></div>
+
+        <div class="card" style="grid-column:1/-1"><h3>Devices online</h3>
+          <div class="grid cards4" id="onlineCards"></div>
+          <div class="empty" id="noOnline" style="display:none">No devices seen yet — the poller connects every few seconds…</div>
+        </div>
+
+        <div class="card" style="grid-column:1/-1"><h3>Recent activity</h3>
+          <table><thead><tr><th>time</th><th>event</th><th>detail</th></tr></thead><tbody id="recentEvents"></tbody></table>
+        </div>
+      </section>
+
+      <!-- devices -->
+      <section id="tab-devices" style="display:none">
+        <div class="card">
+          <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px">
+            <h3 style="margin:0">All known devices</h3>
+            <input id="devFilter" placeholder="filter by name / mac / ip…" style="margin:0 0 0 auto; max-width:280px; padding:7px 10px">
+            <span class="badge gray" id="devTotals"></span>
+          </div>
+          <div style="overflow-x:auto">
+          <table><thead><tr>
+            <th>status</th><th>name</th><th>IP</th><th>MAC</th><th>vendor</th><th>iface</th>
+            <th>first seen</th><th>last seen</th><th>risk</th><th>actions</th>
+          </tr></thead><tbody id="devTbody"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- traffic -->
+      <section id="tab-traffic" class="grid cards2" style="display:none">
+        <div class="card"><h3>Hourly usage (last 24 h)</h3><div class="bars" id="usageBars"></div><div class="tagline">bars = data consumed per hour, from router flow counters</div></div>
+        <div class="card"><h3>Live throughput (from counters — no data cost)</h3>
+          <div class="kv" id="ratesKv"></div>
+          <div class="bars" id="rateBars" style="height:80px"></div>
+          <div class="tagline">Mbps sampled every poll interval (fast polls) — this is the "average speed the link is actually getting"</div>
+        </div>
+        <div class="card">
+          <h3>Speed test (uses data)</h3>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px">
+            <select id="stSize" style="padding:7px; border-radius:8px; background:#0d141b; color:var(--text); border:1px solid var(--line)">
+              <option value="2">Minute — ~2 MB</option>
+              <option value="6" selected>Lite — ~6 MB</option>
+              <option value="25">Standard — ~25 MB</option>
+              <option value="50">Full — ~50 MB</option>
+            </select>
+            <button class="btn primary" id="stBtn" onclick="runSpeedTest()">▶ Run speed test</button>
+          </div>
+          <div class="err" id="stErr"></div>
+          <div class="grid cards4" id="stResult"></div>
+          <div class="tagline" style="margin-top:6px">Measured over the ODU link itself (Cloudflare speed endpoints). Upload adds ~1 MB.</div>
+        </div>
+        <div class="card"><h3>Usage detail</h3><div class="kv" id="usageKv"></div></div>
+        <div class="card" style="grid-column:1/-1"><h3>Speed test history</h3>
+          <table><thead><tr><th>time</th><th>download</th><th>upload</th><th>ping</th></tr></thead><tbody id="stTbody"></tbody></table>
+        </div>
+      </section>
+
+      <!-- websites -->
+      <section id="tab-websites" class="grid cards2" style="display:none">
+        <div class="card" style="grid-column:1/-1">
+          <h3>DNS activity — devices browsing</h3>
+          <p class="tagline" style="margin-bottom:12px">Live per-device browsing. Requires the optional DNS proxy (Settings → enable it, then set router DHCP DNS to this PC).</p>
+          <div style="overflow-x:auto">
+            <table><thead><tr><th>domain</th><th>hits</th><th>clients</th><th>first seen</th><th>last seen</th></tr></thead><tbody id="sitesTbody"></tbody></table>
+          </div>
+          <div class="empty" id="noSites" style="display:none">No DNS data yet. Enable the DNS proxy in Settings, then point the router's DHCP DNS at this computer's IP.</div>
+        </div>
+        <div class="card">
+          <h3>Router URL block list</h3>
+          <table><thead><tr><th>url</th><th>state</th></tr></thead><tbody id="urlRulesTbody"></tbody></table>
+        </div>
+        <div class="card">
+          <h3>Top browsing clients</h3>
+          <table><thead><tr><th>client IP</th><th>requests</th><th>domains</th></tr></thead><tbody id="siteClients"></tbody></table>
+        </div>
+      </section>
+
+      <!-- alerts -->
+      <section id="tab-alerts" style="display:none">
+        <div class="card">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+            <h3 style="margin:0">Security & activity alerts</h3>
+            <button class="btn small" style="margin-left:auto" onclick="markAlertsRead()">mark all read</button>
+          </div>
+          <table><thead><tr><th>time</th><th>level</th><th>alert</th><th>detail</th></tr></thead><tbody id="alertsTbody"></tbody></table>
+        </div>
+      </section>
+
+      <!-- settings -->
+      <section id="tab-settings" class="grid cards2" style="display:none">
+        <div class="card"><h3>Router</h3>
+          <div class="kv" id="routerKv"></div>
+          <div style="margin-top:14px; display:flex; gap:8px; align-items:center">
+            <input id="newPw" type="password" placeholder="change stored password" style="margin:0; max-width:240px">
+            <button class="btn" onclick="changePw()">Update</button>
+          </div>
+          <p class="tagline" style="margin-top:10px">IP: <span id="cfgIp"></span></p>
+        </div>
+        <div class="card"><h3>DNS logging proxy (websites feature)</h3>
+          <label style="display:flex; gap:8px; align-items:center; cursor:pointer">
+            <input type="checkbox" id="dnsEnabled" style="width:auto" onchange="saveDns()"> enable local DNS proxy
+          </label>
+          <div class="kv" style="margin-top:10px">
+            <span>listen port</span><span id="dnsPort"></span>
+            <span>upstream</span><span id="dnsUpstream"></span>
+          </div>
+          <p class="tagline" style="margin-top:8px">After enabling: on the router admin page set DHCP DNS to this PC's LAN IP. All LAN lookups then flow through this app and are logged per device.</p>
+          <div id="dnsHow" class="tagline" style="margin-top:8px"></div>
+        </div>
+        <div class="card"><h3>Raw poll data (debug)</h3>
+          <div id="rawLinks" style="display:flex; gap:8px; flex-wrap:wrap"></div>
+          <pre id="rawBody" style="margin-top:10px; max-height:300px; overflow:auto; font-size:.72rem; color:#8fa1b5; white-space:pre-wrap"></pre>
+        </div>
+      </section>
+    </main>
+    <div class="footer">ODU Tracker · local dashboard · your credentials never leave this computer</div>
+    <div id="toast" class="notif"></div>
+  </div>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
