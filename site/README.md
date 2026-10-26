@@ -22,18 +22,15 @@ site/
 
 ## How downloads work
 
-The Windows + Android buttons point at stable "latest" URLs — no site
-updates needed on a new release:
+All platform buttons point at stable "latest" URLs — no site updates
+needed on a new release:
 
 ```
 https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-Setup.exe
 https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-Portable.exe
+https://github.com/Ademileke12/odu-tracker/releases/latest/download/odu-tracker-amd64.deb
 https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker.apk
 ```
-
-The **Linux .deb** button is a direct-download mirror (file.kiwi) until a
-GitHub release exists; it's marked `data-external` in `index.html` so the
-script's fallback logic never rewrites it.
 
 The **Android APK** button is disabled with a "COMING SOON" badge until the
 first successful APK build lands in a release (CI is being fixed).
