@@ -56,16 +56,20 @@ fetch(API, { headers: { Accept: 'application/vnd.github+json' } })
     document.querySelectorAll('.dl-card').forEach((card) => {
       const holder = card.querySelector('.dl-size');
       const asset = holder?.dataset.asset;
-      const size = asset && SIZES.get(asset);
+      // external mirrors (data-external) aren't in the GitHub release — skip them
+      const external = card.querySelector('.dl-link')?.dataset.external === 'true';
+      const size = !external && asset && SIZES.get(asset);
       if (size && holder) holder.textContent = pretty(size);
     });
   })
   .catch(() => { /* static fallbacks already in place */ });
 
-/* no release yet → point buttons at the Releases page */
+/* no release yet → point buttons at the Releases page
+   (links marked data-external already point somewhere real — leave them) */
 setTimeout(() => {
   if (SIZES.size === 0) {
     document.querySelectorAll('.dl-link').forEach((a) => {
+      if (a.dataset.external === 'true') return;
       a.href = 'https://github.com/' + REPO + '/releases';
       const holder = a.querySelector('.dl-size');
       if (holder) holder.textContent = 'see releases';
