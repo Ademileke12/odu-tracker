@@ -62,20 +62,23 @@ fetch(API, { headers: { Accept: 'application/vnd.github+json' } })
       if (size && holder) holder.textContent = pretty(size);
     });
   })
-  .catch(() => { /* static fallbacks already in place */ });
+  .catch((code) => {
+    /* 404 is the ONLY case where the direct URLs genuinely can't resolve —
+       no release published yet. Anything else (API rate limit, ad blocker,
+       network drop) leaves the buttons untouched: they point at
+       …/releases/latest/download/<asset>, permanent direct-download URLs
+       that work whenever a release exists. Never reroute on a failed check. */
+    if (code !== 404) return;
 
-/* no release yet → point buttons at the Releases page
-   (links marked data-external already point somewhere real — leave them) */
-setTimeout(() => {
-  if (SIZES.size === 0) {
     document.querySelectorAll('.dl-link').forEach((a) => {
       if (a.dataset.external === 'true') return;
       a.href = 'https://github.com/' + REPO + '/releases';
       const holder = a.querySelector('.dl-size');
-      if (holder) holder.textContent = 'see releases';
+      if (holder) holder.textContent = 'no release yet';
     });
-  }
-}, 1500);
+    const note = document.getElementById('dlFallback');
+    if (note) note.hidden = false;
+  });
 
 /* ------------------------------------------------ konami boost */
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown',
