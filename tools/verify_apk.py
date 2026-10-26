@@ -12,7 +12,11 @@ Verifies, with only unzip-grade tooling (zipfile + readelf):
        - GNU_RELRO: either the end (vaddr + memsz) is 16 KB aligned, or the
          RELRO spans its entire LOAD segment (Google's documented
          "still compliant" case)
-       - checked for BOTH ABIs (16 KB alignment is safe on 4 KB devices)
+       - ENFORCED for 64-bit ABIs only (arm64-v8a, x86_64). Google's rule
+         explicitly exempts 32-bit ABIs (armeabi-v7a, x86): 16 KB-page
+         devices run 64-bit user-space only, and NDK prebuilts such as
+         libc++_shared/libomp cannot be relinked. 32-bit libs at
+         p_align 0x1000 are informational, not failures.
   3. Signing:
        - v2 APK signing block present (magic "APK Sig Block 42")
        - v1 JAR signature files present (META-INF/CERT.SF + *.RSA) —
@@ -56,6 +60,7 @@ def elf_segments(path):
 
 
 def audit_elf(libpath, relname, problems):
+    is_64 = relname.split("/")[1] in ("arm64-v8a", "x86_64")
     with open(libpath, "rb") as fh:
         if fh.read(4) != b"\x7fELF":
             # p4a's libpybundle.so is a gzip data blob (python code bundle),
@@ -68,9 +73,17 @@ def audit_elf(libpath, relname, problems):
 
     for off, va, msz, al in loads:
         if al < PAGE:
-            print(f"    {relname}: LOAD p_align {al:#x} < 16 KB (4 KB-pages build)")
-            problems.append(f"{relname}: PT_LOAD p_align {al:#x} < 16 KB")
-            bad = True
+            if is_64:
+                print(f"    {relname}: LOAD p_align {al:#x} < 16 KB (4 KB-pages build)")
+                problems.append(f"{relname}: PT_LOAD p_align {al:#x} < 16 KB")
+                bad = True
+            else:
+                # Google's 16 KB requirement governs 64-bit ABIs only;
+                # 32-bit libs (armeabi-v7a/x86) at 0x1000 are compliant.
+                print(
+                    f"    {relname}: LOAD p_align {al:#x} — 32-bit ABI, "
+                    "exempt from 16 KB rule (informational)"
+                )
         if va % al != off % al:
             print(
                 f"    {relname}: LOAD incongruent — va {va:#x} vs off {off:#x} (align {al:#x})"
@@ -88,6 +101,11 @@ def audit_elf(libpath, relname, problems):
         end_of_load = container[1] + container[2]
         shares = end < end_of_load
         if shares and end % PAGE != 0:
+            if not is_64:
+                print(
+                    f"    {relname}: RELRO end {end:#x} (32-bit ABI exempt) — informational"
+                )
+                continue
             print(
                 f"    {relname}: RELRO shares LOAD with writable-data and ends "
                 f"{end:#x} ({end % PAGE:#X} into a 16 KB page)"
