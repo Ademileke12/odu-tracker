@@ -316,6 +316,7 @@ h2 {
 .sticker {
   position: absolute; z-index: 3;
   --rot: -6deg;
+  color: #0a0a0a;
   font-family: var(--mono); font-weight: 700; font-size: 11px;
   letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
   padding: 9px 13px;
@@ -327,9 +328,9 @@ h2 {
   0%, 100% { transform: rotate(var(--rot)) translateY(0); }
   50% { transform: rotate(var(--rot)) translateY(-5px); }
 }
-.s1 { --rot: -7deg; top: -16px; left: -20px; background: #ffffff; }
-.s2 { --rot: 5deg; top: 38%; right: -22px; background: var(--accent); animation-delay: .6s; }
-.s3 { --rot: -2deg; bottom: -18px; left: 8%; background: var(--ink); color: #efece4; animation-delay: 1.2s; }
+.s1 { --rot: -7deg; top: -16px; left: -20px; background: #ffffff; color: #0a0a0a; }
+.s2 { --rot: 5deg; top: 38%; right: -22px; background: var(--accent); color: #221701; animation-delay: .6s; }
+.s3 { --rot: -2deg; bottom: -18px; left: 8%; background: #0a0a0a; color: #efece4; animation-delay: 1.2s; }
 
 /* ---------------------------------------------------------- sections */
 .section {
