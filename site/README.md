@@ -1,14 +1,15 @@
 # ODU Tracker website
 
-The game-style landing page for ODU Tracker — neon racing HUD with the
-tracker car, live latest-release data pulled from GitHub, and direct
-download buttons for every installer this repo's CI publishes.
+The ODU Tracker landing page — cream dot-grid UI with the unique gauge
+logo, a CSS-built dashboard mock, live latest-release data pulled from
+GitHub, and direct download buttons for every installer this repo's CI
+publishes.
 
 ```
 site/
-├── index.html      # the page (hero + car + features + downloads + how-to)
-├── style.css       # neon HUD styling
-└── script.js       # speed-line canvas, release fetch, konami turbo easter egg
+├── index.html      # the page (hero + mock + features + downloads + how-to)
+├── style.css       # cream/dot-grid styling + dark mode
+└── script.js       # theme toggle, release fetch, reveal, konami boost easter egg
 ```
 
 ## Deploy to Vercel

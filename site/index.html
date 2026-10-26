@@ -3,26 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ODU TRACKER — Mission Control for your MTN 5G ODU</title>
-<meta name="description" content="Install-and-use companion app for the MTN Broadband 5G ODU (ZLT X28): live data-usage stats, connected-device radar, threat alerts, speed tests — 100% local, zero cloud.">
-<meta name="theme-color" content="#05070b">
-<meta property="og:title" content="ODU TRACKER — Mission Control for your MTN 5G ODU">
-<meta property="og:description" content="Live data usage, device radar, threat alerts & speed tests for the MTN 5G ODU. One installer, everything local.">
+<title>ODU Tracker — every GB, accounted for</title>
+<meta name="description" content="Install-and-use cockpit for the MTN Broadband 5G ODU (ZLT X28): month usage, live speed, device radar, threat alerts and on-demand speed tests — 100% local, zero cloud.">
+<meta name="theme-color" content="#efece4">
+<meta property="og:site_name" content="ODU Tracker">
+<meta property="og:title" content="ODU Tracker — every GB, accounted for">
+<meta property="og:description" content="Month usage, live speed, device radar, threat alerts & speed tests for the MTN 5G ODU. One installer, everything local.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%23ffb632'/%3E%3Cpath d='M16 33v-9' stroke='%23221701' stroke-width='3.6' stroke-linecap='round'/%3E%3Cpath d='M16 24a7 7 0 0 1 8.5 8.6M16 24a13 13 0 0 1 15.4 15.1' stroke='%23221701' stroke-width='3.6' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='16' cy='33' r='3.1' fill='%23221701'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='13' fill='%23ffb632'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%230a0a0a' stroke-width='5.5'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%23ffffff' stroke-width='5.5' stroke-linecap='round' stroke-dasharray='50 75.4' transform='rotate(-90 24 26)'/%3E%3Ccircle cx='24' cy='26' r='3' fill='%230a0a0a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<canvas id="speedlines" aria-hidden="true"></canvas>
-<div class="scanlines" aria-hidden="true"></div>
+<div class="turbo-flash" id="turbo" aria-hidden="true"><span>BOOST ENGAGED</span></div>
 
 <!-- ================================================== top bar -->
 <header class="topbar">
-  <a class="brand" href="#top">
-    <span class="brand-badge">⚡</span>
+  <a class="brand" href="#top" title="ODU Tracker home">
+    <svg class="brand-mark" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="48" height="48" rx="13" fill="#ffb632"/>
+      <circle cx="24" cy="26" r="12" fill="none" stroke="#0a0a0a" stroke-width="5.5"/>
+      <circle cx="24" cy="26" r="12" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round" stroke-dasharray="50 75.4" transform="rotate(-90 24 26)"/>
+      <circle cx="24" cy="26" r="3" fill="#0a0a0a"/>
+    </svg>
     <span class="brand-name">ODU<b>TRACKER</b></span>
   </a>
   <nav class="topnav">
@@ -31,152 +36,119 @@
     <a href="#how">How it works</a>
     <a class="gh" href="https://github.com/Ademileke12/odu-tracker" target="_blank" rel="noopener">GitHub ↗</a>
   </nav>
-  <div class="verchip" id="verchip" title="Latest release">
-    <span class="dot"></span><span id="vertext">v1.2.0</span>
-  </div>
+  <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.2.0</span></span>
+  <button class="mode-btn" id="modeBtn" title="Toggle light / dark" aria-label="Toggle theme"><span id="modeIco">☾</span></button>
+  <a class="topbar-cta" href="#download">Get the app</a>
 </header>
 
 <main id="top">
 
   <!-- ================================================== hero -->
   <section class="hero">
-    <div class="hero-inner reveal">
-      <p class="kicker">// MTN BROADBAND 5G ODU · ZLT X28 CLASS</p>
-      <h1>MISSION CONTROL<br>FOR YOUR <span class="grad">5G ODU</span></h1>
-      <p class="lede">
-        One installer. Full telemetry of your ODU router — data usage, live
-        throughput, device radar, threat alerts and nitro speed tests.
-        <b>Everything stays on your machine.</b>
+    <div class="hero-copy">
+      <p class="badge reveal"><i class="dot"></i>LOCAL-ONLY ODU MONITOR</p>
+      <h1 class="reveal">EVERY GB,<br><span class="hl">ACCOUNTED FOR.</span></h1>
+      <p class="lede reveal">
+        One installer for your <b>MTN Broadband 5G ODU</b> — month usage,
+        live speed, device radar, threat alerts and on-demand speed tests.
+        <b>Everything runs on your machine.</b>
       </p>
-      <div class="cta-row">
-        <a class="btn btn-primary" href="#download">
-          <span class="btn-ico">⤓</span> GET THE APP <span class="btn-sub">free · v1.2.0</span>
-        </a>
-        <a class="btn btn-ghost" href="#features">
-          <span class="btn-ico">▶</span> WATCH THE STATS
-        </a>
+      <div class="cta-row reveal">
+        <a class="btn btn-black" href="#download">⤓ GET ODU TRACKER <small>free</small></a>
+        <a class="btn btn-white" href="#features">SEE THE FEATURES</a>
       </div>
-      <ul class="hud-strip">
-        <li><b>0</b> bytes to the cloud</li>
-        <li><b>60+</b> router API cmds</li>
-        <li><b>2 s</b> live poll cadence</li>
-        <li><b>3</b> platforms</li>
+      <ul class="tick-strip reveal">
+        <li>✓ 0 bytes to the cloud</li>
+        <li>✓ history in local SQLite</li>
+        <li>✓ password never leaves</li>
+        <li>✓ 3 platforms, 1 installer</li>
       </ul>
     </div>
 
-    <!-- raceway -->
-    <div class="raceway" aria-hidden="true">
-      <div class="road"></div>
-      <div class="underglow"></div>
-      <svg class="car" viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="bodyline" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="#ffb632"/>
-            <stop offset=".55" stop-color="#ffe08a"/>
-            <stop offset="1" stop-color="#22d3ee"/>
-          </linearGradient>
-          <radialGradient id="glow" cx=".5" cy=".5" r=".5">
-            <stop offset="0" stop-color="#ffb632" stop-opacity=".55"/>
-            <stop offset="1" stop-color="#ffb632" stop-opacity="0"/>
-          </radialGradient>
-          <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#10314a"/>
-            <stop offset="1" stop-color="#0a1826"/>
-          </linearGradient>
-        </defs>
-
-        <!-- rear wing -->
-        <path d="M56 96 L150 90 L152 98 L60 104 Z" fill="#0b0f16" stroke="url(#bodyline)" stroke-width="2"/>
-        <path d="M78 104 L82 116 L92 115 L88 103 Z" fill="#0b0f16" stroke="url(#bodyline)" stroke-width="1.6"/>
-
-        <!-- body -->
-        <path d="M40 152 L40 124 C40 112 54 106 74 103 L148 95
-                 C186 89 216 86 250 86 L302 86 C342 86 362 93 392 103
-                 L468 114 C512 119 542 124 550 132 C555 139 551 148 542 150
-                 L46 152 Z"
-              fill="#0b0f16" stroke="url(#bodyline)" stroke-width="2.6"/>
-
-        <!-- glass -->
-        <path d="M244 92 L300 92 C334 92 352 98 372 107 L298 110 L204 112
-                 C212 100 228 94 244 92 Z" fill="url(#glass)" stroke="#22d3ee" stroke-width="1.4" opacity=".92"/>
-
-        <!-- hood stripe -->
-        <path d="M392 104 L468 114 L466 119 L388 109 Z" fill="#ffb632" opacity=".85"/>
-
-        <!-- headlight + beam -->
-        <path d="M534 130 L552 132 L549 140 L533 138 Z" fill="#ffe08a"/>
-        <path d="M548 132 L620 128 L620 152 L546 141 Z" fill="url(#glow)" opacity=".5"/>
-
-        <!-- tail light -->
-        <path d="M42 126 L56 125 L56 133 L42 134 Z" fill="#ff5470"/>
-
-        <!-- wheel arches (bg cut) -->
-        <circle cx="152" cy="150" r="40" fill="#05070b"/>
-        <circle cx="432" cy="150" r="40" fill="#05070b"/>
-
-        <!-- rear wheel -->
-        <g class="wheel">
-          <circle cx="152" cy="150" r="30" fill="#0d121c" stroke="#233043" stroke-width="3"/>
-          <g class="wheel-spin">
-            <circle cx="152" cy="150" r="15" fill="#05070b" stroke="#ffb632" stroke-width="2.4"/>
-            <path d="M152 137 L156 150 L152 163 L148 150 Z M139 150 L152 146 L165 150 L152 154 Z" fill="#ffb632"/>
-          </g>
-        </g>
-        <!-- front wheel -->
-        <g class="wheel">
-          <circle cx="432" cy="150" r="30" fill="#0d121c" stroke="#233043" stroke-width="3"/>
-          <g class="wheel-spin">
-            <circle cx="432" cy="150" r="15" fill="#05070b" stroke="#ffb632" stroke-width="2.4"/>
-            <path d="M432 137 L436 150 L432 163 L428 150 Z M419 150 L432 146 L445 150 L432 154 Z" fill="#ffb632"/>
-          </g>
-        </g>
-      </svg>
-      <div class="roadline"></div>
+    <!-- product visual: CSS-built dashboard mock (no screenshot needed) -->
+    <div class="hero-visual reveal" aria-hidden="true">
+      <div class="shot">
+        <div class="shot-bar">
+          <span class="shot-dots"><i></i><i></i><i></i></span>
+          <span class="shot-title">ODU TRACKER</span>
+          <span class="live-chip"><i class="dot"></i>LIVE</span>
+        </div>
+        <div class="shot-body">
+          <div class="shot-top">
+            <div class="ring">
+              <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#eceae2" stroke-width="13"/>
+                <circle class="ring-arc" cx="60" cy="60" r="48" fill="none" stroke="#ffb632" stroke-width="13" stroke-linecap="round" stroke-dasharray="254 301.6" transform="rotate(-90 60 60)"/>
+              </svg>
+              <div class="ring-num"><b>84.2</b><small>GB</small></div>
+            </div>
+            <div class="usage">
+              <small>MONTH USAGE</small>
+              <b>84.2 <em>/ 100 GB</em></b>
+              <div class="meter"><i style="--pct:84%"></i></div>
+              <small class="meter-cap">resets in 11 days · ↓ 71.9 · ↑ 12.3</small>
+            </div>
+          </div>
+          <div class="shot-stats">
+            <div><b>3.8 GB</b><small>TODAY</small></div>
+            <div><b>128 Mbps</b><small>LIVE ↓</small></div>
+            <div><b>9</b><small>DEVICES</small></div>
+          </div>
+          <div class="shot-devices">
+            <div class="dev"><span class="dev-name">Pixel 8</span><span class="dev-ip">Wi-Fi · .0.14</span><span class="chip ok">ONLINE</span></div>
+            <div class="dev"><span class="dev-name">ThinkPad-X13</span><span class="dev-ip">LAN · .0.31</span><span class="chip ok">ONLINE</span></div>
+            <div class="dev"><span class="dev-name">a4:5e:60:•• (random)</span><span class="dev-ip">Wi-Fi · .0.44</span><span class="chip bad">RISK · HIGH</span></div>
+          </div>
+        </div>
+      </div>
+      <span class="sticker s1">FREE FOREVER</span>
+      <span class="sticker s2">NO CLOUD</span>
+      <span class="sticker s3">60+ ROUTER CMDS</span>
     </div>
   </section>
 
   <!-- ================================================== features -->
   <section id="features" class="section">
-    <p class="kicker reveal">// YOUR GARAGE LOADOUT</p>
-    <h2 class="reveal">PICK YOUR <span class="grad">PERKS</span></h2>
+    <p class="kicker reveal">// WHAT'S INSIDE</p>
+    <h2 class="reveal">THE FULL COCKPIT</h2>
     <div class="cards">
       <article class="card reveal">
-        <div class="card-ico">📊</div>
+        <div class="card-ico">%</div>
         <h3>USAGE TELEMETRY</h3>
         <p>Month total, downlink/uplink split, today, hourly charts and a plan meter — straight from the router's own counters.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">🚀</div>
-        <h3>NITRO SPEED TEST</h3>
-        <p>On-demand down/up/ping runs with history and averages. Size-selectable so it never burns your data plan.</p>
+        <div class="card-ico">↓↑</div>
+        <h3>SPEED TESTS</h3>
+        <p>On-demand down/up/ping runs with history and averages. Size-selectable so a test never burns your data plan.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">📡</div>
+        <div class="card-ico">MAC</div>
         <h3>DEVICE RADAR</h3>
         <p>Every phone, laptop and IoT gadget on your ODU: name, IP, MAC, vendor, Wi-Fi/LAN and online state — live.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">🚨</div>
-        <h3>THREAT SCAN</h3>
+        <div class="card-ico">!</div>
+        <h3>THREAT SCORES</h3>
         <p>New-device alerts plus a risk engine: unknown vendors, randomized MACs, suspicious hostnames — scored low/medium/high.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">🔒</div>
-        <h3>SHIELD MODE</h3>
+        <div class="card-ico">✕</div>
+        <h3>ONE-CLICK BLOCK</h3>
         <p>Block or unblock any device with one click — pushed straight to the router's MAC filter. No admin panel detour.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">🌐</div>
-        <h3>BROWSING TIMELINE</h3>
+        <div class="card-ico">DNS</div>
+        <h3>SITE TIMELINES</h3>
         <p>Optional local DNS logging proxy builds per-device website timelines, plus the router's URL block list.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">🔋</div>
-        <h3>FUEL &amp; SIGNAL</h3>
+        <div class="card-ico">BAT</div>
+        <h3>BATTERY &amp; SIGNAL</h3>
         <p>Internal battery, RSRP/signal bars, network mode (5G NSA…) and ODU health — uptime, CPU, firmware.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">SQLite</div>
+        <div class="card-ico">SQL</div>
         <h3>LOCAL SAVE FILE</h3>
         <p>Events, alerts and usage history in a local SQLite DB. Your router password never leaves the machine.</p>
       </article>
@@ -185,15 +157,15 @@
 
   <!-- ================================================== download -->
   <section id="download" class="section">
-    <p class="kicker reveal">// PIT STOP</p>
-    <h2 class="reveal">GRAB YOUR <span class="grad">RIDE</span></h2>
-    <p class="section-sub reveal">Direct downloads from GitHub Releases — the same files CI signs off on every build.</p>
+    <p class="kicker reveal">// DIRECT FROM GITHUB</p>
+    <h2 class="reveal">PICK YOUR PLATFORM</h2>
+    <p class="section-sub reveal">Every button serves the newest CI-built file from GitHub Releases — no mirrors, no trackers.</p>
 
     <div class="dl-grid">
       <article class="dl-card reveal" data-os="windows">
-        <header><span class="dl-ico">🪟</span><div><h3>Windows</h3><small>10 / 11 · 64-bit</small></div></header>
+        <header><span class="dl-ico">WIN</span><div><h3>Windows</h3><small>10 / 11 · 64-bit</small></div></header>
         <p class="dl-file" data-asset="ODU-Tracker-Setup.exe">ODU-Tracker-Setup.exe</p>
-        <a class="btn btn-primary btn-block dl-link" data-asset="ODU-Tracker-Setup.exe"
+        <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker-Setup.exe"
            href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-Setup.exe">
           ⤓ INSTALLER <span class="dl-size" data-asset="ODU-Tracker-Setup.exe"></span>
         </a>
@@ -202,9 +174,9 @@
       </article>
 
       <article class="dl-card reveal" data-os="linux">
-        <header><span class="dl-ico">🐧</span><div><h3>Linux</h3><small>Debian / Ubuntu / Mint</small></div></header>
+        <header><span class="dl-ico">LNX</span><div><h3>Linux</h3><small>Debian / Ubuntu / Mint</small></div></header>
         <p class="dl-file" data-asset="odu-tracker-amd64.deb">odu-tracker-amd64.deb</p>
-        <a class="btn btn-primary btn-block dl-link" data-asset="odu-tracker-amd64.deb"
+        <a class="btn btn-black btn-block dl-link" data-asset="odu-tracker-amd64.deb"
            href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/odu-tracker-amd64.deb">
           ⤓ .DEB PACKAGE <span class="dl-size" data-asset="odu-tracker-amd64.deb"></span>
         </a>
@@ -212,9 +184,9 @@
       </article>
 
       <article class="dl-card reveal" data-os="android">
-        <header><span class="dl-ico">🤖</span><div><h3>Android</h3><small>7.0+ · full-screen app</small></div></header>
+        <header><span class="dl-ico">AND</span><div><h3>Android</h3><small>7.0+ · full-screen app</small></div></header>
         <p class="dl-file" data-asset="ODU-Tracker.apk">ODU-Tracker.apk</p>
-        <a class="btn btn-primary btn-block dl-link" data-asset="ODU-Tracker.apk"
+        <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker.apk"
            href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker.apk">
           ⤓ APK <span class="dl-size" data-asset="ODU-Tracker.apk"></span>
         </a>
@@ -229,12 +201,12 @@
 
   <!-- ================================================== how -->
   <section id="how" class="section">
-    <p class="kicker reveal">// RACE BRIEFING</p>
-    <h2 class="reveal">THREE STEPS TO <span class="grad">GREEN LIGHT</span></h2>
+    <p class="kicker reveal">// FIRST START</p>
+    <h2 class="reveal">ONLINE IN THREE STEPS</h2>
     <ol class="steps">
-      <li class="reveal"><b>01 · Install</b><span>Run the installer for your platform. Everything ships inside — no Python, no Node, no admin panel.</span></li>
-      <li class="reveal"><b>02 · Connect</b><span>Join the ODU's Wi-Fi / Ethernet. The app probes <code>192.168.0.1</code> and confirms it's really your ODU.</span></li>
-      <li class="reveal"><b>03 · Drive</b><span>Sign in once with your ODU admin password — the app keeps its own session and starts logging immediately.</span></li>
+      <li class="reveal"><span class="step-n">01</span><div><b>INSTALL</b><span>Run the installer for your platform. Everything ships inside — no Python, no Node, no admin panel.</span></div></li>
+      <li class="reveal"><span class="step-n">02</span><div><b>CONNECT</b><span>Join the ODU's Wi-Fi / Ethernet. The app probes <code>192.168.0.1</code> and confirms it's really your ODU.</span></div></li>
+      <li class="reveal"><span class="step-n">03</span><div><b>DRIVE</b><span>Sign in once with your ODU admin password — the app keeps its own session and starts logging immediately.</span></div></li>
     </ol>
 
     <div class="warn reveal">
@@ -248,8 +220,14 @@
   <!-- ================================================== footer -->
   <footer class="footer">
     <div class="footer-brand">
-      <span class="brand-badge">⚡</span> ODU<b>TRACKER</b>
-      <span class="verchip small"><span class="dot"></span><span class="footer-ver">v1.2.0</span></span>
+      <svg class="footer-mark" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="48" height="48" rx="13" fill="#ffb632"/>
+        <circle cx="24" cy="26" r="12" fill="none" stroke="#0a0a0a" stroke-width="5.5"/>
+        <circle cx="24" cy="26" r="12" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round" stroke-dasharray="50 75.4" transform="rotate(-90 24 26)"/>
+        <circle cx="24" cy="26" r="3" fill="#0a0a0a"/>
+      </svg>
+      ODU<b>TRACKER</b>
+      <span class="verchip small"><i class="dot"></i><span class="footer-ver">v1.2.0</span></span>
     </div>
     <p>Created by <b>anakincoco</b> · <a href="mailto:srimpkoyonko@gmail.com">srimpkoyonko@gmail.com</a></p>
     <p class="footer-links">
@@ -257,10 +235,10 @@
       <a href="https://github.com/Ademileke12/odu-tracker/issues" target="_blank" rel="noopener">Report an issue</a>
     </p>
     <p class="fineprint">Not affiliated with MTN or ZLT. Router API reverse-engineered from the vendor's own web UI. All monitoring runs locally.</p>
+    <p class="hint">psst — ↑ ↑ ↓ ↓ ← → ← → B A</p>
   </footer>
 </main>
 
-<div class="turbo-flash" id="turbo" aria-hidden="true"><span>TURBO ENGAGED</span></div>
 <script src="script.js"></script>
 </body>
 </html>
