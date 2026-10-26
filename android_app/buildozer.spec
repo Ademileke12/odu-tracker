@@ -26,7 +26,11 @@ source.exclude_patterns = packaging/*,tools/*,site/*,dist/*,build/*,*.md,*.spec,
 version = 1.2.0
 
 # (list) Application requirements (kivy = splash screen; pyjnius = WebView)
-requirements = python3,kivy,pyjnius,flask,waitress,requests,urllib3,certifi
+# charset-normalizer is a transitive dep of `requests`; from 3.5.x PyPI also
+# ships android-tagged wheels that the p4a build venv's pip refuses
+# (kivy/buildozer#2051) — pin the pure-python release so pip takes the
+# universal py3-none-any wheel instead.
+requirements = python3,kivy,pyjnius,flask,waitress,requests,urllib3,certifi,charset-normalizer==2.1.1
 
 # (str) Presplash of the application
 presplash.filename = assets/icon.png
