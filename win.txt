@@ -1,0 +1,39 @@
+ODU Tracker — Windows build steps
+
+1) Open PowerShell in the project folder.
+
+2) Create a virtual environment:
+   cd odu-tracker
+   py -m venv .venv
+
+3) Install dependencies:
+   .\.venv\Scripts\pip install -r requirements.txt
+
+4) DEDICATED ELECTRON APP (recommended):
+   run:  packaging\windows\build-electron.bat
+   It builds the venv, compiles the headless Python engine, stages it and
+   runs electron-builder. Output goes to:
+     dist\electron\ODU-Tracker-Setup-1.2.0.exe      (one-click installer)
+     dist\electron\ODU-Tracker-Portable-1.2.0.exe   (portable exe)
+   Users just run the Setup exe — no Python needed on their machine.
+
+5) LEGACY PYTHON BUILD (optional):
+   .\.venv\Scripts\python tools\make_icon.py       # app icon (assets\icon.ico)
+   .\.venv\Scripts\python tools\build_app.py --onefile
+   → dist\ODU-Tracker.exe
+
+6) Optional: build the legacy installer using Inno Setup 6:
+   ISCC.exe packaging\windows\odu-tracker.iss
+
+7) Installer output should appear in:
+   dist\installer\ODU-Tracker-setup.exe
+
+8) To run the app directly after building:
+   dist\ODU-Tracker.exe
+
+Notes:
+- This is the Windows desktop version of ODU Tracker.
+- If Inno Setup is not installed, you can still use the portable EXE from dist\.
+- The app must still be run on a machine that can reach the ODU router on the local network.
+- Electron NSIS builds are unsigned: users see the normal "unverified
+  publisher" notice on first run; it installs fine either way.

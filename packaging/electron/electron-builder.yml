@@ -1,0 +1,69 @@
+# electron-builder config for the ODU Tracker dedicated desktop app.
+# Linux deb is built here directly; Windows NSIS/portable is built with
+# packaging\windows\build-electron.bat on a Windows machine.
+#
+# The bundled Python engine (PyInstaller build of odu_tracker.headless)
+# must be staged into ./resources/odu-tracker-server before packaging —
+# both build scripts do this automatically.
+
+appId: com.anakincoco.odutracker
+productName: ODU Tracker
+copyright: Created by anakincoco
+
+directories:
+  buildResources: build
+  output: ../../dist/electron
+
+# keep the JS shell minimal — the Python engine ships as extraResources
+files:
+  - main.js
+  - loading.html
+  - package.json
+
+extraResources:
+  - from: resources/odu-tracker-server
+    to: odu-tracker-server
+    filter:
+      - "**/*"
+
+linux:
+  icon: build/icon.png
+  category: Network
+  executableName: odu-tracker
+  # .desktop entry is generated automatically from package.json
+  # (productName / description / author.main)
+  target:
+    - target: deb
+      arch:
+        - x64
+
+deb:
+  packageCategory: net
+  # fixed name → the site can always link .../releases/latest/download/odu-tracker-amd64.deb
+  artifactName: odu-tracker-amd64.deb
+  compression: xz
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  # unsigned: users get the standard "unverified publisher" notice; fine
+  # for direct distribution (no EV cert)
+
+nsis:
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: ODU Tracker
+  # fixed name → stable .../releases/latest/download/ODU-Tracker-Setup.exe URL
+  artifactName: ODU-Tracker-Setup.exe
+  deleteAppDataOnUninstall: false
+
+portable:
+  artifactName: ODU-Tracker-Portable.exe

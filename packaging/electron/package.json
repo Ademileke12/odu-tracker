@@ -1,0 +1,20 @@
+{
+  "name": "odu-tracker",
+  "productName": "ODU Tracker",
+  "version": "1.2.0",
+  "description": "MTN ODU (ZLT X28-class) data usage, connected devices, security alerts & website monitor — created by anakincoco",
+  "author": "anakincoco <srimpkoyonko@gmail.com>",
+  "homepage": "mailto:srimpkoyonko@gmail.com",
+  "license": "MIT",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:linux": "electron-builder --linux deb --publish never",
+    "dist:win": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  }
+}

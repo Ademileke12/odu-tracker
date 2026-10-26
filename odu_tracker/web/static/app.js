@@ -40,6 +40,36 @@ async function api(path, opts) {
   return body;
 }
 
+let deferredInstallPrompt = null;
+
+async function registerPwa() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    await navigator.serviceWorker.register("/sw.js");
+  } catch (err) {
+    console.warn("Service worker registration failed:", err);
+  }
+}
+
+function initPwaInstall() {
+  const installBtn = document.getElementById("installPwaBtn");
+  if (!installBtn) return;
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    installBtn.hidden = false;
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.hidden = true;
+  });
+}
+
 /* ---------------------------------------------------------------- theme */
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
@@ -54,6 +84,21 @@ function initTheme() {
   applyTheme(saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
   $("#themeBtn").onclick = () =>
     applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+}
+
+function initOfflineState() {
+  const syncStatus = () => {
+    const online = navigator.onLine;
+    const connDot = document.getElementById("connDot");
+    const connText = document.getElementById("connText");
+    if (!connDot || !connText) return;
+    connDot.className = online ? "dot on" : "dot warn";
+    connText.textContent = online ? "router connected" : "offline — waiting for network";
+    if (!online) toast("Offline — the dashboard is waiting for the local ODU network.", 3000);
+  };
+  window.addEventListener("online", syncStatus);
+  window.addEventListener("offline", syncStatus);
+  syncStatus();
 }
 
 /* ---------------------------------------------------------------- charts
@@ -248,6 +293,9 @@ const SPLASH_MIN_MS = 1500;
 
 async function boot() {
   initTheme();
+  initOfflineState();
+  registerPwa();
+  initPwaInstall();
   const t0 = Date.now();
   try {
     const meta = await api("/api/meta");

@@ -2,7 +2,7 @@
 ; Build: ISCC.exe packaging\windows\odu-tracker.iss  (or build_windows.bat)
 
 #define MyAppName "ODU Tracker"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "anakincoco"
 #define MyAppURL "mailto:srimpkoyonko@gmail.com"
 #define MyAppExeName "ODU-Tracker.exe"

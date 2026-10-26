@@ -1,7 +1,8 @@
 # ⚡ ODU Tracker
 
-A cross-platform (Linux / Windows) companion app for the **MTN Broadband 5G ODU**
-(`ZLT X28`-class router, admin panel at `http://192.168.0.1/`).
+A cross-platform (Linux / Windows / **Android**) companion app for the
+**MTN Broadband 5G ODU** (`ZLT X28`-class router, admin panel at
+`http://192.168.0.1/`).
 
 It logs into the router's *undocumented* web API (reverse-engineered from its
 Vue SPA) and turns it into a real monitoring tool:
@@ -18,6 +19,17 @@ Vue SPA) and turns it into a real monitoring tool:
 | 🌐 **Websites** — optional local DNS logging proxy (per-device browsing timeline) + router URL block list | `cmd 26` + local DNS proxy |
 | 🔋 **Battery / signal / network status** (the ODU has an internal battery) | `cmd 113`/`cmd 1005`/`cmd 218` |
 | 🕓 **Event + alert history** — joins, leaves, IP changes, block actions | full local timeline |
+
+Everything is stored **locally** (SQLite). The admin password never leaves your device.
+
+## 🌍 Website & downloads
+
+`site/` is a game-style landing page (neon racing HUD, live release data,
+direct download buttons). Deploy on Vercel with **Root Directory = `site`** —
+see `site/README.md`. The buttons point at stable
+`releases/latest/download/…` URLs, and `.github/workflows/build.yml` fills
+those assets automatically (Windows installer + portable, Linux .deb,
+Android APK) on every push / tag.
 
 Everything is stored **locally** (SQLite). The admin password never leaves your PC.
 
@@ -195,7 +207,25 @@ odu-tracker/
 - DNS proxy hardened: per-query worker threads, all record types forwarded
   (only A/AAAA logged), reverse/local zones filtered.
 
-## Desktop app (Linux & Windows)
+## Dedicated desktop apps (Electron — Linux .deb & Windows installer)
+
+A true install-and-use desktop app: the .deb / .exe bundles the Electron
+window shell **and** the frozen Python engine — no Python or Node needed on
+the target machine.
+
+```bash
+./tools/build_electron.sh              # → dist/electron/odu-tracker_1.2.0_amd64.deb
+sudo dpkg -i dist/electron/odu-tracker_*.deb
+```
+
+Windows (run on the Windows PC): `packaging\windows\build-electron.bat`
+→ `dist\electron\ODU-Tracker-Setup-1.2.0.exe` (one-click NSIS installer)
++ `ODU-Tracker-Portable-1.2.0.exe`. Details: `packaging/electron/README.md`.
+
+CI builds both automatically: `.github/workflows/linux-deb.yml`
+(+ `android-apk.yml` for the phone app).
+
+## Python packaging (legacy, still works)
 
 Dev mode already behaves like an app:
 
@@ -241,10 +271,21 @@ polled twice.
 **Any distro (portable)**: `dist/odu-tracker-1.1.0-linux-portable.tar.gz`
 — unpack anywhere, run `START`.
 
-**Windows**: on the Windows PC, run `tools\build_windows.bat`
-(builds `dist\ODU-Tracker\` portable exe; if [Inno Setup 6](https://jrsoftware.org/isdl.php)
-is installed it also produces `dist\installer\ODU-Tracker-setup.exe` with
-desktop shortcut + optional start-on-login).
+**Windows**: two paths, both on the Windows PC:
+
+1. **Dedicated Electron app (recommended)**: `packaging\windows\build-electron.bat`
+   → `dist\electron\ODU-Tracker-Setup-1.2.0.exe` one-click installer with
+   desktop shortcut (+ a portable single-file exe). Bundles the Electron
+   window AND the frozen Python engine.
+2. **Legacy pywebview build**: run `tools\build_windows.bat`
+   (builds `dist\ODU-Tracker\` portable exe; if [Inno Setup 6](https://jrsoftware.org/isdl.php)
+   is installed it also produces `dist\installer\ODU-Tracker-setup.exe` with
+   desktop shortcut + optional start-on-login).
+
+**Android APK** (dedicated full-screen phone app, same engine embedded):
+see `android_app/README.md` — `tools/build_android.sh` locally, or
+`.github/workflows/android-apk.yml` to build a signed APK in CI on every
+push. Sideload onto any Android 7+ phone, connect to the ODU Wi-Fi, done.
 
 ## Startup behaviour
 

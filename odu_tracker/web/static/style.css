@@ -178,6 +178,13 @@ body{
 }
 .theme-btn:hover{color:var(--text);border-color:var(--line2)}
 .theme-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+#installPwaBtn{
+  margin-top:4px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  color:#221a02;border:none;box-shadow:0 6px 18px rgba(255,182,50,.22);
+  font-weight:800;
+}
+#installPwaBtn[hidden]{display:none!important}
 
 .content{flex:1;min-width:0}
 .tophead{
@@ -341,11 +348,36 @@ html[data-theme="light"] .btn:hover{border-color:#c3cfdf}
 }
 @media(max-width:760px){
   #mainView{flex-direction:column}
-  .sidebar{width:auto;height:auto;flex-direction:row;align-items:center;position:static;padding:12px}
-  .sidebar nav{flex-direction:row;overflow-x:auto}
-  .side-foot{border:none;flex-direction:row;margin-left:auto}
+  .sidebar{width:auto;height:auto;flex-direction:column;align-items:stretch;position:static;padding:12px}
+  .sidebar nav{flex-direction:row;overflow-x:auto;gap:8px;padding-bottom:6px}
+  .navlink{min-width:120px;justify-content:center;padding:10px 12px}
+  .navlink.active::before{left:8px;right:8px;top:auto;bottom:-4px;height:3px;width:auto}
+  .side-foot{border-top:1px solid var(--line);padding-top:10px;flex-direction:row;justify-content:space-between;align-items:center}
   .g2,.g4{grid-template-columns:1fr}
   .span2,.span4{grid-column:auto}
   .tophead{padding:18px 20px}
+  .head-chips{width:100%}
+  .chip{flex:1 1 auto;justify-content:center}
   main{padding:18px 16px 40px}
+  .card{padding:16px}
+  .tablewrap{overflow-x:auto}
+  .search{max-width:none}
+  .st-row{flex-direction:column;align-items:stretch}
+  .st-row select,.st-row input{width:100%;min-width:0}
+}
+
+@media(max-width:480px){
+  body{font-size:13px}
+  .tophead{padding:16px 14px}
+  .tophead h1{font-size:1.2rem}
+  .auth-card{width:min(92vw, 360px)}
+  .splash-name{font-size:1.2rem}
+  .splash-status{font-size:.78rem}
+  .logo .t{font-size:.9rem}
+  .navlink{min-width:92px;font-size:.78rem;padding:9px 8px}
+  .theme-btn{padding:8px 10px}
+  .card-head{flex-wrap:wrap}
+  .card-head h3{width:100%}
+  .kpi-val{font-size:1.7rem}
+  .chip{padding:8px 10px}
 }
