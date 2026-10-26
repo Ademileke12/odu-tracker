@@ -51,6 +51,16 @@ orientation = portrait
 # merged on the develop branch only.
 p4a.branch = develop
 
+# 16 KB ELF alignment, part 1 (linker flags): Android 16/17 devices with
+# 16 KB kernels enforce page-size checks on shared libraries. Stock p4a does
+# not link with -Wl,-z,common-page-size=16384, which is required for the
+# strictest published check ("Check the RELRO security flag",
+# developer.android.com/guide/practices/page-sizes). tools/seed_p4a.sh
+# clones p4a develop into ~/p4a-16k and applies the flags
+# (tools/patch_p4a_16kb.py); p4a.source_dir makes buildozer use that
+# patched checkout AS-IS (no re-clone / no pull over it).
+p4a.source_dir = ~/p4a-16k
+
 # (bool) Keep the screen on while the app runs (dedicated monitoring screen)
 android.wakelock = True
 

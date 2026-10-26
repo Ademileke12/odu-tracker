@@ -48,6 +48,11 @@ if ! command -v keytool >/dev/null 2>&1; then
   exit 1
 fi
 
+# ------------------------------------------------------------------ p4a seed
+# Build p4a from a patched clone so every library is linked with 16 KB ELF
+# alignment (Android 16/17 page-size compliance; see the buildozer.spec note).
+"$ROOT_DIR/tools/seed_p4a.sh"
+
 # ------------------------------------------------------------------ keystore
 KS="$APP_DIR/odu-tracker-release.keystore"
 # generate only if missing (so you can drop in your own private keystore)

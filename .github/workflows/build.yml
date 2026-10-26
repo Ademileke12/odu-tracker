@@ -48,6 +48,9 @@ jobs:
       - name: Install buildozer + cython
         run: pip install buildozer cython
 
+      - name: Seed patched python-for-android (16 KB ELF alignment)
+        run: tools/seed_p4a.sh
+
       - name: Build release APK
         working-directory: android_app
         env:
@@ -61,6 +64,34 @@ jobs:
         run: |
           mkdir -p out
           cp android_app/bin/*-release.apk out/ODU-Tracker.apk
+
+      - name: Re-sign APK with v1 + v2 signatures
+        env:
+          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/android_app/odu-tracker-release.keystore
+          P4A_RELEASE_KEYSTORE_PASSWD: odu-tracker-2026
+          P4A_RELEASE_KEYALIAS_PASSWD: odu-tracker-2026
+          P4A_RELEASE_KEYALIAS: odu-tracker
+        run: |
+          set -euo pipefail
+          # Some OEM "install unknown apps" implementations silently refuse
+          # v2-only APKs with a bare "App not installed"; the JAR (v1)
+          # signature alongside v2 removes that class of failure.
+          APKSIGNER=$(find ~/.buildozer/android/platform/android-sdk -name apksigner | sort | tail -1)
+          echo "apksigner: $APKSIGNER"
+          "$APKSIGNER" sign \
+            --ks "$P4A_RELEASE_KEYSTORE" \
+            --ks-key-alias "$P4A_RELEASE_KEYALIAS" \
+            --ks-pass "pass:$P4A_RELEASE_KEYSTORE_PASSWD" \
+            --key-pass "pass:$P4A_RELEASE_KEYALIAS_PASSWD" \
+            --out out/ODU-Tracker-signed.apk out/ODU-Tracker.apk
+          mv out/ODU-Tracker-signed.apk out/ODU-Tracker.apk
+
+      - name: Verify APK (ELF 16 KB + signatures + structure)
+        run: |
+          set -euo pipefail
+          python3 tools/verify_apk.py out/ODU-Tracker.apk
+          APKSIGNER=$(find ~/.buildozer/android/platform/android-sdk -name apksigner | sort | tail -1)
+          "$APKSIGNER" verify --verbose out/ODU-Tracker.apk
 
       - uses: actions/upload-artifact@v4
         with:
