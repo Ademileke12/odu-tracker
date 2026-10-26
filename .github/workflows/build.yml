@@ -137,12 +137,16 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: rel
+          path: in
 
       - name: Flatten artifacts
         run: |
+          # download-artifact@v4 puts each artifact in its own folder under
+          # `in/` — keep the extract dir separate from the upload dir, or the
+          # deb/apk (whose artifact names equal the asset names) can never be
+          # copied out (cp refuses "cannot overwrite directory").
           mkdir -p rel
-          find rel -type f \( -name "*.apk" -o -name "*.deb" -o -name "*.exe" \) \
+          find in -type f \( -name "*.apk" -o -name "*.deb" -o -name "*.exe" \) \
             -exec cp {} rel/ \;
           ls -la rel/
 
