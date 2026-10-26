@@ -7,8 +7,8 @@ REM  Run from the project root on a Windows machine:
 REM     packaging\windows\build-electron.bat
 REM
 REM  Output:
-REM     dist\electron\ODU-Tracker-Setup-<version>.exe   (installer)
-REM     dist\electron\ODU-Tracker-Portable-<version>.exe
+REM     dist\electron\ODU-Tracker-Setup.exe     (installer)
+REM     dist\electron\ODU-Tracker-Portable.exe
 REM ============================================================
 setlocal
 cd /d "%~dp0..\.."
@@ -49,4 +49,5 @@ popd
 
 echo.
 echo == done. artifacts:
-dir ..\..\dist\electron
+dir dist\electron
+exit /b 0
