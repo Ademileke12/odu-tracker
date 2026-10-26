@@ -35,6 +35,9 @@ The **Linux .deb** button is a direct-download mirror (file.kiwi) until a
 GitHub release exists; it's marked `data-external` in `index.html` so the
 script's fallback logic never rewrites it.
 
+The **Android APK** button is disabled with a "COMING SOON" badge until the
+first successful APK build lands in a release (CI is being fixed).
+
 Those assets are produced automatically by `.github/workflows/build.yml`
 (Windows NSIS + portable, Linux .deb, Android APK) on every push, and
 attached to a GitHub Release on every version tag. The page also fetches
