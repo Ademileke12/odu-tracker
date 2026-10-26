@@ -42,6 +42,15 @@ icon.filename = assets/icon.png
 # (switch to `all` or `landscape` if you wall-mount a tablet sideways)
 orientation = portrait
 
+# p4a 2026.5.9 (latest PyPI release) still ships the pip-install stage that
+# breaks itself on fresh runs — its `pip install -U pip` inside the build
+# venv leaves a mixed pip state and dies with
+#   ImportError: cannot import name 'BuildDependencyInstallError'
+# (kivy/python-for-android#3339 / #3364). The fixes — PR #3360 (skip the
+# venv self-upgrade) and PR #3366 (drop venv creation, custom pip) — are
+# merged on the develop branch only.
+p4a.branch = develop
+
 # (bool) Keep the screen on while the app runs (dedicated monitoring screen)
 android.wakelock = True
 
