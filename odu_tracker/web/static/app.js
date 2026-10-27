@@ -659,7 +659,34 @@ async function pollVouchers() {
     renderVoucherGate(d.gate);
     renderVoucherWps(d.wps);
     renderVoucherTable(d.vouchers || []);
+    try { renderPortal(await api("/api/dnscfg")); } catch { /* transient */ }
   } catch { /* transient */ }
+}
+
+function renderPortal(p) {
+  const el = $("#vPortal");
+  if (!p) { el.innerHTML = '<span class="tagline">not loaded</span>'; return; }
+  const parts = [];
+  parts.push(p.enforced
+    ? '<span class="badge green">ARMED</span>'
+    : '<span class="badge yellow">disarmed</span>');
+  const dns = p.bindError
+    ? `<b>DNS :${p.port}</b> <span class="badge red">${esc(p.bindError)}</span>`
+    : (p.enabled
+        ? `<b>DNS :${p.port}</b> <span class="badge green">up</span>`
+        : `<b>DNS :${p.port}</b> <span class="tagline">off</span>`);
+  parts.push(dns);
+  const pt = p.portal || {};
+  parts.push(pt.error
+    ? `<b>portal :${pt.port}</b> <span class="badge red">${esc(pt.error)}</span>`
+    : (pt.running
+        ? `<b>portal :${pt.port}</b> <span class="badge green">up</span>`
+        : '<span class="tagline">portal down</span>'));
+  if (p.myIp) parts.push(`<span class="tagline">this PC ${esc(p.myIp)}</span>`);
+  if (p.hijacked) parts.push(`<span class="tagline">${p.hijacked} hijacked</span>`);
+  if (!p.dns_pointed_at_app)
+    parts.push('<span class="badge yellow">router DNS not pointing here</span>');
+  el.innerHTML = parts.join(" &nbsp; ");
 }
 
 function renderVoucherWps(w) {
@@ -720,6 +747,27 @@ $("#btnVCapOn").addEventListener("click", () =>
     voucherAction("/api/voucher/pool", {enable: true}, "Enable cap")));
 $("#btnVCapOff").addEventListener("click", () =>
   voucherAction("/api/voucher/pool", {enable: false}, "Disable cap"));
+
+async function portalAction(path, body, label) {
+  const out = $("#vPortalOut");
+  out.hidden = false;
+  out.textContent = label + ": sending…";
+  try {
+    const d = await api(path, body ? {method: "POST", body: JSON.stringify(body)} : {method: "POST"});
+    out.textContent = label + ": " + JSON.stringify(d);
+    toast(label + " OK");
+  } catch (err) {
+    out.textContent = label + " FAILED: " + err.message;
+    toast(label + " failed: " + err.message);
+  }
+  pollVouchers();
+}
+$("#btnPortalOn").addEventListener("click", () =>
+  armConfirm($("#btnPortalOn"), "Sure? unclaimed devices lose internet",
+    "Arm portal", () =>
+      portalAction("/api/portal/enforce", {enabled: true}, "Arm portal")));
+$("#btnPortalOff").addEventListener("click", () =>
+  portalAction("/api/portal/enforce", {enabled: false}, "Disarm portal"));
 
 function renderVoucherPool(p) {
   $("#vpPurchased").textContent = fmtGB(p.purchased_mb);

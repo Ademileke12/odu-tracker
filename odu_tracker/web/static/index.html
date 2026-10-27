@@ -347,6 +347,19 @@
         </div>
 
         <div class="card" style="margin-top:16px">
+          <div class="card-head"><h3>Captive portal</h3><span class="tagline">DNS hijack: devices with no active voucher get the claim page instead of the internet</span></div>
+          <div class="st-row" style="align-items:flex-end">
+            <div style="flex:1;min-width:180px">
+              <label class="kpi-label" style="display:block;margin-bottom:6px">Portal state</label>
+              <div id="vPortal" class="empty">loading…</div>
+            </div>
+            <button class="btn primary" id="btnPortalOn">Arm portal</button>
+            <button class="btn" id="btnPortalOff">Disarm</button>
+          </div>
+          <div id="vPortalOut" class="chart-note" style="margin-top:12px" hidden></div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
           <div class="card-head"><h3>Wi-Fi gate</h3><span class="tagline">cmd 278 deny list per band — wired clients bypass this</span></div>
           <div id="vGate" class="empty">loading…</div>
         </div>

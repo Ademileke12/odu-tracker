@@ -93,8 +93,10 @@ DEFAULTS = {
     "poll_interval": 15,           # seconds between fast polls
     "slow_interval": 300,          # seconds between slow polls (topology/logs)
     "dns_proxy_enabled": False,
-    "dns_proxy_port": 5353,
+    "dns_proxy_port": 53,            # real LAN DNS interception (was 5353)
     "dns_upstream": "8.8.8.8",
+    "portal_port": 80,               # captive-portal claim page
+    "portal_enforced": False,        # hijack only when the admin arms it
     "nickname": "",                # friendly name for this machine's owner, unused now
 }
 
@@ -104,7 +106,12 @@ class Config:
 
     def __init__(self):
         self._cfg = DEFAULTS.copy()
-        self._cfg.update(_load_config_file())
+        loaded = _load_config_file()
+        # migrate: DNS moved 5353 -> 53 (real interception); an explicitly
+        # stored 5353 is the old default, not a user choice.
+        if int(loaded.get("dns_proxy_port") or 0) == 5353:
+            loaded["dns_proxy_port"] = 53
+        self._cfg.update(loaded)
         self._cfg.setdefault("setup_done", False)
 
     # -- generic keys ------------------------------------------------------

@@ -14,8 +14,8 @@ from flask import Flask, jsonify, request, session, send_from_directory
 
 from odu_tracker import store
 from odu_tracker.config import Config
-from odu_tracker.dns_proxy import start_proxy
 from odu_tracker import dns_proxy as _dp
+from odu_tracker import portal as _portal
 from odu_tracker.poller import Poller
 from odu_tracker.router import OduRouter, RouterError, LoginLocked
 from odu_tracker.security import normalize_mac
@@ -487,17 +487,50 @@ def create_app(cfg: Config, poller: Poller):
             return 0.0
 
     # ------------------------------------------------ router DNS for sites
-    @app.get("/api/dnscfg")
-    @require_auth
-    def dnscfg_get():
+    def _my_ip():
         import socket as _s
         try:
             s = _s.socket(_s.AF_INET, _s.SOCK_DGRAM)
             s.connect(("8.8.8.8", 53))
-            my_ip = s.getsockname()[0]
+            ip = s.getsockname()[0]
             s.close()
+            return ip
         except OSError:
-            my_ip = None
+            return None
+
+    def start_dns_stack():
+        """Start DNS proxy (+ captive portal) with the current config.
+
+        Hijack (captive portal) is controlled by portal_enforced: when off,
+        every client is answered normally (pure logging mode); when on, only
+        devices without an active voucher claim get the claim page (see
+        voucher.deny_checker). The predicate reads cfg live, so toggling
+        enforcement needs no proxy restart.
+        """
+        my_ip = _my_ip()
+        base_deny = voucher.deny_checker(
+            exempt_ips=(my_ip, cfg.get("router_ip")))
+        enforced = lambda: bool(cfg.get("portal_enforced"))
+        _portal.start_portal(cfg, poller)     # claim page UP BEFORE hijack starts
+
+        def deny(ip):
+            # Fail open: never hijack unless the claim page is actually
+            # reachable — a blocked device pointed at a dead portal would
+            # have NO way to recover (see voucher.deny_checker fail-open).
+            if not enforced():
+                return False
+            st = _portal.status()
+            if not st.get("running"):
+                return False
+            return base_deny(ip)
+
+        proxy = _dp.start_proxy(cfg, deny=deny, portal_ip=my_ip)
+        return proxy, my_ip
+
+    @app.get("/api/dnscfg")
+    @require_auth
+    def dnscfg_get():
+        my_ip = _my_ip()
         from odu_tracker.dns_proxy import _singleton
         raw = store.q("SELECT body FROM raw_cache WHERE name='fast'", fetch="one")
         dhcp = {}
@@ -506,15 +539,37 @@ def create_app(cfg: Config, poller: Poller):
                 dhcp = (json.loads(raw["body"]).get("dhcp_data") or {})
             except (json.JSONDecodeError, AttributeError):
                 dhcp = {}
+        dp = _dp._singleton
         return jsonify({
-            "enabled": bool(_dp._singleton and _dp._singleton.is_alive()),
+            "enabled": bool(dp and dp.is_alive()),
             "port": cfg.get("dns_proxy_port"),
             "upstream": cfg.get("dns_upstream"),
             "myIp": my_ip,
+            "bindError": (dp.error if dp and dp.error else None),
+            "hijacked": (dp.hijacked if dp else 0),
+            "enforced": bool(cfg.get("portal_enforced")),
+            "portal": _portal.status(),
             "router_dns_main": dhcp.get("main_dns") or "",
             "router_dns_vice": dhcp.get("vice_dns") or "",
             "dns_pointed_at_app": (my_ip and dhcp.get("main_dns") == my_ip),
         })
+
+    @app.post("/api/portal/enforce")
+    @require_auth
+    def portal_enforce():
+        """Arm/disarm the captive portal (DNS hijack for unclaimed devices)."""
+        enabled = bool((request.json or {}).get("enabled", True))
+        cfg.set("portal_enforced", enabled)
+        if enabled:
+            proxy, my_ip = start_dns_stack()   # brings up DNS + claim page
+            store.add_alert("warning", "Portal enforcement ON",
+                            "unclaimed devices now get the voucher claim page")
+            return jsonify({"ok": True, "enabled": True,
+                            "dns_error": proxy.error, "myIp": my_ip,
+                            "portal": _portal.status()})
+        store.add_alert("info", "Portal enforcement OFF",
+                        "DNS answers normal again for all devices")
+        return jsonify({"ok": True, "enabled": False})
 
     @app.post("/api/dnscfg")
     @require_auth
@@ -522,9 +577,11 @@ def create_app(cfg: Config, poller: Poller):
         enabled = bool((request.json or {}).get("enabled"))
         cfg.set("dns_proxy_enabled", enabled)
         if enabled:
-            start_proxy(cfg)
-            port = cfg.get("dns_proxy_port")
-            return jsonify({"ok": True, "enabled": True, "port": port})
+            proxy, my_ip = start_dns_stack()
+            return jsonify({"ok": True, "enabled": True,
+                            "port": cfg.get("dns_proxy_port"),
+                            "bindError": proxy.error, "myIp": my_ip,
+                            "portal": _portal.status()})
         if _dp._singleton:
             _dp._singleton.stop()
         return jsonify({"ok": True, "enabled": False})
@@ -546,7 +603,7 @@ def create_app(cfg: Config, poller: Poller):
             return jsonify({"ok": False, "error": "cannot determine this PC's IP"}), 500
         if mode == "app":
             if cur.get("main_dns") == my_ip:
-                start_proxy(cfg)
+                start_dns_stack()
                 return jsonify({"ok": True, "mode": mode,
                                 "message": f"router DNS already points at {my_ip}"})
             # remember the pre-change values so "restore" is faithful
@@ -575,7 +632,7 @@ def create_app(cfg: Config, poller: Poller):
         }
         resp = poller.router.cmd(3, "POST", payload)
         if mode == "app":
-            start_proxy(cfg)
+            start_dns_stack()
         ok = bool(resp.get("success", bool(resp.get("message") is None)))
         store.add_alert("info" if ok else "warning", "Router DNS updated"
                         if ok else "Router DNS change failed", note)
@@ -697,5 +754,16 @@ def create_app(cfg: Config, poller: Poller):
                    (store.now(), "voucher_wps", "warning",
                     "WPS off: " + json.dumps(res)))
         return jsonify(res), 200 if all(r.get("ok") for r in res.values()) else 502
+
+    # ------------------------------------ auto-start the DNS/portal stack
+    # Restarting the app must not silently leave the LAN un-monitored (or,
+    # with enforcement armed, un-enforced): restore whatever was running.
+    if cfg.get("dns_proxy_enabled") or cfg.get("portal_enforced"):
+        cfg.set("dns_proxy_enabled", True, persist=False)  # portal needs DNS
+        try:
+            start_dns_stack()
+        except Exception as exc:
+            store.add_alert("warning", "DNS stack auto-start failed",
+                            str(exc)[:200])
 
     return app

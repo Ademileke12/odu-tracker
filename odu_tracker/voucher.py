@@ -505,6 +505,88 @@ def wps_off(router) -> dict:
 
 
 # ------------------------------------------------------- device resolution
+# ---------------------------------------------- portal deny policy (DNS path)
+# The DNS proxy calls this on EVERY query, so it must be purely local:
+# no router HTTP (1.3 s pacing) — devices.last_ip (poller, ~15 s fresh) plus
+# the kernel ARP table. Fail-open on unresolvable MACs: a device we cannot
+# identify yet simply is not hijacked (it gets caught on a later query once
+# the poller or ARP has its MAC), so an unresolvable state can never black-
+# hole a paying customer.
+_deny_cache = {"ts": 0.0, "macs": None}      # active-claim MAC set, 5 s TTL
+_ip_cache = {}                                # ip -> (mac|None, ts), 30 s TTL
+
+
+def active_claim_macs(ttl: float = 5.0) -> set:
+    """MACs holding a claim on a non-revoked voucher. Small TTL so a fresh
+    portal claim stops being hijacked within seconds."""
+    now = time.time()
+    if _deny_cache["macs"] is not None and now - _deny_cache["ts"] < ttl:
+        return _deny_cache["macs"]
+    rows = store.q("SELECT c.mac FROM voucher_claims c "
+                   "JOIN vouchers v ON v.code=c.code WHERE v.revoked=0")
+    macs = {normalize_mac(r["mac"]) for r in rows} - {None, ""}
+    _deny_cache["macs"] = macs
+    _deny_cache["ts"] = now
+    return macs
+
+
+def invalidate_deny_cache():
+    """Call after a claim so the device passes immediately."""
+    _deny_cache["macs"] = None
+    _deny_cache["ts"] = 0.0
+    _ip_cache.clear()
+
+
+def mac_for_ip_local(ip: str, ttl: float = 30.0) -> str:
+    """Fast offline ip -> mac (devices cache, then ARP table). None-cached."""
+    now = time.time()
+    hit = _ip_cache.get(ip)
+    if hit and now - hit[1] < ttl:
+        return hit[0]
+    mac = None
+    try:
+        r = store.q("SELECT mac FROM devices WHERE last_ip=? "
+                    "ORDER BY last_seen DESC LIMIT 1", (ip,), fetch="one")
+        if r:
+            mac = normalize_mac(r["mac"])
+    except Exception:
+        pass
+    if not mac:
+        try:
+            with open("/proc/net/arp") as f:
+                next(f, None)
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 4 and parts[0] == ip and parts[2] == "0x2":
+                        mac = normalize_mac(parts[3])
+                        if mac:
+                            break
+        except OSError:
+            pass
+    _ip_cache[ip] = (mac, now)
+    if len(_ip_cache) > 2048:                 # bounded
+        _ip_cache.clear()
+    return mac
+
+
+def deny_checker(exempt_ips=()):
+    """Build the predicate the DNS proxy uses: True = hijack this client.
+
+    Denied = resolvable device with NO active voucher claim.
+    Exempt: the portal host itself and the router (never hijack infra).
+    """
+    exempt = {str(x) for x in exempt_ips if x}
+
+    def deny(ip: str) -> bool:
+        if not ip or ip in exempt or ip.startswith("127."):
+            return False
+        mac = mac_for_ip_local(ip)
+        if not mac:
+            return False                    # unknown -> fail open (see above)
+        return mac not in active_claim_macs()
+    return deny
+
+
 def mac_for_ip(router, ip: str) -> str:
     """Live DHCP table lookup (cmd 223) for the claimant's MAC."""
     if not ip:
