@@ -657,9 +657,69 @@ async function pollVouchers() {
     const d = await api("/api/vouchers?gate=1");
     renderVoucherPool(d.pool || {});
     renderVoucherGate(d.gate);
+    renderVoucherWps(d.wps);
     renderVoucherTable(d.vouchers || []);
   } catch { /* transient */ }
 }
+
+function renderVoucherWps(w) {
+  const el = $("#vWps");
+  if (!w) { el.innerHTML = '<span class="tagline">not loaded</span>'; return; }
+  const parts = ["2.4g", "5g"].map(b => {
+    const s = w[b] || {};
+    if (s.error) return `<b>${b}</b> error: ${esc(s.error)}`;
+    return `<b>${b}</b> ` + (s.on
+      ? '<span class="badge yellow">ON — gate not enforced</span>'
+      : '<span class="badge green">off</span>');
+  });
+  el.innerHTML = parts.join(" &nbsp; ");
+}
+
+async function voucherAction(path, body, label) {
+  const out = $("#vEnfOut");
+  out.hidden = false;
+  out.textContent = label + ": sending…";
+  try {
+    const d = await api(path, body ? {method: "POST", body: JSON.stringify(body)} : {method: "POST"});
+    out.textContent = label + ": " + JSON.stringify(d);
+    toast(label + " OK");
+  } catch (err) {
+    out.textContent = label + " FAILED: " + err.message;
+    toast(label + " failed: " + err.message);
+  }
+  pollVouchers();
+}
+
+$("#btnVWps").addEventListener("click", () =>
+  voucherAction("/api/voucher/wps", null, "WPS off"));
+// Two-step arm/confirm: JS confirm() is unreliable on Android WebView
+// (may return false/undefined without showing anything), so the button
+// itself arms first and executes on a second click within 4 s.
+function armConfirm(btn, armLabel, execLabel, fn) {
+  if (btn.dataset.armed === "1") {
+    btn.dataset.armed = "";
+    btn.textContent = execLabel;
+    btn.classList.remove("danger");
+    fn();
+    return;
+  }
+  btn.dataset.armed = "1";
+  btn.textContent = armLabel;
+  btn.classList.add("danger");
+  setTimeout(() => {
+    if (btn.dataset.armed === "1") {
+      btn.dataset.armed = "";
+      btn.textContent = execLabel;
+      btn.classList.remove("danger");
+    }
+  }, 4000);
+}
+
+$("#btnVCapOn").addEventListener("click", () =>
+  armConfirm($("#btnVCapOn"), "Sure? cuts everyone at 0", "Enable data cap", () =>
+    voucherAction("/api/voucher/pool", {enable: true}, "Enable cap")));
+$("#btnVCapOff").addEventListener("click", () =>
+  voucherAction("/api/voucher/pool", {enable: false}, "Disable cap"));
 
 function renderVoucherPool(p) {
   $("#vpPurchased").textContent = fmtGB(p.purchased_mb);
@@ -667,7 +727,7 @@ function renderVoucherPool(p) {
   $("#vpRemaining").textContent = p.remaining_mb == null ? "—" : fmtGB(p.remaining_mb);
   $("#vpRemainingSub").textContent = p.planned_limit_mb == null
     ? "redeem a code to anchor the pool"
-    : `cap ${fmtGB(p.planned_limit_mb)} (baseline ${fmtGB(p.baseline_mb)} + purchased)`;
+    : `cap ${fmtGB(p.planned_limit_mb)} = baseline ${fmtGB(p.baseline_mb)} + purchased ${fmtGB(p.purchased_mb)} + grace ${fmtGB(p.grace_mb)}`;
   const r = p.router || {};
   const cap = $("#vpCap"), capSub = $("#vpCapSub");
   if (r.error) { cap.textContent = "—"; capSub.textContent = "router: " + r.error; }

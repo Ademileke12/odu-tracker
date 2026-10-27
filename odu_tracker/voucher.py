@@ -25,10 +25,15 @@ FIRMWARE REALITY (ZLT X17U / W154R PLUS, fw 4.2.3, verified live 2026-10-27)
 POOL MODEL
 ----------
   baseline_mb  = mon_download_flow (MB this billing period) captured when the
-                 first voucher is claimed -- nothing before that counts.
+                 pool engine first reads the router -- nothing before that
+                 counts. Re-anchored automatically when the router counter
+                 goes backwards (billing-period reset).
   purchased_mb = sum of quota_mb over CLAIMED, non-revoked vouchers.
-  planned cap  = baseline_mb + purchased_mb  -> becomes cmd 337 limitSize
-                 when the pool is enabled (explicit action, not automatic).
+  grace_mb     = starter allowance (default 20 GB) so arming the cap does
+                 not instantly cut off a household with zero redemptions.
+  planned cap  = baseline_mb + purchased_mb + grace_mb
+                 -> written to cmd 337 limitSize (GB) when the pool is
+                 enabled (explicit action, not automatic).
 """
 import secrets
 import time
@@ -45,6 +50,12 @@ _ALPHABET = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LEN = 11
 
 POOL_KEY = "voucher_pool"
+
+# Starter allowance the pool carries on top of claimed vouchers, so that
+# arming the router cap (cmd 337) does not instantly cut the household off
+# when nothing has been redeemed yet. Included in the planned cap:
+#   planned = baseline + purchased + grace
+GRACE_DEFAULT_MB = 20480          # 20 GB
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS vouchers(
@@ -135,6 +146,13 @@ def purchased_mb() -> int:
     return int(r["s"] if r else 0)
 
 
+def grace_mb() -> int:
+    """Starter allowance (see GRACE_DEFAULT_MB); admin-adjustable per pool."""
+    st = _pool()
+    g = st.get("grace_mb")
+    return GRACE_DEFAULT_MB if g is None else int(g)
+
+
 # ------------------------------------------------------------ pool state
 def _pool() -> dict:
     return store.setting_get(POOL_KEY) or {}
@@ -171,12 +189,21 @@ def claim(code: str, mac: str = None, ip: str = None) -> dict:
     return {"code": code, "mac": m, "quota_mb": row["quota_mb"]}
 
 
-def pool_status(router=None) -> dict:
-    """Read-only pool view: what the router reports + our accounting."""
+def pool_status(router=None, auto_resync=True) -> dict:
+    """Read-only pool view: what the router reports + our accounting.
+
+    When the router counter goes backwards (billing-period reset) while the
+    cap is enabled, the stale limitSize would be far too generous for the new
+    period, so the cap is re-written to the fresh planned value automatically.
+    Pass auto_resync=False to suppress that write (pool_set does, to avoid
+    recursion).
+    """
     st = _pool()
     purchased = purchased_mb()
+    grace = grace_mb()
     used_total = None
     router_state = None
+    reset_detected = False
     if router is not None:
         try:
             if not router.logged_in:
@@ -194,20 +221,36 @@ def pool_status(router=None) -> dict:
                 if st.get("baseline_mb") is None and used_total is not None:
                     st["baseline_mb"] = used_total
                     _save_pool(st)
+                elif (st.get("baseline_mb") is not None
+                      and used_total is not None
+                      and used_total < st["baseline_mb"]):
+                    # billing-period reset: the router counter went backwards.
+                    # Re-anchor so the next cap write isn't anchored to last
+                    # period's usage.
+                    st["baseline_mb"] = used_total
+                    _save_pool(st)
+                    reset_detected = True
         except Exception as exc:
             router_state = {"error": str(exc)[:160]}
     baseline = st.get("baseline_mb")
-    planned_limit = (baseline + purchased) if baseline is not None else None
+    planned_limit = (baseline + purchased + grace) if baseline is not None else None
     remaining = None
     if planned_limit is not None and used_total is not None:
         remaining = planned_limit - used_total
+    if reset_detected and auto_resync and st.get("enabled"):
+        try:
+            pool_set(router, True, router_state=router_state)
+        except Exception:
+            pass
     return {
         "baseline_mb": baseline,
         "purchased_mb": purchased,
+        "grace_mb": grace,
         "used_total_mb": used_total,
         "planned_limit_mb": planned_limit,
         "remaining_mb": remaining,
         "enabled": bool(st.get("enabled")),
+        "reset_detected": reset_detected,
         "router": router_state,
     }
 
@@ -228,8 +271,28 @@ def gate_read(router, subcmd: str):
     return mode, macs
 
 
+def _write_ok(resp) -> bool:
+    """Success shapes seen on this firmware: cmd 278/337 -> success:true with
+    message "" (some builds answer message "Succeed!"); cmd 132 -> "0"."""
+    if not isinstance(resp, dict):
+        return False
+    if resp.get("message") == "0":                       # cmd 132 shape
+        return True
+    if resp.get("message") == "Succeed!":                # cmd 337 shape
+        return True
+    return resp.get("success") in (True, "1") and \
+        resp.get("message", "") == ""
+
+
 def _post_checked(router, cmd: int, payload: dict) -> dict:
-    """POST with the CSRF dance proven against this firmware (see module doc)."""
+    """POST with the CSRF dance proven against this firmware (see module doc).
+
+    A write that times out at the HTTP layer may still have been APPLIED
+    (seen live with cmd 132: the radio stack restarts and the response never
+    arrives). In that case return {"applied_unknown": True} instead of
+    raising, so callers verify by read-back rather than retry a write that
+    already landed.
+    """
     token = ""
     try:
         token = router.cmd(233, "GET").get("token") or ""
@@ -238,9 +301,12 @@ def _post_checked(router, cmd: int, payload: dict) -> dict:
     body = dict(payload)
     if token:
         body["token"] = token
-    resp = router.cmd(cmd, "POST", extra=body)
+    try:
+        resp = router.cmd(cmd, "POST", extra=body)
+    except Exception as exc:
+        return {"applied_unknown": True, "error": str(exc)[:160]}
     if isinstance(resp, dict) and resp.get("message") == "Invalid CSRF Token":
-        # fallback: token echoed by this command's own GET response
+        # fallback 1: token echoed by this command's own GET response
         extra = {"subcmd": payload["subcmd"]} if "subcmd" in payload else None
         try:
             echo = router.cmd(cmd, "GET", extra=extra)
@@ -249,13 +315,25 @@ def _post_checked(router, cmd: int, payload: dict) -> dict:
             token2 = ""
         if token2:
             body = dict(payload, token=token2)
-            resp = router.cmd(cmd, "POST", extra=body)
+            try:
+                resp = router.cmd(cmd, "POST", extra=body)
+            except Exception as exc:
+                return {"applied_unknown": True, "error": str(exc)[:160]}
+        # fallback 2: a fresh login mints a fresh single-use token
+        if (isinstance(resp, dict)
+                and resp.get("message") == "Invalid CSRF Token"):
+            try:
+                router.login()
+                token3 = router.cmd(233, "GET").get("token") or ""
+            except Exception:
+                token3 = ""
+            if token3:
+                body = dict(payload, token=token3)
+                try:
+                    resp = router.cmd(cmd, "POST", extra=body)
+                except Exception as exc:
+                    return {"applied_unknown": True, "error": str(exc)[:160]}
     return resp
-
-
-def _write_ok(resp) -> bool:
-    return (isinstance(resp, dict) and resp.get("success") in (True, "1")
-            and resp.get("message", "") == "")
 
 
 def gate_write(router, subcmd: str, macs: list, mode: str) -> dict:
@@ -326,6 +404,103 @@ def gate_status(router) -> dict:
             out[band] = {"mode": mode, "macs": macs}
         except Exception as exc:
             out[band] = {"error": str(exc)[:160]}
+    return out
+
+
+# ------------------------------------------------- pool cap (cmd 337)
+def pool_set(router, enable: bool, router_state: dict = None) -> dict:
+    """Write the SIM data cap into cmd 337 (setFlow).
+
+    enable=True  -> limitSwitch "1", limitSize = planned cap in GB
+                    (baseline + purchased + grace; see module doc).
+    enable=False -> limitSwitch "0", limitSize untouched.
+
+    limitSize is in GB when flow_limit_unit is "1" (MB="0", TB="2") — the
+    firmware computes remaining = limitSize * 1024^unit − mon_download_flow(MB).
+    """
+    st = _pool()
+    status = pool_status(router, auto_resync=False)
+    planned_mb = status.get("planned_limit_mb")
+    if enable and planned_mb is None:
+        return {"ok": False, "error": "no pool baseline yet (no router reading)"}
+    current = router_state or status.get("router") or {}
+    payload = {
+        "limitSwitch": "1" if enable else "0",
+        "limitSize": str(current.get("limitSize") or "0"),
+        "startDate": str(current.get("startDate") or "1"),
+        "flow_limit_unit": str(current.get("flow_limit_unit") or "1"),
+    }
+    if enable:
+        payload["limitSize"] = f"{planned_mb / 1024:.2f}"      # MB -> GB
+    resp = _post_checked(router, 337, payload)
+    ok = _write_ok(resp)
+    applied_unknown = isinstance(resp, dict) and resp.get("applied_unknown")
+    # always verify by read-back (a timed-out write may still have landed)
+    back = {}
+    if ok or applied_unknown:
+        try:
+            time.sleep(2.0)
+            back = router.cmd(337, "GET") or {}
+        except Exception:
+            pass
+    verified = (str(back.get("limitSwitch")) == payload["limitSwitch"]
+                and (not enable
+                     or str(back.get("limitSize")) == payload["limitSize"]))
+    ok = ok or verified
+    if ok:
+        st["enabled"] = bool(enable)
+        st["cap_limit_mb"] = planned_mb if enable else None
+        _save_pool(st)
+    return {"ok": ok,
+            "limitSwitch": payload["limitSwitch"],
+            "limitSize": payload["limitSize"],
+            "verified": verified,
+            "message": (resp or {}).get("message", "") if isinstance(resp, dict)
+            else str(resp)[:120]}
+
+
+# ------------------------------------------------------- WPS off (cmd 132)
+# The firmware disables the cmd 278 Wi-Fi filter while WPS/MESH are on
+# (its own UI warns about this). Enforcement requires WPS off on both bands.
+WPS_BANDS = {"2.4g": (0, "wlan2g_wps_switch"), "5g": (1, "wlan5g_wps_switch")}
+
+
+def wps_status(router) -> dict:
+    out = {}
+    for band, (sub, key) in WPS_BANDS.items():
+        try:
+            resp = router.cmd(132, "GET", extra={"subcmd": sub})
+            out[band] = {"on": str(resp.get(key, "")) == "1"}
+        except Exception as exc:
+            out[band] = {"error": str(exc)[:160]}
+    return out
+
+
+def wps_off(router) -> dict:
+    """Turn WPS off on both bands (cmd 132). Success shape: message "0".
+
+    A POST timeout is not failure here — seen live, applying the change can
+    drop the HTTP response — so the result is always decided by read-back.
+    """
+    out = {}
+    for band, (sub, key) in WPS_BANDS.items():
+        payload = {key: "0", "subcmd": sub}
+        resp = _post_checked(router, 132, payload)
+        ok = _write_ok(resp)
+        applied_unknown = isinstance(resp, dict) and resp.get("applied_unknown")
+        # always verify by read-back
+        on = None
+        try:
+            time.sleep(3.0 if (ok or applied_unknown) else 1.0)
+            back = router.cmd(132, "GET", extra={"subcmd": sub})
+            on = str(back.get(key, "")) == "1"
+        except Exception:
+            pass
+        verified_off = (on is False)
+        out[band] = {"ok": ok or verified_off, "verified_off": verified_off,
+                     "still_on": on,
+                     "message": (resp or {}).get("message", "") if isinstance(resp, dict)
+                     else str(resp)[:120]}
     return out
 
 

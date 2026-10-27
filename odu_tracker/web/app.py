@@ -614,6 +614,7 @@ def create_app(cfg: Config, poller: Poller):
         }
         if request.args.get("gate") and getattr(poller, "router", None):
             out["gate"] = voucher.gate_status(poller.router)
+            out["wps"] = voucher.wps_status(poller.router)
         return jsonify(out)
 
     @app.post("/api/vouchers")
@@ -667,5 +668,34 @@ def create_app(cfg: Config, poller: Poller):
                 gate = {"ok": False, "error": str(exc)}
         return jsonify({"ok": True, "claim": res, "gate": gate,
                         "pool": voucher.pool_status(poller.router)})
+
+    @app.post("/api/voucher/pool")
+    @require_auth
+    def voucher_pool_toggle():
+        """Arm/disarm the SIM data cap on the router (cmd 337)."""
+        body = request.json or {}
+        enable = bool(body.get("enable", True))
+        if not getattr(poller, "router", None):
+            return jsonify({"error": "router not logged in"}), 503
+        res = voucher.pool_set(poller.router, enable)
+        store.exec("INSERT INTO events(ts, kind, level, detail) VALUES(?,?,?,?)",
+                   (store.now(), "voucher_pool", "warning" if enable else "info",
+                    f"cap {'ON' if enable else 'OFF'} "
+                    f"limitSize={res.get('limitSize', '?')} "
+                    f"({res.get('message', '')})"))
+        return jsonify(res), 200 if res.get("ok") else 502
+
+    @app.post("/api/voucher/wps")
+    @require_auth
+    def voucher_wps_off():
+        """Turn WPS off on both bands (cmd 132) — required for the cmd 278
+        gate to be enforced by the firmware."""
+        if not getattr(poller, "router", None):
+            return jsonify({"error": "router not logged in"}), 503
+        res = voucher.wps_off(poller.router)
+        store.exec("INSERT INTO events(ts, kind, level, detail) VALUES(?,?,?,?)",
+                   (store.now(), "voucher_wps", "warning",
+                    "WPS off: " + json.dumps(res)))
+        return jsonify(res), 200 if all(r.get("ok") for r in res.values()) else 502
 
     return app
