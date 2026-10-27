@@ -19,6 +19,7 @@ from odu_tracker import dns_proxy as _dp
 from odu_tracker.poller import Poller
 from odu_tracker.router import OduRouter, RouterError, LoginLocked
 from odu_tracker.security import normalize_mac
+from odu_tracker import voucher
 import os
 
 def _resolve_static_dir():
@@ -50,6 +51,7 @@ def create_app(cfg: Config, poller: Poller):
     )
     from odu_tracker.speedtest import SpeedTestRunner
     runner = SpeedTestRunner()
+    voucher.init()          # voucher/claim tables (idempotent)
 
     # ------------------------------------------------------------------ ui
     @app.route("/")
@@ -301,22 +303,18 @@ def create_app(cfg: Config, poller: Poller):
         return jsonify(result)
 
     def _toggle_mac_filter(mac, block: bool):
-        """Push the MAC exclusion into the router's access-control list."""
+        """Push the MAC exclusion into the router's Wi-Fi gate (cmd 278).
+
+        Replaces the old cmd-23 path, which used wrong response shapes
+        (`data.datas` instead of top-level `datas`) and sent no CSRF token —
+        it could never succeed on this firmware. cmd 278 was proven live
+        2026-10-27 (write -> read-back -> restore). Note: cmd 278 covers Wi-Fi
+        only; wired clients bypass it.
+        """
         try:
-            mode = poller.router.cmd(28, "GET")          # getIPFilterMode
-            lists = poller.router.cmd(23, "GET")         # getMACData
-            datas = lists.get("data", {}).get("datas") or []
-            if isinstance(datas, dict):
-                datas = [datas]
-            entry = {"mac": mac, "ippro": "IPV4"}
             if block:
-                entry.update({"enableRule": True, "protocol": "All", "remark": "placed by odu-tracker"})
-                datas.append(entry)
-            else:
-                datas = [d for d in datas if normalize_mac(str(d.get("mac", ""))) != mac]
-            set1 = poller.router.cmd(23, "POST", {"datas": datas})    # setMACData
-            apply = poller.router.cmd(20, "POST", {})                  # applyFileter
-            return {"ok": True, "set": set1.get("message", ""), "apply": apply.get("message", "")}
+                return voucher.gate_deny(poller.router, mac)
+            return voucher.gate_allow(poller.router, mac)
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
@@ -605,5 +603,69 @@ def create_app(cfg: Config, poller: Poller):
     def rates():
         minutes = max(5, min(120, int(request.args.get("minutes", 30))))
         return jsonify({"series": poller.rate_series(window_s=minutes * 60)})
+
+    # ----------------------------------------------------------- vouchers
+    @app.get("/api/vouchers")
+    @require_auth
+    def vouchers_list():
+        out = {
+            "vouchers": voucher.list_vouchers(),
+            "pool": voucher.pool_status(getattr(poller, "router", None)),
+        }
+        if request.args.get("gate") and getattr(poller, "router", None):
+            out["gate"] = voucher.gate_status(poller.router)
+        return jsonify(out)
+
+    @app.post("/api/vouchers")
+    @require_auth
+    def vouchers_create():
+        body = request.json or {}
+        try:
+            count = max(1, min(50, int(body.get("count", 1))))
+            quota_gb = float(body.get("quota_gb", 20))
+            if quota_gb <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({"error": "bad count/quota_gb"}), 400
+        quota_mb = int(round(quota_gb * 1024))
+        codes = voucher.generate(count, quota_mb, str(body.get("note") or ""))
+        store.exec("INSERT INTO events(ts, kind, level, detail) VALUES(?,?,?,?)",
+                   (store.now(), "voucher_generate", "info",
+                    f"{len(codes)} x {quota_gb:g}GB"))
+        return jsonify({"codes": codes, "quota_mb": quota_mb})
+
+    @app.post("/api/vouchers/<code>/revoke")
+    @require_auth
+    def vouchers_revoke(code):
+        ok = voucher.revoke(code)
+        if ok:
+            store.exec("INSERT INTO events(ts, kind, level, detail) "
+                       "VALUES(?,?,?,?)",
+                       (store.now(), "voucher_revoke", "warning",
+                        f"code={code}"))
+        return jsonify({"ok": ok})
+
+    @app.post("/api/voucher/claim")
+    @require_auth
+    def voucher_claim():
+        body = request.json or {}
+        code = str(body.get("code") or "").strip()
+        mac = body.get("mac") or None
+        ip = request.remote_addr or ""
+        if not mac:
+            mac = voucher.mac_for_ip(poller.router, ip)
+        try:
+            res = voucher.claim(code, mac=mac, ip=ip)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        # a claimed device must not stay gated out (grace-deny cleanup)
+        gate = {}
+        if getattr(poller, "router", None):
+            try:
+                gate = voucher.gate_allow(poller.router, res["mac"])
+            except Exception as exc:
+                gate = {"ok": False, "error": str(exc)}
+        return jsonify({"ok": True, "claim": res, "gate": gate,
+                        "pool": voucher.pool_status(poller.router)})
 
     return app

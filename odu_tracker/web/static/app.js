@@ -420,6 +420,7 @@ function go(tab) {
     dashboard: ["Dashboard", "Live view of your ODU"],
     devices:   ["Devices", "Every device this ODU has seen"],
     websites:  ["Websites", "Per-device browsing activity (DNS log)"],
+    vouchers:  ["Vouchers", "Codes, shared data pool & device gating"],
     speed:     ["Speed test", "Real throughput over your MTN line"],
     alerts:    ["Alerts", "New devices, blocks and router events"],
     settings:  ["Settings", "Counter resets, DNS log, raw data"],
@@ -432,6 +433,7 @@ function go(tab) {
 function loadTab(tab) {
   if (tab === "devices") pollDevices();
   if (tab === "websites") { pollSites(); pollDnscfg(); }
+  if (tab === "vouchers") pollVouchers();
   if (tab === "speed") { pollSpeed(); pollAlertBadge(); }
   if (tab === "alerts") pollAlerts();
   if (tab === "settings") { pollDnscfg(); renderResetNote(); }
@@ -447,6 +449,7 @@ function startTimers() {
   every(20000, pollUsage, "usage");
   every(30000, pollDevices, "devices");
   every(30000, pollSites, "sites");
+  every(30000, () => { if (visibleTabIs("vouchers")) pollVouchers(); }, "vouchers");
   every(20000, pollAlertBadge, "alerts");
   every(5000, () => { if (visibleTabIs("dashboard")) pollRates(); }, "rates");
   every(5000, () => { if (speedRunning()) pollSpeed(true); }, "speed");
@@ -631,6 +634,128 @@ document.addEventListener("click", async e => {
       toast(dev && dev.blocked ? "Device unblocked on router" : "Device blocked on router ⛔");
     }
     pollDevices();
+  } catch (err) { toast("Failed: " + err.message); }
+});
+
+/* ---------------------------------------------------------------- vouchers */
+function fillClaimDevices() {
+  const sel = $("#vClaimDev");
+  if (!sel) return;
+  const keep = sel.value;
+  const devs = S.devices || [];
+  sel.innerHTML = '<option value="">auto (this device)</option>' +
+    devs.map(x => `<option value="${esc(x.mac)}">${esc(x.last_hostname || x.mac)} · ${esc(x.last_ip || "")}</option>`).join("");
+  if (keep) sel.value = keep;
+}
+
+async function pollVouchers() {
+  try {
+    if (!S.devices) {
+      try { const dd = await api("/api/devices"); S.devices = dd.devices || []; } catch { /* transient */ }
+    }
+    fillClaimDevices();
+    const d = await api("/api/vouchers?gate=1");
+    renderVoucherPool(d.pool || {});
+    renderVoucherGate(d.gate);
+    renderVoucherTable(d.vouchers || []);
+  } catch { /* transient */ }
+}
+
+function renderVoucherPool(p) {
+  $("#vpPurchased").textContent = fmtGB(p.purchased_mb);
+  $("#vpUsed").textContent = fmtGB(p.used_total_mb);
+  $("#vpRemaining").textContent = p.remaining_mb == null ? "—" : fmtGB(p.remaining_mb);
+  $("#vpRemainingSub").textContent = p.planned_limit_mb == null
+    ? "redeem a code to anchor the pool"
+    : `cap ${fmtGB(p.planned_limit_mb)} (baseline ${fmtGB(p.baseline_mb)} + purchased)`;
+  const r = p.router || {};
+  const cap = $("#vpCap"), capSub = $("#vpCapSub");
+  if (r.error) { cap.textContent = "—"; capSub.textContent = "router: " + r.error; }
+  else if (r.limitSwitch == null) { cap.textContent = "—"; capSub.textContent = "router unreachable"; }
+  else if (r.limitSwitch === "1") {
+    cap.textContent = r.limitSize;
+    capSub.textContent = `ON · unit ${r.flow_limit_unit || "?"} · billing day ${r.startDate || "?"}`;
+  } else {
+    cap.textContent = "off";
+    capSub.textContent = `limitSwitch=0 · billing day ${r.startDate || "?"}`;
+  }
+}
+
+function renderVoucherGate(g) {
+  const el = $("#vGate");
+  if (!g) { el.innerHTML = '<div class="empty">gate state not loaded</div>'; return; }
+  el.innerHTML = ["2.4g", "5g"].map(b => {
+    const s = g[b] || {};
+    if (s.error) return `<div style="margin:6px 0"><b>${b}</b> — error: ${esc(s.error)}</div>`;
+    const mode = s.mode || "close";
+    const badge = mode === "close" ? '<span class="badge gray">filter off</span>'
+      : mode === "deny" ? '<span class="badge red">deny list</span>'
+      : '<span class="badge green">allow list</span>';
+    const macs = (s.macs || []).map(m => `<span class="mono" style="font-size:.72rem">${esc(m)}</span>`).join("  ")
+      || '<span class="tagline">empty</span>';
+    return `<div style="display:flex;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap"><b style="width:44px">${b}</b>${badge} ${macs}</div>`;
+  }).join("");
+}
+
+function renderVoucherTable(list) {
+  $("#vCountTag").textContent = `${list.length} code(s)`;
+  $("#vTable tbody").innerHTML = list.map(v => {
+    const badge = v.status === "claimed" ? '<span class="badge green">claimed</span>'
+      : v.status === "revoked" ? '<span class="badge gray">revoked</span>'
+      : '<span class="badge yellow">active</span>';
+    const dev = v.mac ? `<span class="mono" style="font-size:.72rem">${esc(v.mac)}</span>` : "—";
+    const act = v.status === "active"
+      ? `<button class="btn xs danger" data-vrevoke="${esc(v.code)}">Revoke</button>` : "";
+    return `<tr>
+      <td class="mono"><b>${esc(v.code)}</b></td>
+      <td class="right">${fmtGB(v.quota_mb)}</td>
+      <td>${badge}</td>
+      <td>${dev}</td>
+      <td>${v.claimed_at ? fmtDT(v.claimed_at) : "—"}</td>
+      <td>${esc(v.note || "")}</td>
+      <td class="right">${act}</td></tr>`;
+  }).join("") || '<tr><td colspan="7"><div class="empty">no codes yet — generate some above</div></td></tr>';
+}
+
+$("#btnVGen").addEventListener("click", async () => {
+  try {
+    const d = await api("/api/vouchers", {method: "POST", body: JSON.stringify({
+      count: +$("#vCount").value || 1,
+      quota_gb: +$("#vQuota").value || 20,
+      note: $("#vNote").value})});
+    const out = $("#vCodesOut");
+    out.hidden = false;
+    out.innerHTML = `<b>${d.codes.length} code(s) · ${fmtGB(d.quota_mb)} each</b><br>` +
+      d.codes.map(c => `<span class="mono">${esc(c)}</span>`).join(" · ") +
+      ` <button class="btn xs" id="btnVCopy">Copy</button>`;
+    const copyBtn = $("#btnVCopy");
+    if (copyBtn) copyBtn.onclick = () => {
+      navigator.clipboard.writeText(d.codes.join("\n")).then(() => toast("Codes copied"));
+    };
+    toast(`Generated ${d.codes.length} code(s)`);
+    pollVouchers();
+  } catch (err) { toast("Failed: " + err.message); }
+});
+
+$("#btnVClaim").addEventListener("click", async () => {
+  const code = $("#vClaimCode").value.trim();
+  if (!code) { toast("Enter a code"); return; }
+  try {
+    const d = await api("/api/voucher/claim", {method: "POST",
+      body: JSON.stringify({code, mac: $("#vClaimDev").value || null})});
+    toast(`Redeemed → ${fmtGB(d.claim.quota_mb)} pooled for ${d.claim.mac}`);
+    $("#vClaimCode").value = "";
+    pollVouchers();
+  } catch (err) { toast("Failed: " + err.message); }
+});
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button[data-vrevoke]");
+  if (!b) return;
+  try {
+    await api(`/api/vouchers/${b.dataset.vrevoke}/revoke`, {method: "POST"});
+    toast("Code revoked");
+    pollVouchers();
   } catch (err) { toast("Failed: " + err.message); }
 });
 
