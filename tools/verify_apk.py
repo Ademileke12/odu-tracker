@@ -22,13 +22,21 @@ Verifies, with only unzip-grade tooling (zipfile + readelf):
        - v1 JAR signature files present (META-INF/CERT.SF + *.RSA) —
          some OEM "install unknown apps" impls silently refuse v2-only APKs
          with a bare "App not installed"
+  4. App payload (assets/private.tar):
+       - entry point + kivy shell + android_app/diagnostics (on-device crash
+         reporting) + flask app + dashboard static are present
+       - presplash/icon PNGs >= 1000px (a 256px source was upscaled to the
+         whole display: "large logo, not scaled")
 
 Prints a table + a PASS/FAIL summary. Exit 1 on any failure so CI stops.
 """
 import glob
+import io
 import os
+import struct
 import subprocess
 import sys
+import tarfile
 import tempfile
 import zipfile
 
@@ -194,6 +202,61 @@ def main() -> int:
                 "v1 JAR signature MISSING (no META-INF/CERT.*) — "
                 "some OEM installers silently refuse v2-only APKs with 'App not installed'"
             )
+
+        # --- 4. app payload + brand assets -------------------------------
+        # assets/private.tar IS the app: if the entry point or the
+        # crash-reporting module goes missing, the APK installs and then
+        # "shows a big logo and closes" with nothing to diagnose.
+        try:
+            priv = z.read("assets/private.tar")
+        except KeyError:
+            problems.append("assets/private.tar missing — no app code packaged")
+        else:
+            with tarfile.open(fileobj=io.BytesIO(priv)) as tf:
+                members = set(tf.getnames())
+
+                def has(base):
+                    return base in members or base[:-1] in members  # .py fallback
+
+                required = (
+                    "main.pyc",                    # p4a entry point
+                    "android_app/main.pyc",        # kivy shell
+                    "android_app/diagnostics.pyc",  # on-device crash reporting
+                    "odu_tracker/web/app.pyc",
+                    "odu_tracker/web/static/index.html",
+                )
+                missing = [r for r in required if not has(r)]
+                if missing:
+                    problems.append(
+                        "private.tar is missing: " + ", ".join(missing)
+                    )
+                else:
+                    print(f"payload: private.tar has entry + diagnostics "
+                          f"({len(members)} members) ✔")
+
+                def png_size(member):
+                    data = tf.extractfile(member).read()
+                    if data[:8] != b"\x89PNG\r\n\x1a\n":
+                        return None
+                    return struct.unpack(">II", data[16:24])
+
+                # Brand assets: the old 256px presplash was upscaled to the
+                # whole display ("large logo, not scaled") — keep it big.
+                for member, need in (
+                    ("android_app/assets/presplash.png", 1000),
+                    ("android_app/assets/icon.png", 1000),
+                ):
+                    if member not in members:
+                        problems.append(f"{member} missing from private.tar")
+                        continue
+                    size = png_size(member)
+                    if size is None or size[0] < need or size[1] < need:
+                        problems.append(
+                            f"{member} is {size} — must be >= {need}px "
+                            "(blurry upscaled launch screen otherwise)"
+                        )
+                    else:
+                        print(f"asset: {member} {size[0]}x{size[1]} ✔")
 
     print()
     if problems:

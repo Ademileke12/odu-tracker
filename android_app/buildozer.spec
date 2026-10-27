@@ -32,10 +32,13 @@ version = 1.2.0
 # universal py3-none-any wheel instead.
 requirements = python3,kivy,pyjnius,flask,waitress,requests,urllib3,certifi,charset-normalizer==2.1.1
 
-# (str) Presplash of the application
-presplash.filename = assets/icon.png
+# (str) Presplash of the application — full-screen 1080x1920 composition
+# (tools/make_icon.py). The old 256x256 icon used here was upscaled to the
+# whole display: "large logo, not scaled". Resolves relative to the build
+# cwd (android_app/), same place packaging expects icon.png.
+presplash.filename = assets/presplash.png
 
-# (str) Icon of the application
+# (str) Icon of the application — 1024x1024 source (launcher mipmaps)
 icon.filename = assets/icon.png
 
 # (list) Supported orientation — dedicated screen is portrait by default

@@ -12,10 +12,21 @@ Architecture (all off-line, all local):
 The WebView is created through pyjnius because Kivy has no built-in WebView
 widget. Native view sits on top of the Kivy canvas once the engine answers.
 """
+import os
 import socket
+import sys
 import threading
 import traceback
 
+# Diagnostics FIRST (stdlib only): every stage below is a breadcrumb that a
+# startup crash report will point at. See android_app/diagnostics.py.
+try:
+    from android_app import diagnostics as diag
+except ImportError:                 # running this file directly, not packaged
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from android_app import diagnostics as diag
+
+diag.stage("imports: kivy (window/GL init happens here)")
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -26,10 +37,13 @@ from kivy.uix.label import Label
 from kivy.uix.progressbar import ProgressBar
 from kivy.utils import platform
 
+diag.stage("imports: odu_tracker engine modules")
 from odu_tracker.config import Config
 from odu_tracker.poller import Poller
 from odu_tracker.store import init as init_db
 from odu_tracker.web.app import create_app
+
+diag.stage("imports: app module ready")
 
 SERVER_PORT = 8770
 BG = (0.02, 0.027, 0.043)          # #05070b
@@ -51,19 +65,30 @@ _backend_lock = threading.Lock()
 def _serve(port):
     """Waitress first (production-grade), werkzeug dev server as fallback."""
     def boot():
-        init_db()
-        cfg = Config()
-        poller = Poller(cfg)
-        app = create_app(cfg, poller)
-        poller.start()
-        from odu_tracker import APP_NAME
-        print(f"  {APP_NAME} engine running on 127.0.0.1:{port}", flush=True)
         try:
-            from waitress import serve as wserve
-            wserve(app, host="127.0.0.1", port=port, threads=4)
-        except Exception:
-            app.run(host="127.0.0.1", port=port, debug=False,
-                    use_reloader=False, threaded=True)
+            diag.stage("engine: opening database")
+            init_db()
+            cfg = Config()
+            diag.stage("engine: building the flask app")
+            poller = Poller(cfg)
+            app = create_app(cfg, poller)
+            poller.start()
+            from odu_tracker import APP_NAME
+            print(f"  {APP_NAME} engine running on 127.0.0.1:{port}", flush=True)
+            try:
+                from waitress import serve as wserve
+                diag.stage("engine: serving on 127.0.0.1:8770 (waitress)")
+                wserve(app, host="127.0.0.1", port=port, threads=4)
+            except Exception:
+                diag.stage("engine: serving on 127.0.0.1:8770 (werkzeug)")
+                app.run(host="127.0.0.1", port=port, debug=False,
+                        use_reloader=False, threaded=True)
+        except BaseException:
+            # The app is useless without the engine — surface it on screen.
+            # (runs on the engine thread: the Kivy loop is already going,
+            #  so no nested Kivy fallback — native screen only)
+            diag.fatal_exc(detail="the local engine failed to start",
+                           allow_kivy_fallback=False)
     return boot
 
 
@@ -91,58 +116,15 @@ def _server_up(port=SERVER_PORT, timeout=0.6):
 # --------------------------------------------------------------------------
 # Android bridge (pyjnius) — native full-screen WebView
 # --------------------------------------------------------------------------
+# Post to the Android UI thread via android_app.diagnostics.post_to_ui —
+# a hand-rolled pyjnius Runnable with the default ('system') javacontext.
+# (An earlier __javacontext__ = "thread" was invalid: pyjnius 1.7.0 accepts
+# only 'app' or 'system' and raised on proxy creation.)
+
+
 def _android_activity():
     from jnius import autoclass
     return autoclass("org.kivy.android.PythonActivity").mActivity
-
-
-class _Runnable:
-    """java/lang/Runnable for activity.runOnUiThread()."""
-
-    _pyjnius_ready = False
-
-    def __new__(cls, fn):
-        from jnius import PythonJavaClass, java_method
-
-        if not cls._pyjnius_ready:
-            class _R(PythonJavaClass):
-                __javainterfaces__ = ["java/lang/Runnable"]
-                __javacontext__ = "thread"
-
-                @java_method("()V")
-                def run(self):
-                    try:
-                        self.fn()
-                    except Exception:
-                        traceback.print_exc()
-
-            cls._cls = _R
-            cls._pyjnius_ready = True
-        instance = cls._cls()
-        instance.fn = fn
-        return instance
-
-
-def run_on_ui_thread(fn):
-    activity = _android_activity()
-    activity.runOnUiThread(_Runnable(fn))
-
-
-class _ChromeClient:
-    """Default-ish WebChromeClient so JS alert()/file pickers work."""
-
-    _pyjnius_ready = False
-
-    def __new__(cls):
-        from jnius import PythonJavaClass
-
-        if not cls._pyjnius_ready:
-            class _C(PythonJavaClass):
-                __javaclass__ = "android/webkit/WebChromeClient"
-
-            cls._cls = _C
-            cls._pyjnius_ready = True
-        return cls._cls()
 
 
 def build_webview(url):
@@ -173,7 +155,11 @@ def build_webview(url):
     s.setUseWideViewPort(False)
 
     wv.setWebViewClient(WebViewClient())
-    wv.setWebChromeClient(_ChromeClient())
+    # NOTE: no custom WebChromeClient — pyjnius can only proxy *interfaces*
+    # and android.webkit.WebChromeClient is a class, so the old proxy raised
+    # on construction. Default client keeps the WebView alive; the dashboard's
+    # single JS confirm() (reset-usage) therefore returns false silently —
+    # a native dialog bridge is a follow-up if the app boots.
 
     # keep cookies (the 30-day "keep me signed in" session) for this app only
     CookieManager.getInstance().setAcceptCookie(True)
@@ -202,6 +188,7 @@ def _centered(text, size, height, color, **kw):
 
 class OduTrackerAndroidApp(App):
     def build(self):
+        diag.stage("kivy: build() entered — drawing the splash")
         Window.softinput_mode = "below_target"
         self.root = BoxLayout(orientation="vertical", padding=(dp(36), dp(48)))
         with self.root.canvas.before:
@@ -210,7 +197,10 @@ class OduTrackerAndroidApp(App):
         self.root.bind(size=self._resize_bg, pos=self._resize_bg)
 
         self.logo = _centered("ODU", "44sp", dp(80), ACCENT, bold=True)
-        self.title = _centered("TRACKER", "30sp", dp(40), FG, bold=True)
+        # NB: NOT self.title — App.title is Kivy's window-title StringProperty;
+        # assigning a Label raised ValueError inside build() on every device
+        # ("big logo, app closes" — died before this splash ever drew).
+        self.heading = _centered("TRACKER", "30sp", dp(40), FG, bold=True)
         self.subtitle = _centered("Booting the local engine…", "16sp",
                                   dp(60), MUTED)
         self.progress = ProgressBar(max=100, value=6,
@@ -220,15 +210,18 @@ class OduTrackerAndroidApp(App):
         self.tip = _centered("Wi-Fi required: connect this phone to the ODU network.",
                              "13sp", dp(30), FAINT)
 
-        for widget in (self.logo, self.title, self.subtitle, self.progress, self.tip):
+        for widget in (self.logo, self.heading, self.subtitle,
+                       self.progress, self.tip):
             self.root.add_widget(widget)
 
+        diag.stage("kivy: splash built — launching the engine thread")
         start_backend()
 
         self._ready = False
         self._pct = 6
         self._elapsed = 0
         Clock.schedule_interval(self._tick, 0.25)
+        diag.stage("kivy: splash live — waiting for the engine")
         return self.root
 
     def _resize_bg(self, _w, _v):
@@ -236,6 +229,16 @@ class OduTrackerAndroidApp(App):
         self.bg.pos = self.root.pos
 
     def _tick(self, dt):
+        try:
+            return self._tick_inner(dt)
+        except BaseException:
+            # Kivy's event loop swallows callback errors silently — surface
+            # them on screen instead. Loop is running → native screen only.
+            diag.fatal_exc(detail="crash inside the splash/progress loop",
+                           allow_kivy_fallback=False)
+            return False
+
+    def _tick_inner(self, dt):
         if self._ready:
             return False
         self._elapsed += dt
@@ -254,20 +257,36 @@ class OduTrackerAndroidApp(App):
         self.progress.value = 100
         self.subtitle.text = "Loading dashboard…"
         url = f"http://127.0.0.1:{SERVER_PORT}/"
-        try:
-            if IS_ANDROID:
-                run_on_ui_thread(lambda: build_webview(url))
-            else:
-                # desktop dev preview of the same shell
-                import webbrowser
-                webbrowser.open(url)
-                self.subtitle.text = "Dashboard opened in browser (desktop preview)."
-        except Exception:
-            traceback.print_exc()
-            self.subtitle.text = "WebView failed — tell: srimpkoyonko@gmail.com"
+        if IS_ANDROID:
+            diag.stage("dashboard: handing off to the native WebView")
+
+            def _do():
+                # runs on the Android UI thread — never block it; fatal()
+                # knows this (on_ui_thread=True) and only paints.
+                try:
+                    build_webview(url)
+                    diag.stage("dashboard: webview installed — live")
+                except BaseException:
+                    diag.fatal_exc(detail="creating the native WebView failed",
+                                   on_ui_thread=True,
+                                   allow_kivy_fallback=False)
+
+            try:
+                diag.post_to_ui(_do)
+            except BaseException:
+                diag.fatal_exc(detail="could not post the WebView to the UI "
+                                      "thread (pyjnius/jnius problem)",
+                               allow_kivy_fallback=False)
+        else:
+            # desktop dev preview of the same shell
+            import webbrowser
+            webbrowser.open(url)
+            diag.stage("dashboard: opened in browser (desktop preview)")
+            self.subtitle.text = "Dashboard opened in browser (desktop preview)."
 
 
 def run():
+    diag.stage("kivy: App.run() entering the event loop")
     OduTrackerAndroidApp().run()
 
 
