@@ -42,12 +42,38 @@ from odu_tracker.config import Config          # noqa: E402
 from odu_tracker.router import OduRouter, RouterError  # noqa: E402
 
 # Never touch these even with GET (defensive belt-and-braces).
+# NOTE: GET is NOT always read-only on this firmware — probing cmd 6 during a
+# --sweep rebooted the router (its API map has `reboot` with no get variant,
+# and it ignored `method:"GET"`). Every cmd that maps to an action-only
+# function (no getX sibling in the SPA) is therefore excluded outright.
 DANGEROUS = {
-    112,  # reset device
-    263,  # time/restart
-    241,  # export log (may be heavy)
-    101,  # logout (handled separately)
-    100,  # login (handled separately)
+    6,     # reboot            <-- REBOOTED THE DEVICE during a sweep (2026-10-27)
+    112,   # restore factory
+    263,   # time/restart
+    241,   # export log (may be heavy)
+    101,   # logout (handled separately)
+    100,   # login (handled separately)
+    102,   # set password
+    106,   # upgrade
+    239,   # upgrade immediately
+    240,   # set auto-upgrade
+    249,   # reset esim info
+    250,   # download esim info
+    541,   # delete/switch SIM profile
+    97,    # set language
+    51,    # set PIN
+    13,    # send sms
+    14,    # delete sms
+    220,   # set roaming
+    222,   # set data switch
+    226,   # set flight mode
+    160,   # physical cell lock
+    161,   # band lock
+    295,   # voice settings
+    360,   # set phonebook
+    362,   # save phonebook
+    168,   # net tool (ping/trace can hang the httpd)
+    17,    # clear/get log (GET returns a raw log body, not JSON)
 }
 
 # Commands already known to matter, always probed first.

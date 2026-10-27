@@ -18,6 +18,7 @@ USAGE
   python3 tools/scan_spa.py                      # http://192.168.0.1/
   python3 tools/scan_spa.py --ip 192.168.0.1
   python3 tools/scan_spa.py --dump spa_raw/      # also save every fetched file
+  python3 tools/scan_spa.py --no-chunks          # core bundles only (faster)
 
 OUTPUT
 ------
@@ -103,6 +104,8 @@ def main() -> int:
     ap.add_argument("--port", default="80")
     ap.add_argument("--dump", metavar="DIR", default=None,
                     help="also write every fetched file into DIR")
+    ap.add_argument("--no-chunks", action="store_true",
+                    help="skip webpack lazy-route chunks (js/chunk-*.js)")
     args = ap.parse_args()
 
     base = f"http://{args.ip}:{args.port}/"
@@ -112,6 +115,26 @@ def main() -> int:
         print("No SPA files reachable. Is the router IP correct and reachable?",
               file=sys.stderr)
         return 1
+
+    # ---- lazy route chunks ---------------------------------------------
+    # Vue routes load pages on demand as `n.e("chunk-XXXXXXXX")` -> js/chunk-XXXXXXXX.js
+    # (filename has no ".js" inside the reference, so discover_assets misses them).
+    # These chunks hold the real pages (filterRule/MAC filter, parentControl...)
+    # and are the bulk of the API surface. Static GET only, like everything here.
+    if not args.no_chunks:
+        ids = set()
+        for data in assets.values():
+            ids.update(re.findall(rb"chunk-[0-9a-f]{8}", data))
+        got = 0
+        for cid in sorted(ids):
+            path = f"js/{cid.decode('ascii')}.js"
+            cdata = fetch(base, path)
+            if cdata:
+                assets[path] = cdata
+                got += 1
+        if ids:
+            print(f"  -> {got}/{len(ids)} lazy route chunks fetched")
+
     total = 0
     for path, data in assets.items():
         print(f"  {path}  ({len(data)} bytes)")
@@ -121,6 +144,11 @@ def main() -> int:
         d = Path(args.dump)
         d.mkdir(parents=True, exist_ok=True)
         for path, data in assets.items():
+            if path.startswith("js/chunk-"):
+                sub = d / "chunks"
+                sub.mkdir(parents=True, exist_ok=True)
+                (sub / path.split("/")[-1]).write_bytes(data)
+                continue
             safe = path.strip("/").replace("/", "__") or "index.html"
             (d / safe).write_bytes(data)
         print(f"  -> dumped to {d}/")
