@@ -659,8 +659,34 @@ async function pollVouchers() {
     renderVoucherGate(d.gate);
     renderVoucherWps(d.wps);
     renderVoucherTable(d.vouchers || []);
+    try { renderVoucherUsage(await api("/api/voucher/usage")); } catch { /* transient */ }
     try { renderPortal(await api("/api/dnscfg")); } catch { /* transient */ }
   } catch { /* transient */ }
+}
+
+function renderVoucherUsage(u) {
+  const tb = $("#vUsageTable tbody");
+  if (!tb) return;
+  const rows = (u && u.devices) || [];
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="5"><div class="empty">no claimed devices yet</div></td></tr>';
+    return;
+  }
+  const fmtGB = mb => (mb / 1024).toFixed(mb >= 10240 ? 0 : 1) + " GB";
+  tb.innerHTML = rows.map(r => {
+    const pct = r.quota_mb ? Math.min(100, Math.round(100 * r.used_mb / r.quota_mb)) : 0;
+    const badge = r.exhausted
+      ? '<span class="badge red">cut off</span>'
+      : (pct >= 80 ? `<span class="badge yellow">${pct}%</span>`
+                   : `<span class="badge green">${pct}%</span>`);
+    const dev = (S.devices || []).find(x => x.mac.toUpperCase() === r.mac.toUpperCase());
+    const name = dev ? (dev.hostname || dev.last_hostname || r.mac) : r.mac;
+    return `<tr><td class="mono">${esc(name)}</td>` +
+      `<td class="right">${fmtGB(r.used_mb)}</td>` +
+      `<td class="right">${fmtGB(r.quota_mb)}</td>` +
+      `<td class="right">${fmtGB(r.remaining_mb)}</td>` +
+      `<td>${badge}</td></tr>`;
+  }).join("");
 }
 
 function renderPortal(p) {

@@ -140,7 +140,7 @@ def create_portal_app(cfg, poller):
                                      "check Wi-Fi is on and retry in a few "
                                      "seconds"}), 409
         try:
-            res = voucher.claim(code, mac=mac, ip=ip)
+            res = voucher.claim(code, mac=mac, ip=ip, router=router)
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         voucher.invalidate_deny_cache()       # next DNS query passes now

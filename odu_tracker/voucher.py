@@ -28,14 +28,26 @@ POOL MODEL
                  pool engine first reads the router -- nothing before that
                  counts. Re-anchored automatically when the router counter
                  goes backwards (billing-period reset).
-  purchased_mb = sum of quota_mb over CLAIMED, non-revoked vouchers.
+  purchased_mb = sum of quota_mb over CLAIMED, non-revoked, UNEXPIRED vouchers
+                 (see validity_days()).
   grace_mb     = starter allowance (default 20 GB) so arming the cap does
                  not instantly cut off a household with zero redemptions.
   planned cap  = baseline_mb + purchased_mb + grace_mb
-                 -> written to cmd 337 limitSize (GB) when the pool is
-                 enabled (explicit action, not automatic).
+                 -> written to cmd 337 limitSize (GB) whenever the cap is
+                 enabled and the stored value no longer matches (cap_stale):
+                 claims raise it, expiry/revocation lowers it, all writes go
+                 through pool_refresh_async (background, coalesced, backed
+                 off) or an explicit pool_set.
+
+VALIDITY
+--------
+  A redeemed voucher credits the pool for validity_days() days (default 30,
+  0 = never). After that the claim stops counting toward purchased_mb, the
+  device loses its "claimed" status (an armed DNS portal serves it the claim
+  page again), and the router cap is re-synced down by the stale check above.
 """
 import secrets
+import threading
 import time
 
 from . import store
@@ -57,6 +69,15 @@ POOL_KEY = "voucher_pool"
 #   planned = baseline + purchased + grace
 GRACE_DEFAULT_MB = 20480          # 20 GB
 
+# How long a redeemed voucher keeps crediting the pool / holding device
+# access. Admin-adjustable per pool (voucher_pool.validity_days); 0 = never.
+VALIDITY_DEFAULT_DAYS = 30
+
+# Minimum gap between background cap re-write attempts when the previous
+# attempt failed (router down / write refused) — stops a stale pool from
+# hammering an unreachable router every dashboard poll.
+REFRESH_BACKOFF_S = 60.0
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS vouchers(
     code TEXT PRIMARY KEY,
@@ -73,6 +94,11 @@ CREATE TABLE IF NOT EXISTS voucher_claims(
     claimed_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_vclaim_mac ON voucher_claims(mac);
+CREATE TABLE IF NOT EXISTS voucher_usage(
+    mac TEXT PRIMARY KEY,
+    used_mb REAL NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+);
 """
 
 
@@ -122,10 +148,13 @@ def list_vouchers(limit: int = 200) -> list:
                   c.mac AS claim_mac, c.ip AS claim_ip, c.claimed_at
            FROM vouchers v LEFT JOIN voucher_claims c ON c.code = v.code
            ORDER BY v.created_at DESC LIMIT ?""", (limit,))
+    cutoff = _claim_cutoff()
     out = []
     for r in rows:
         if r["revoked"]:
             status = "revoked"
+        elif r["claim_mac"] and cutoff and (r["claimed_at"] or 0) < cutoff:
+            status = "expired"
         elif r["claim_mac"]:
             status = "claimed"
         else:
@@ -139,10 +168,39 @@ def list_vouchers(limit: int = 200) -> list:
     return out
 
 
+# ------------------------------------------------------------- validity
+def validity_days() -> int:
+    """Days a redeemed voucher keeps crediting the pool / device access.
+
+    0 = never expires. Admin-adjustable via set_validity_days().
+    """
+    st = _pool()
+    v = st.get("validity_days")
+    return VALIDITY_DEFAULT_DAYS if v is None else int(v)
+
+
+def set_validity_days(days: int) -> int:
+    st = _pool()
+    st["validity_days"] = max(0, int(days))
+    _save_pool(st)
+    return st["validity_days"]
+
+
+def _claim_cutoff() -> int:
+    """Unix ts before which a claim counts as expired (0 = no expiry)."""
+    d = validity_days()
+    return 0 if d <= 0 else store.now() - d * 86400
+
+
 def purchased_mb() -> int:
-    r = store.q("SELECT COALESCE(SUM(v.quota_mb),0) AS s FROM vouchers v "
-                "JOIN voucher_claims c ON c.code=v.code WHERE v.revoked=0",
-                fetch="one")
+    cutoff = _claim_cutoff()
+    sql = ("SELECT COALESCE(SUM(v.quota_mb),0) AS s FROM vouchers v "
+           "JOIN voucher_claims c ON c.code=v.code WHERE v.revoked=0")
+    args = ()
+    if cutoff:
+        sql += " AND c.claimed_at >= ?"
+        args = (cutoff,)
+    r = store.q(sql, args, fetch="one")
     return int(r["s"] if r else 0)
 
 
@@ -163,8 +221,13 @@ def _save_pool(st: dict):
     store.setting_set(POOL_KEY, st)
 
 
-def claim(code: str, mac: str = None, ip: str = None) -> dict:
-    """Redeem a code: binds it to a device MAC and credits the pool."""
+def claim(code: str, mac: str = None, ip: str = None, router=None) -> dict:
+    """Redeem a code: binds it to a device MAC and credits the pool.
+
+    `router` (optional) enables the background cap re-write so the redeemed
+    quota is actually usable at the router immediately — see the pool model
+    note at the end of this function.
+    """
     code = (code or "").strip()
     row = store.q("SELECT * FROM vouchers WHERE code=?", (code,), fetch="one")
     if not row:
@@ -186,6 +249,10 @@ def claim(code: str, mac: str = None, ip: str = None) -> dict:
                "VALUES(?,?,?,?,?)",
                (store.now(), m, "voucher_claim", "info",
                 f"code={code} quota_mb={row['quota_mb']}"))
+    # The claim credits our books, but cmd 337 still enforces the OLD cap —
+    # redeemed data is unusable until limitSize is rewritten. Do it now in the
+    # background (pool_refresh_async is a no-op while the cap is disabled).
+    pool_refresh_async(router, reason="claim")
     return {"code": code, "mac": m, "quota_mb": row["quota_mb"]}
 
 
@@ -242,6 +309,11 @@ def pool_status(router=None, auto_resync=True) -> dict:
             pool_set(router, True, router_state=router_state)
         except Exception:
             pass
+    elif (auto_resync and router is not None and st.get("enabled")
+          and cap_stale()):
+        # expiry / revocation moved the planned pool without any router event
+        # (no reset detected) -> lower limitSize in the background too
+        pool_refresh_async(router, reason="expiry/revocation")
     return {
         "baseline_mb": baseline,
         "purchased_mb": purchased,
@@ -251,6 +323,8 @@ def pool_status(router=None, auto_resync=True) -> dict:
         "remaining_mb": remaining,
         "enabled": bool(st.get("enabled")),
         "reset_detected": reset_detected,
+        "validity_days": validity_days(),
+        "cap_stale": cap_stale(),
         "router": router_state,
     }
 
@@ -459,6 +533,234 @@ def pool_set(router, enable: bool, router_state: dict = None) -> dict:
             else str(resp)[:120]}
 
 
+# ------------------------------------------- cap auto-sync (background thread)
+# cmd 337's limitSize must track the accounting pool:
+#   * a claim RAISES it     -> otherwise redeemed data is unusable
+#   * expiry/revocation LOWERS it -> otherwise expired data stays granted
+# Syncs are coalesced (one writer), backed off after failures, and gated by
+# cap_stale() so a healthy pool costs zero router traffic.
+_refresh_lock = threading.Lock()
+_refresh_state = {"thread": None, "pending": False,
+                  "last_fail": 0.0, "fail_logged": False}
+
+
+def cap_stale() -> bool:
+    """DB-only: does the stored cap no longer match the planned pool?
+
+    True when the cap is enabled and planned (baseline + purchased + grace)
+    moved away from cap_limit_mb — i.e. a claim, expiry or revocation
+    happened since the last cmd 337 write. Never touches the router.
+    """
+    st = _pool()
+    if not st.get("enabled") or st.get("baseline_mb") is None:
+        return False
+    stored = st.get("cap_limit_mb")
+    if stored is None:
+        return False
+    planned = st["baseline_mb"] + purchased_mb() + grace_mb()
+    return abs(planned - float(stored)) > 0.5      # MB; > rounding noise
+
+
+def pool_refresh_async(router, reason: str = "") -> dict:
+    """Rewrite cmd 337 limitSize to the current planned cap in a background
+    thread. Safe to call after every claim/route: no-op when the cap is
+    disabled or the pool is already in sync, coalesced into one writer, and
+    backed off (REFRESH_BACKOFF_S) after a failed attempt.
+
+    Returns {"ok": True, "thread": t} when a write pass was started/queued.
+    """
+    if router is None:
+        return {"ok": False, "skipped": "no router"}
+    if not _pool().get("enabled"):
+        return {"ok": False, "skipped": "cap disabled"}
+    with _refresh_lock:
+        if (_refresh_state["last_fail"]
+                and time.time() - _refresh_state["last_fail"]
+                < REFRESH_BACKOFF_S):
+            return {"ok": False, "skipped": "backoff"}
+        if _refresh_state["thread"] is not None:
+            _refresh_state["pending"] = True       # piggy-back on the running pass
+            return {"ok": True, "queued": True}
+        if not cap_stale():
+            return {"ok": True, "synced": False}   # nothing to write
+        th = threading.Thread(target=_refresh_worker, args=(router, reason),
+                              daemon=True, name="cap-sync")
+        _refresh_state["thread"] = th
+        th.start()
+        return {"ok": True, "queued": True, "thread": th}
+
+
+def _refresh_worker(router, reason: str):
+    try:
+        while True:
+            with _refresh_lock:
+                _refresh_state["pending"] = False
+            wrote = False
+            res = {"ok": False, "error": "skipped"}
+            try:
+                if cap_stale():
+                    res = pool_set(router, True)   # recomputes planned itself
+                    wrote = True
+                else:
+                    res = {"ok": True}
+            except Exception as exc:
+                res = {"ok": False, "error": str(exc)[:160]}
+            ok = bool(res.get("ok"))
+            with _refresh_lock:
+                _refresh_state["last_fail"] = 0.0 if ok else time.time()
+                failed_new = (not ok) and not _refresh_state["fail_logged"]
+                if ok:
+                    _refresh_state["fail_logged"] = False
+                elif not _refresh_state["fail_logged"]:
+                    _refresh_state["fail_logged"] = True
+            if wrote or failed_new:
+                # one event per real write, plus a single warning for a
+                # failing streak (the backoff stops 60 s spam)
+                try:
+                    store.exec(
+                        "INSERT INTO events(ts, mac, kind, level, detail) "
+                        "VALUES(?,?,?,?,?)",
+                        (store.now(), "", "voucher_pool",
+                         "info" if ok else "warning",
+                         f"cap sync ({reason or 'auto'}): "
+                         f"limitSize={res.get('limitSize', '?')} "
+                         f"{'ok' if ok else 'FAILED ' + str(res.get('error') or res.get('message') or '')}"))
+                except Exception:
+                    pass
+            with _refresh_lock:
+                if _refresh_state["pending"]:
+                    continue                        # a newer claim arrived mid-write
+                _refresh_state["thread"] = None
+                return
+    except BaseException:
+        with _refresh_lock:
+            _refresh_state["thread"] = None
+        raise
+
+
+# -------------------------------------------- per-device usage (time-share)
+# The firmware has ONE shared counter (mon_download_flow) and no per-device
+# byte meter (verified live). To still cut a device off when it burns through
+# ITS allocation, we estimate usage: on every poll the counter's growth since
+# the last poll is split evenly among the claim-holder devices that are online
+# right now (time-share split). Accumulated per-MAC usage is compared against
+# that MAC's active-claim quota; at/over quota the device is exhausted ->
+# denied (cmd 278 + DNS hijack to the portal) until it claims more.
+#
+# This is an ESTIMATE, not a firmware reading — it is the closest a shared
+# counter allows. The cmd 337 pool cap remains the hard, exact backstop.
+USAGE_TOLERANCE_MB = 64.0     # ignore tiny deltas (counter jitter / noise)
+
+_exhaust_cache = {"ts": 0.0, "macs": None}     # exhausted MAC set, 5 s TTL
+
+
+def device_quota_mb(mac: str) -> int:
+    """Total MB this device currently holds (sum of its unexpired claims)."""
+    m = normalize_mac(mac or "")
+    cutoff = _claim_cutoff()
+    sql = ("SELECT COALESCE(SUM(v.quota_mb),0) AS s FROM vouchers v "
+           "JOIN voucher_claims c ON c.code=v.code "
+           "WHERE c.mac=? AND v.revoked=0")
+    args = (m,)
+    if cutoff:
+        sql += " AND c.claimed_at >= ?"
+        args = (m, cutoff)
+    r = store.q(sql, args, fetch="one")
+    return int(r["s"] if r else 0)
+
+
+def device_used_mb(mac: str) -> float:
+    m = normalize_mac(mac or "")
+    r = store.q("SELECT used_mb FROM voucher_usage WHERE mac=?", (m,),
+                fetch="one")
+    return float(r["used_mb"]) if r else 0.0
+
+
+def set_device_used_mb(mac: str, used_mb: float):
+    m = normalize_mac(mac or "")
+    if not m:
+        return
+    store.exec("INSERT INTO voucher_usage(mac, used_mb, updated_at) "
+               "VALUES(?,?,?) ON CONFLICT(mac) DO UPDATE SET "
+               "used_mb=excluded.used_mb, updated_at=excluded.updated_at",
+               (m, max(0.0, float(used_mb)), store.now()))
+
+
+def exhausted_macs(ttl: float = 5.0) -> set:
+    """MACs whose estimated usage has reached their active-claim quota."""
+    now = time.time()
+    if _exhaust_cache["macs"] is not None and now - _exhaust_cache["ts"] < ttl:
+        return _exhaust_cache["macs"]
+    out = set()
+    rows = store.q("SELECT mac, used_mb FROM voucher_usage")
+    for r in rows:
+        m = normalize_mac(r["mac"])
+        if not m:
+            continue
+        q = device_quota_mb(m)
+        if q > 0 and float(r["used_mb"]) >= q - USAGE_TOLERANCE_MB:
+            out.add(m)
+    _exhaust_cache["macs"] = out
+    _exhaust_cache["ts"] = now
+    return out
+
+
+def invalidate_usage_cache():
+    _exhaust_cache["macs"] = None
+    _exhaust_cache["ts"] = 0.0
+
+
+def attribute_usage(counter_mb: float, online_macs) -> list:
+    """Split the counter's growth since last poll among online claim-holders.
+
+    `counter_mb` = mon_download_flow now (MB). `online_macs` = MACs seen online
+    this poll. Returns MACs that JUST crossed their quota this call (so the
+    caller can deny them). Purely local (no router HTTP).
+    """
+    st = _pool()
+    prev = st.get("usage_counter_mb")
+    st["usage_counter_mb"] = float(counter_mb)
+    # billing reset (counter went backwards): start every device fresh
+    if prev is not None and float(counter_mb) < float(prev) - 1.0:
+        store.exec("UPDATE voucher_usage SET used_mb=0")
+        invalidate_usage_cache()
+        _save_pool(st)
+        return []
+    _save_pool(st)
+    if prev is None:
+        return []                              # first reading: just anchor
+    delta = float(counter_mb) - float(prev)
+    if delta <= USAGE_TOLERANCE_MB:
+        return []
+    active = active_claim_macs()
+    online = {normalize_mac(x) for x in (online_macs or [])} - {None, ""}
+    sharers = online & active                 # claim-holders online now
+    if not sharers:
+        return []                              # nobody to bill for this delta
+    share = delta / len(sharers)
+    before = exhausted_macs()
+    for m in sharers:
+        set_device_used_mb(m, device_used_mb(m) + share)
+    invalidate_usage_cache()
+    now_ex = exhausted_macs()
+    return sorted(now_ex - before)
+
+
+def credit_device(mac: str, mb: float):
+    """A new claim adds to a device's pool; if that lifts it out of exhaustion,
+    restore access (gate_allow + DNS cache). Used by the claim routes."""
+    invalidate_usage_cache()
+    m = normalize_mac(mac or "")
+    if m and m in exhausted_macs():
+        # quota grew (new claim) -> no longer exhausted; clear any prior deny
+        try:
+            invalidate_deny_cache()
+        except Exception:
+            pass
+    return {"mac": m, "quota_mb": device_quota_mb(m),
+            "used_mb": device_used_mb(m)}
+
+
 # ------------------------------------------------------- WPS off (cmd 132)
 # The firmware disables the cmd 278 Wi-Fi filter while WPS/MESH are on
 # (its own UI warns about this). Enforcement requires WPS off on both bands.
@@ -517,13 +819,19 @@ _ip_cache = {}                                # ip -> (mac|None, ts), 30 s TTL
 
 
 def active_claim_macs(ttl: float = 5.0) -> set:
-    """MACs holding a claim on a non-revoked voucher. Small TTL so a fresh
-    portal claim stops being hijacked within seconds."""
+    """MACs holding a claim on a non-revoked, unexpired voucher. Small TTL so
+    a fresh portal claim stops being hijacked within seconds."""
     now = time.time()
     if _deny_cache["macs"] is not None and now - _deny_cache["ts"] < ttl:
         return _deny_cache["macs"]
-    rows = store.q("SELECT c.mac FROM voucher_claims c "
-                   "JOIN vouchers v ON v.code=c.code WHERE v.revoked=0")
+    cutoff = _claim_cutoff()
+    sql = ("SELECT c.mac FROM voucher_claims c "
+           "JOIN vouchers v ON v.code=c.code WHERE v.revoked=0")
+    args = ()
+    if cutoff:
+        sql += " AND c.claimed_at >= ?"
+        args = (cutoff,)
+    rows = store.q(sql, args)
     macs = {normalize_mac(r["mac"]) for r in rows} - {None, ""}
     _deny_cache["macs"] = macs
     _deny_cache["ts"] = now
@@ -572,7 +880,8 @@ def mac_for_ip_local(ip: str, ttl: float = 30.0) -> str:
 def deny_checker(exempt_ips=()):
     """Build the predicate the DNS proxy uses: True = hijack this client.
 
-    Denied = resolvable device with NO active voucher claim.
+    Denied = resolvable device with NO active voucher claim, OR one whose
+    estimated usage has reached its quota (exhausted — see attribute_usage).
     Exempt: the portal host itself and the router (never hijack infra).
     """
     exempt = {str(x) for x in exempt_ips if x}
@@ -583,6 +892,8 @@ def deny_checker(exempt_ips=()):
         mac = mac_for_ip_local(ip)
         if not mac:
             return False                    # unknown -> fail open (see above)
+        if mac in exhausted_macs():
+            return True                     # used its allocation -> portal
         return mac not in active_claim_macs()
     return deny
 

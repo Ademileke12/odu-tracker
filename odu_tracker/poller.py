@@ -17,6 +17,7 @@ from . import store
 from .config import Config
 from .router import OduRouter, RouterError
 from .security import normalize_mac, risk_score, vendor_for
+from . import voucher
 
 FAST_KEYS = ("all_device", "home_info", "flow_new", "sys_status", "battery", "network")
 
@@ -216,7 +217,35 @@ class Poller:
             store.add_usage_sample(now_ts, usage["used"], usage["unit"], usage["total"] or None)
             self._check_flow_regression(now_ts, usage)
             self._track_rate(now_ts, usage)
+            self._meter_devices(now_ts, usage, seen_now)
         self.last_fast = snap
+
+    def _meter_devices(self, ts, usage, seen_now):
+        """Time-share per-device metering from the shared counter (voucher.py).
+
+        Splits this poll's counter growth across online claim-holders; any MAC
+        that just crossed its quota is denied on the router (cmd 278) so it
+        loses Wi-Fi internet on top of the DNS hijack. Router writes happen in
+        the background so the 15 s poll loop never blocks on the ~1.3 s pacing.
+        """
+        try:
+            counter_mb = (usage["used"] or 0) * 1024.0
+            newly = voucher.attribute_usage(counter_mb, seen_now)
+        except Exception:
+            traceback.print_exc()
+            return
+        for mac in newly:
+            store.add_alert("warning", "Device used its data",
+                            f"{mac} reached its voucher quota; internet cut")
+            threading.Thread(target=self._deny_exhausted, args=(mac,),
+                             daemon=True, name=f"deny-{mac[-5:]}").start()
+
+    def _deny_exhausted(self, mac):
+        try:
+            if self.router is not None and self.router.logged_in:
+                voucher.gate_deny(self.router, mac)
+        except Exception:
+            traceback.print_exc()
 
     def _check_flow_regression(self, ts, usage):
         """Detect the router's cumulative counter going backwards.

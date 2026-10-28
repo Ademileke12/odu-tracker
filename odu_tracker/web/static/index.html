@@ -320,7 +320,7 @@
               </div>
               <button class="btn primary" id="btnVClaim" style="align-self:flex-end">Redeem</button>
             </div>
-            <div class="chart-note" style="margin-top:12px">Redeeming adds the quota to the pool and clears that device from the Wi-Fi deny list. This firmware has no per-device byte counter — every voucher holder shares one SIM pool.</div>
+            <div class="chart-note" style="margin-top:12px">Redeeming adds the quota to the pool and clears that device from the Wi-Fi deny list. The router has no per-device byte counter, so each device's usage is estimated by splitting the shared SIM counter across who's online — see Device data below.</div>
           </div>
         </div>
 
@@ -329,6 +329,14 @@
           <div class="tablewrap"><table id="vTable">
             <thead><tr><th>Code</th><th class="right">Quota</th><th>Status</th><th>Device</th><th>Claimed</th><th>Note</th><th class="right">Actions</th></tr></thead>
             <tbody></tbody>
+          </table></div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-head"><h3>Device data</h3><span class="tagline">estimated from the shared SIM counter (time-share split); a device cut off here can buy a new code to get back on</span></div>
+          <div class="tablewrap"><table id="vUsageTable">
+            <thead><tr><th>Device</th><th class="right">Used</th><th class="right">Quota</th><th class="right">Remaining</th><th>Status</th></tr></thead>
+            <tbody><tr><td colspan="5"><div class="empty">no claimed devices yet</div></td></tr></tbody>
           </table></div>
         </div>
 

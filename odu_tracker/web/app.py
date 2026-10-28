@@ -703,6 +703,50 @@ def create_app(cfg: Config, poller: Poller):
                         f"code={code}"))
         return jsonify({"ok": ok})
 
+    @app.get("/api/voucher/validity")
+    @require_auth
+    def voucher_validity():
+        return jsonify({"validity_days": voucher.validity_days()})
+
+    @app.get("/api/voucher/usage")
+    @require_auth
+    def voucher_usage():
+        """Per-device estimated usage vs quota (time-share split — see
+        voucher.attribute_usage). Shows who is close to / past their data."""
+        out = []
+        for mac in voucher.active_claim_macs():
+            quota = voucher.device_quota_mb(mac)
+            used = voucher.device_used_mb(mac)
+            out.append({
+                "mac": mac,
+                "quota_mb": quota,
+                "used_mb": round(used, 1),
+                "remaining_mb": round(max(0.0, quota - used), 1),
+                "exhausted": mac in voucher.exhausted_macs(),
+            })
+        out.sort(key=lambda r: -(r["used_mb"] / r["quota_mb"] if r["quota_mb"] else 0))
+        return jsonify({"devices": out, "validity_days": voucher.validity_days()})
+
+    @app.post("/api/voucher/validity")
+    @require_auth
+    def voucher_validity_set():
+        """How long a redeemed voucher keeps data + device access (0 = never)."""
+        body = request.json or {}
+        try:
+            days = int(body.get("validity_days", voucher.VALIDITY_DEFAULT_DAYS))
+        except (TypeError, ValueError):
+            return jsonify({"error": "bad validity_days"}), 400
+        days = max(0, min(3650, days))
+        applied = voucher.set_validity_days(days)
+        store.exec("INSERT INTO events(ts, kind, level, detail) VALUES(?,?,?,?)",
+                   (store.now(), "voucher_validity", "info",
+                    f"{applied} days" if applied else "never expires"))
+        # a shorter window may expire claims right now -> cap can drop
+        voucher.invalidate_deny_cache()
+        return jsonify({"validity_days": applied,
+                        "pool": voucher.pool_status(
+                            getattr(poller, "router", None))})
+
     @app.post("/api/voucher/claim")
     @require_auth
     def voucher_claim():
@@ -713,7 +757,8 @@ def create_app(cfg: Config, poller: Poller):
         if not mac:
             mac = voucher.mac_for_ip(poller.router, ip)
         try:
-            res = voucher.claim(code, mac=mac, ip=ip)
+            res = voucher.claim(code, mac=mac, ip=ip,
+                                router=getattr(poller, "router", None))
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         # a claimed device must not stay gated out (grace-deny cleanup)
