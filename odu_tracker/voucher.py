@@ -649,7 +649,13 @@ def _refresh_worker(router, reason: str):
 #
 # This is an ESTIMATE, not a firmware reading — it is the closest a shared
 # counter allows. The cmd 337 pool cap remains the hard, exact backstop.
-USAGE_TOLERANCE_MB = 64.0     # ignore tiny deltas (counter jitter / noise)
+# Per-poll floor before a batch of accumulated growth is billed to devices.
+# Readings are quantized (~0.01 GB = 10.24 MB steps), so this must stay above
+# the quantization step; growth BELOW the floor is CARRIED in pool state
+# (usage_pending_mb), never dropped — a hard cutoff here previously discarded
+# ~71% of all counter growth (measured live) because steady household traffic
+# rarely moves >64 MB inside one 15 s poll.
+USAGE_TOLERANCE_MB = 64.0
 
 _exhaust_cache = {"ts": 0.0, "macs": None}     # exhausted MAC set, 5 s TTL
 
@@ -716,34 +722,75 @@ def attribute_usage(counter_mb: float, online_macs) -> list:
     `counter_mb` = mon_download_flow now (MB). `online_macs` = MACs seen online
     this poll. Returns MACs that JUST crossed their quota this call (so the
     caller can deny them). Purely local (no router HTTP).
+
+    Sub-tolerance growth is CARRIED in pool state (`usage_pending_mb`) instead
+    of being dropped: the readings are quantized to ~10 MB steps and a hard
+    per-poll cutoff silently discarded most steady traffic. The accumulator
+    also cancels that rounding noise (zero-mean) instead of truncating it.
+    Pending growth is always settled with the set of claim-holders it
+    accumulated for (they were online while it accrued), even if they have
+    since gone offline or the sharer set changed.
     """
     st = _pool()
     prev = st.get("usage_counter_mb")
     st["usage_counter_mb"] = float(counter_mb)
     # billing reset (counter went backwards): start every device fresh
     if prev is not None and float(counter_mb) < float(prev) - 1.0:
+        st["usage_pending_mb"] = 0.0
+        st["usage_pending_set"] = ""
         store.exec("UPDATE voucher_usage SET used_mb=0")
         invalidate_usage_cache()
         _save_pool(st)
         return []
-    _save_pool(st)
     if prev is None:
-        return []                              # first reading: just anchor
-    delta = float(counter_mb) - float(prev)
-    if delta <= USAGE_TOLERANCE_MB:
+        st["usage_pending_mb"] = 0.0          # first reading: just anchor
+        st["usage_pending_set"] = ""
+        _save_pool(st)
         return []
+    delta = float(counter_mb) - float(prev)   # > -1.0 here (reset handled)
     active = active_claim_macs()
     online = {normalize_mac(x) for x in (online_macs or [])} - {None, ""}
     sharers = online & active                 # claim-holders online now
+    key = ",".join(sorted(sharers))
+    old_key = st.get("usage_pending_set") or ""
+    pending_old = float(st.get("usage_pending_mb") or 0.0)
+    newly = set()
+    if old_key and old_key != key and pending_old > 0.0:
+        # sharer set changed: settle the carry with the set that earned it
+        newly |= _distribute(old_key.split(","), pending_old)
+        pending_old = 0.0
     if not sharers:
-        return []                              # nobody to bill for this delta
-    share = delta / len(sharers)
+        # nobody to bill for this window (unclaimed / unknown devices online)
+        st["usage_pending_mb"] = 0.0
+        st["usage_pending_set"] = ""
+        _save_pool(st)
+        return sorted(newly)
+    pending = (pending_old if old_key == key else 0.0) + delta
+    if pending < 0.0:
+        pending = 0.0                         # downward quantization jitter
+    if pending < USAGE_TOLERANCE_MB:
+        st["usage_pending_mb"] = pending
+        st["usage_pending_set"] = key
+        _save_pool(st)
+        return sorted(newly)
+    st["usage_pending_mb"] = 0.0
+    st["usage_pending_set"] = key
+    _save_pool(st)
+    newly |= _distribute(sorted(sharers), pending)
+    return sorted(newly)
+
+
+def _distribute(macs, total_mb: float) -> set:
+    """Split total_mb evenly over macs; return MACs newly at/over quota."""
+    macs = [m for m in macs if m]
+    if not macs or total_mb <= 0.0:
+        return set()
+    share = total_mb / len(macs)
     before = exhausted_macs()
-    for m in sharers:
+    for m in macs:
         set_device_used_mb(m, device_used_mb(m) + share)
     invalidate_usage_cache()
-    now_ex = exhausted_macs()
-    return sorted(now_ex - before)
+    return exhausted_macs() - before
 
 
 def credit_device(mac: str, mb: float):

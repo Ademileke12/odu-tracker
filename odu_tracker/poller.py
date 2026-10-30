@@ -9,6 +9,7 @@ rows; anything unknown is retained verbatim into raw_cache so the UI can
 still display truth.
 """
 import json
+import socket
 import threading
 import time
 import traceback
@@ -117,6 +118,8 @@ class Poller:
         self._last_flow = None          # (ts, cumulative_mb)
         self.rate_ring = []             # [(ts, mbps)] recent window
         self.current_rate = None        # last interval's Mbps
+        # portal-aware soft cut: was the hijack path fully up last poll?
+        self._soft_prev = False
 
     # ------------------------------------------------------------- controls
     def start(self):
@@ -218,15 +221,29 @@ class Poller:
             self._check_flow_regression(now_ts, usage)
             self._track_rate(now_ts, usage)
             self._meter_devices(now_ts, usage, seen_now)
+
+        # portal-aware soft cut: the moment the hijack path is fully up,
+        # re-admit devices still held by a stale cmd278 deny so they can
+        # rejoin the SSID and reach the claim page (self-service recovery)
+        soft = self._portal_soft_cut()
+        if soft and not self._soft_prev:
+            threading.Thread(target=self._lift_soft_denies, daemon=True,
+                             name="soft-lift").start()
+        self._soft_prev = soft
         self.last_fast = snap
 
     def _meter_devices(self, ts, usage, seen_now):
         """Time-share per-device metering from the shared counter (voucher.py).
 
-        Splits this poll's counter growth across online claim-holders; any MAC
-        that just crossed its quota is denied on the router (cmd 278) so it
-        loses Wi-Fi internet on top of the DNS hijack. Router writes happen in
-        the background so the 15 s poll loop never blocks on the ~1.3 s pacing.
+        Splits this poll's counter growth among online claim-holders. A device
+        that crosses its quota is ALWAYS held by the captive portal (soft cut,
+        product decision 2026-10-29): it keeps its Wi-Fi association and every
+        lookup lands on the voucher claim page, so the holder can redeem a new
+        code by themselves within seconds. The router kick (cmd 278) was
+        retired from this path — verified live it DEAUTHENTICATES the client
+        completely (the phone could not even rejoin the SSID), which destroyed
+        the self-service recovery loop. cmd 278 remains available for the
+        manual Devices-tab block only.
         """
         try:
             counter_mb = (usage["used"] or 0) * 1024.0
@@ -234,16 +251,105 @@ class Poller:
         except Exception:
             traceback.print_exc()
             return
+        if not newly:
+            return
+        held = self._portal_soft_cut()
         for mac in newly:
-            store.add_alert("warning", "Device used its data",
-                            f"{mac} reached its voucher quota; internet cut")
-            threading.Thread(target=self._deny_exhausted, args=(mac,),
-                             daemon=True, name=f"deny-{mac[-5:]}").start()
+            if held:
+                store.add_alert("warning", "Device used its data",
+                                f"{mac} reached its voucher quota; redirected "
+                                "to the voucher claim page (soft cut)")
+            else:
+                # No enforcement possible without the hijack path: say so
+                # loudly instead of silently letting the device keep browsing.
+                store.add_alert("danger", "Device used its data",
+                                f"{mac} reached its voucher quota — captive "
+                                "portal not armed, so it still has internet. "
+                                "Arm it in the Vouchers tab to hold it at the "
+                                "claim page.")
 
-    def _deny_exhausted(self, mac):
+    # ------------------------------------------- portal-aware soft cut policy
+    def _portal_soft_cut(self) -> bool:
+        """True when the captive portal currently HOLDS an exhausted device
+        (the hijack path is verifiably up), False when the soft cut is armed
+        in policy but not actually enforcing.
+
+        Soft cut is ALWAYS the exhaustion policy (see _meter_devices); this
+        check only decides which alert fires and drives the re-admission
+        transition in fast_poll. All links must hold:
+          * portal_enforced armed by the admin,
+          * claim page running,
+          * DNS proxy running without error,
+          * router DHCP DNS handing out this machine — otherwise the hijack
+            reaches nobody and the device would roam free.
+        """
         try:
-            if self.router is not None and self.router.logged_in:
-                voucher.gate_deny(self.router, mac)
+            if not self.cfg.get("portal_enforced"):
+                return False
+            from odu_tracker import dns_proxy as _dp
+            from odu_tracker import portal as _portal
+            if not _portal.status().get("running"):
+                return False
+            dp = _dp._singleton
+            if not (dp and dp.is_alive() and not getattr(dp, "error", None)):
+                return False
+            return self._dns_pointed_at_self()
+        except Exception:
+            return False
+
+    def _dns_pointed_at_self(self) -> bool:
+        """Router DHCP main DNS == this machine's LAN IP (read from the fresh
+        cmd-3 snapshot the poller caches in raw_cache['fast'])."""
+        try:
+            raw = store.q("SELECT body FROM raw_cache WHERE name='fast'",
+                          fetch="one")
+            if not raw:
+                return False
+            dhcp = json.loads(raw["body"]).get("dhcp_data") or {}
+            main = str(dhcp.get("main_dns") or "")
+            if not main:
+                return False
+            me = self._my_lan_ip()
+            return bool(me) and main == me
+        except Exception:
+            return False
+
+    def _my_lan_ip(self) -> str:
+        """This machine's LAN IP towards the router (UDP connect — no packets)."""
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.connect((self.cfg.get("router_ip") or "192.168.0.1", 80))
+                return s.getsockname()[0]
+            finally:
+                s.close()
+        except OSError:
+            return ""
+
+    def _lift_soft_denies(self):
+        """Portal just armed -> self-service recovery must work NOW: lift the
+        cmd 278 deny of every device that isn't manually blocked (Devices
+        tab). gate_deny has only two callers — the exhaustion path and the
+        manual block — so "denied minus manual" is exactly ours to lift; entries
+        written from the vendor UI are left untouched when they match a manual
+        block, otherwise they are re-admitted too (the admin just armed the
+        portal: holding MACs off the SSID has no recovery path left).
+        """
+        try:
+            if self.router is None or not self.router.logged_in:
+                return
+            manual = {r["mac"] for r in
+                      store.q("SELECT mac FROM devices WHERE blocked=1")}
+            st = voucher.gate_status(self.router)
+            denied = set()
+            for band in (st or {}).values():
+                if isinstance(band, dict) and band.get("mode") == "deny":
+                    denied |= set(band.get("macs") or [])
+            for mac in sorted(denied - manual):
+                res = voucher.gate_allow(self.router, mac)
+                store.add_alert("info", "Portal arm: device re-admitted",
+                                f"{mac} unblocked so it can rejoin and redeem "
+                                f"a voucher (ok={bool((res or {}).get('ok'))})")
         except Exception:
             traceback.print_exc()
 
