@@ -230,6 +230,12 @@ class Poller:
             threading.Thread(target=self._lift_soft_denies, daemon=True,
                              name="soft-lift").start()
         self._soft_prev = soft
+
+        # a router reboot silently reverts its DHCP DNS to its own IP,
+        # which KILLS the hijack (and with it the soft cut) while every
+        # status flag still says "enforced". self-heal it.
+        if self.cfg.get("portal_enforced"):
+            self._repoint_dns_if_drifted()
         self.last_fast = snap
 
     def _meter_devices(self, ts, usage, seen_now):
@@ -313,6 +319,56 @@ class Poller:
             return bool(me) and main == me
         except Exception:
             return False
+
+    def _repoint_dns_if_drifted(self, cooldown_s=600):
+        """Self-heal: re-apply the DHCP DNS pointing after it drifts.
+
+        Verified live incident 2026-10-30: the ODU reverts its cmd-3 DNS
+        fields to the defaults on reboot, so the hijack silently reached
+        zero devices while `portal_enforced` stayed true — every exhausted
+        device roamed free. The admin only ever clicks "point DNS at this
+        app" once; a router reboot must not undo enforcement forever after.
+        So while the portal is armed, drift is repaired automatically,
+        rate-limited so a flaky router can't be hammered with cmd-3 posts.
+        """
+        now = time.time()
+        if now - getattr(self, "_dns_heal_ts", 0) < cooldown_s:
+            return
+        if self._dns_pointed_at_self():
+            return
+        if self.router is None or not self.router.logged_in:
+            return
+        self._dns_heal_ts = now
+        threading.Thread(target=self._repoint_dns, daemon=True,
+                         name="dns-heal").start()
+
+    def _repoint_dns(self):
+        """Push cmd 3 with this machine as main DNS (8.8.8.8 fallback),
+        preserving every other DHCP field the router reported."""
+        try:
+            me = self._my_lan_ip()
+            if not me:
+                return
+            cur = self.router.cmd(3, "GET") or {}
+            payload = {
+                "lanIp": cur.get("lanIp", ""),
+                "netMask": cur.get("netMask", ""),
+                "dhcpServer": cur.get("dhcpServer", "1"),
+                "main_dns": me,
+                "vice_dns": "8.8.8.8",
+                "ipBegin": cur.get("ipBegin", ""),
+                "ipEnd": cur.get("ipEnd", ""),
+                "expireTime": cur.get("expireTime", "24h"),
+            }
+            resp = self.router.cmd(3, "POST", payload) or {}
+            ok = bool(resp.get("success"))
+            store.add_alert(
+                "info" if ok else "danger",
+                "Router DNS self-healed" if ok else "Router DNS self-heal FAILED",
+                f"router DNS had drifted (reboot/reset?) — re-pointed at "
+                f"{me} automatically (ok={ok})")
+        except Exception:
+            traceback.print_exc()
 
     def _my_lan_ip(self) -> str:
         """This machine's LAN IP towards the router (UDP connect — no packets)."""

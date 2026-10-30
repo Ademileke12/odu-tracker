@@ -475,6 +475,9 @@ def create_app(cfg: Config, poller: Poller):
         else:
             store.setting_set("usage_baseline",
                               {"ts": time.time(), "total_mb": 0.0})
+        # explicit new billing period: forgive consumed data on every
+        # device (a router reboot must NOT do this — see voucher.py)
+        voucher.reset_all_usage()
         store.add_alert("info", "Usage counter reset",
                         "Counting started from now "
                         + ("(router counters cleared)" if fw.get("ok") else "(local baseline)"))

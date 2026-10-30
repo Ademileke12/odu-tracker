@@ -734,12 +734,14 @@ def attribute_usage(counter_mb: float, online_macs) -> list:
     st = _pool()
     prev = st.get("usage_counter_mb")
     st["usage_counter_mb"] = float(counter_mb)
-    # billing reset (counter went backwards): start every device fresh
+    # counter went backwards (ODU reboot / firmware clear): re-anchor the
+    # delta and drop any pending carry — but do NOT refund device usage.
+    # The data was really consumed; zeroing here let every exhausted device
+    # roam free the moment the router rebooted (live incident 2026-10-30).
+    # A fresh billing period is an explicit admin action: reset_all_usage().
     if prev is not None and float(counter_mb) < float(prev) - 1.0:
         st["usage_pending_mb"] = 0.0
         st["usage_pending_set"] = ""
-        store.exec("UPDATE voucher_usage SET used_mb=0")
-        invalidate_usage_cache()
         _save_pool(st)
         return []
     if prev is None:
@@ -791,6 +793,21 @@ def _distribute(macs, total_mb: float) -> set:
         set_device_used_mb(m, device_used_mb(m) + share)
     invalidate_usage_cache()
     return exhausted_macs() - before
+
+
+def reset_all_usage():
+    """Explicit admin 'new billing period' — zero every device's usage.
+
+    The ONLY path that forgives consumed data. A router reboot / counter
+    clear is NOT this: attribute_usage just re-anchors its delta there and
+    keeps per-device usage intact (a reboot must never hand out free GB).
+    """
+    st = _pool()
+    st["usage_pending_mb"] = 0.0
+    st["usage_pending_set"] = ""
+    _save_pool(st)
+    store.exec("UPDATE voucher_usage SET used_mb=0")
+    invalidate_usage_cache()
 
 
 def credit_device(mac: str, mb: float):
