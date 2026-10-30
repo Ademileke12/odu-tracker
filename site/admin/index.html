@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ODU Tracker — admin stats</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#efece4">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='13' fill='%23ffb632'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%230a0a0a' stroke-width='5.5'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%23ffffff' stroke-width='5.5' stroke-linecap='round' stroke-dasharray='50 75.4' transform='rotate(-90 24 26)'/%3E%3Ccircle cx='24' cy='26' r='3' fill='%230a0a0a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#efece4; --panel:#f7f5ef; --ink:#0a0a0a; --mut:#6b675e;
+  --amber:#ffb632; --red:#e5484d; --green:#2f9e44;
+  --display:'Anton',sans-serif; --body:'Space Grotesk',sans-serif; --mono:'Space Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);background-image:radial-gradient(rgba(10,10,10,.09) 1px,transparent 1px);background-size:22px 22px;color:var(--ink);font-family:var(--body);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:48px 20px}
+h1{font-family:var(--display);font-size:clamp(28px,5vw,44px);letter-spacing:.5px;margin-bottom:6px}
+.sub{font-family:var(--mono);font-size:12px;color:var(--mut);margin-bottom:28px}
+.card{background:var(--panel);border:1.5px solid var(--ink);border-radius:14px;padding:26px;width:100%;max-width:520px;box-shadow:6px 6px 0 rgba(10,10,10,.12)}
+label{display:block;font-family:var(--mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+input[type=password]{width:100%;padding:13px 14px;border:1.5px solid var(--ink);border-radius:9px;background:#fff;font-family:var(--mono);font-size:15px;outline:none}
+input[type=password]:focus{box-shadow:0 0 0 3px var(--amber)}
+button{margin-top:16px;width:100%;padding:13px;border:1.5px solid var(--ink);border-radius:9px;background:var(--ink);color:var(--paper);font-family:var(--display);font-size:17px;letter-spacing:1px;cursor:pointer}
+button:hover{background:#26251f}
+button.ghost{background:transparent;color:var(--ink);width:auto;padding:8px 16px;font-size:13px}
+.err{color:var(--red);font-family:var(--mono);font-size:12px;margin-top:12px;min-height:16px}
+/* stats view */
+.wrap{width:100%;max-width:880px}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--panel);border:1.5px solid var(--ink);border-radius:12px;padding:18px}
+.kpi .n{font-family:var(--display);font-size:34px;line-height:1.1}
+.kpi .l{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin-top:4px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1.5px solid var(--ink);border-radius:12px;overflow:hidden}
+th,td{padding:11px 14px;text-align:left;font-size:13.5px;border-bottom:1px solid rgba(10,10,10,.12)}
+th{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--mut)}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+tr:last-child td{border-bottom:none}
+.sec{font-family:var(--mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin:26px 0 10px;color:var(--mut)}
+.hidden{display:none}
+.spark{display:flex;align-items:flex-end;gap:3px;height:60px;margin:10px 0 4px}
+.spark i{flex:1;background:var(--amber);border:1px solid var(--ink);border-radius:2px 2px 0 0;min-height:2px}
+.spark i:hover{background:var(--ink)}
+footer{margin-top:34px;font-family:var(--mono);font-size:11px;color:var(--mut)}
+</style>
+</head>
+<body>
+
+<!-- ================================================ login -->
+<div id="loginView" class="card">
+  <h1>ADMIN<span style="color:var(--amber)"> GATE</span></h1>
+  <p class="sub">odu tracker — site stats</p>
+  <form id="loginForm" autocomplete="off">
+    <label for="pw">Password</label>
+    <input type="password" id="pw" name="password" autocomplete="current-password" required>
+    <button type="submit">UNLOCK</button>
+    <p class="err" id="loginErr"></p>
+  </form>
+</div>
+
+<!-- ================================================ stats -->
+<div id="statsView" class="wrap hidden">
+  <div class="head">
+    <div>
+      <h1>SITE <span style="color:var(--amber)">STATS</span></h1>
+      <p class="sub" id="genAt">—</p>
+    </div>
+    <button class="ghost" id="logoutBtn">Log out</button>
+  </div>
+
+  <div class="grid">
+    <div class="kpi"><div class="n" id="kDownloads">—</div><div class="l">Total downloads (GitHub, all-time)</div></div>
+    <div class="kpi"><div class="n" id="kViews">—</div><div class="l">Page views (tracked)</div></div>
+    <div class="kpi"><div class="n" id="kClicks">—</div><div class="l">Download clicks (tracked)</div></div>
+    <div class="kpi"><div class="n" id="kReleases">—</div><div class="l">Releases published</div></div>
+  </div>
+
+  <p class="sec">Downloads per file — real GitHub counts</p>
+  <table><thead><tr><th>Asset</th><th class="num">Downloads</th><th class="num">Clicks on site</th></tr></thead>
+    <tbody id="assetRows"></tbody></table>
+
+  <p class="sec">Last 14 days — page views</p>
+  <div class="spark" id="viewSpark" title="daily page views"></div>
+
+  <p class="sec">Last 14 days — download clicks</p>
+  <div class="spark" id="clickSpark" title="daily download clicks"></div>
+
+  <p class="sec">Last 14 days — daily numbers</p>
+  <table><thead><tr><th>Day</th><th class="num">Views</th><th class="num">Clicks</th></tr></thead>
+    <tbody id="dayRows"></tbody></table>
+
+  <footer>Counters since tracking began · downloads from GitHub API · session expires in 12h</footer>
+</div>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const fmt = (n) => (n || 0).toLocaleString();
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (r.status === 401) { showLogin(); throw new Error('unauthorized'); }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function showLogin(){ $('#statsView').classList.add('hidden'); $('#loginView').classList.remove('hidden'); }
+function showStats(){ $('#loginView').classList.add('hidden'); $('#statsView').classList.remove('hidden'); }
+
+$('#loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('#loginErr').textContent = '';
+  try {
+    await api('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ password: $('#pw').value }) });
+    $('#pw').value = '';
+    load();
+  } catch { $('#loginErr').textContent = 'wrong password (attempts are limited)'; }
+});
+
+$('#logoutBtn').addEventListener('click', async () => {
+  await api('/api/logout', { method: 'POST' }).catch(()=>{});
+  showLogin();
+});
+
+function spark(el, series) {
+  const max = Math.max(1, ...series.map(d => d.n));
+  el.innerHTML = series.map(d =>
+    `<i style="height:${Math.max(4, Math.round(d.n / max * 100))}%" title="${d.day}: ${d.n}"></i>`).join('');
+}
+
+async function load() {
+  try {
+    const d = await api('/api/stats');
+    showStats();
+    $('#kDownloads').textContent = d.downloads ? fmt(d.downloads.total) : (d.ghError ? 'n/a' : '0');
+    $('#kViews').textContent = fmt(d.views);
+    $('#kClicks').textContent = fmt(d.clicks);
+    $('#kReleases').textContent = d.downloads ? fmt(d.downloads.releases) : '—';
+    $('#genAt').textContent = 'generated ' + new Date(d.generatedAt).toLocaleString();
+
+    const names = new Set([...Object.keys(d.downloads?.perAsset || {}), ...Object.keys(d.clickAssets || {})]);
+    $('#assetRows').innerHTML = [...names].sort().map(n =>
+      `<tr><td>${n}</td><td class="num">${fmt(d.downloads?.perAsset?.[n])}</td>` +
+      `<td class="num">${fmt(d.clickAssets?.[n])}</td></tr>`).join('') ||
+      '<tr><td colspan="3">no releases yet</td></tr>';
+
+    spark($('#viewSpark'), d.viewSeries);
+    spark($('#clickSpark'), d.clickSeries);
+    const byDay = new Map(d.viewSeries.map(v => [v.day, v]));
+    $('#dayRows').innerHTML = d.viewSeries.slice().reverse().map(v => {
+      const c = d.clickSeries.find(x => x.day === v.day);
+      return `<tr><td>${v.day}</td><td class="num">${v.n}</td><td class="num">${c ? c.n : 0}</td></tr>`;
+    }).join('');
+  } catch (e) {
+    if (String(e.message) !== 'unauthorized') { showLogin(); }
+  }
+}
+
+/* already has a session? skip straight to stats */
+load();
+</script>
+</body>
+</html>

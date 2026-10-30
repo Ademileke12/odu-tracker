@@ -80,6 +80,25 @@ fetch(API, { headers: { Accept: 'application/vnd.github+json' } })
     if (note) note.hidden = false;
   });
 
+/* ------------------------------------------------ stats beacon
+   Counters land in the KV store behind /api/track (admin page reads them).
+   sendBeacon survives navigation, so a download click is counted even
+   though the browser immediately leaves for GitHub. Failures are silent —
+   analytics must never break the page. */
+function beacon(payload) {
+  try {
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    navigator.sendBeacon?.('/api/track', blob) ||
+      fetch('/api/track', { method: 'POST', body: blob, keepalive: true }).catch(() => {});
+  } catch { /* ignore */ }
+}
+
+beacon({ e: 'view' });
+
+document.querySelectorAll('.dl-link').forEach((a) => {
+  a.addEventListener('click', () => beacon({ e: 'click', a: a.dataset.asset || 'unknown' }));
+});
+
 /* ------------------------------------------------ konami boost */
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown',
                 'ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
