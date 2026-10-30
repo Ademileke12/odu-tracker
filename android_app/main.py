@@ -46,6 +46,10 @@ from odu_tracker.web.app import create_app
 diag.stage("imports: app module ready")
 
 SERVER_PORT = 8770
+# Phone-first dashboard (/mobile). The desktop UI squeezed into a phone
+# WebView was the "badly designed" half of the complaint — the engine
+# serves a thumb-sized layout at /mobile with the same APIs.
+MOBILE_PATH = "/mobile"
 BG = (0.02, 0.027, 0.043)          # #05070b
 ACCENT = (1.0, 0.714, 0.196)       # #ffb632
 FG = (0.91, 0.92, 0.94)
@@ -127,6 +131,15 @@ def _android_activity():
     return autoclass("org.kivy.android.PythonActivity").mActivity
 
 
+# The live WebView (kept so the Android lifecycle can pause/resume it and
+# so back-navigation can drive it). A WebView that never gets onPause()/
+# onResume() misbehaves badly once the app is backgrounded: timers keep
+# burning battery, the render surface goes stale, and on many phones the
+# whole activity is killed soon after — the "doesn't stay long enough"
+# symptom. See OduTrackerAndroidApp.on_pause/on_resume.
+_WEBVIEW = {"wv": None, "lp": None}
+
+
 def build_webview(url):
     """Create + configure + attach the full-screen WebView (UI thread)."""
     from jnius import autoclass
@@ -147,19 +160,17 @@ def build_webview(url):
     s.setJavaScriptEnabled(True)
     s.setDomStorageEnabled(True)
     s.setAllowFileAccess(False)
-    s.setSupportZoom(True)
-    s.setBuiltInZoomControls(True)
-    s.setDisplayZoomControls(False)
+    s.setSupportZoom(False)                        # mobile page scales itself
+    s.setBuiltInZoomControls(False)
     s.setMediaPlaybackRequiresUserGesture(False)
-    s.setLoadWithOverviewMode(False)
-    s.setUseWideViewPort(False)
+    s.setLoadWithOverviewMode(True)
+    s.setUseWideViewPort(True)
 
     wv.setWebViewClient(WebViewClient())
     # NOTE: no custom WebChromeClient — pyjnius can only proxy *interfaces*
     # and android.webkit.WebChromeClient is a class, so the old proxy raised
-    # on construction. Default client keeps the WebView alive; the dashboard's
-    # single JS confirm() (reset-usage) therefore returns false silently —
-    # a native dialog bridge is a follow-up if the app boots.
+    # on construction. Default client keeps the WebView alive; the mobile
+    # page uses no confirm()/alert(), so nothing needs bridging.
 
     # keep cookies (the 30-day "keep me signed in" session) for this app only
     CookieManager.getInstance().setAcceptCookie(True)
@@ -171,7 +182,19 @@ def build_webview(url):
     lp = ViewGroupLayoutParams(MATCH_PARENT, MATCH_PARENT)
     _android_activity().addContentView(wv, lp)
     wv.loadUrl(url)
+    _WEBVIEW["wv"], _WEBVIEW["lp"] = wv, lp      # lifecycle handle
     return wv
+
+
+def _webview_ui(fn):
+    """Run fn(wv) on the UI thread if a WebView exists; never raise."""
+    wv = _WEBVIEW.get("wv")
+    if wv is None:
+        return
+    try:
+        diag.post_to_ui(lambda: fn(wv))
+    except BaseException:
+        traceback.print_exc()
 
 
 # --------------------------------------------------------------------------
@@ -256,7 +279,7 @@ class OduTrackerAndroidApp(App):
         self._ready = True
         self.progress.value = 100
         self.subtitle.text = "Loading dashboard…"
-        url = f"http://127.0.0.1:{SERVER_PORT}/"
+        url = f"http://127.0.0.1:{SERVER_PORT}{MOBILE_PATH}"
         if IS_ANDROID:
             diag.stage("dashboard: handing off to the native WebView")
 
@@ -284,10 +307,54 @@ class OduTrackerAndroidApp(App):
             diag.stage("dashboard: opened in browser (desktop preview)")
             self.subtitle.text = "Dashboard opened in browser (desktop preview)."
 
+    # ------------------------------------------------- Android lifecycle
+    # Kivy's App pauses the *Kivy* side only. The native WebView we added
+    # on top must be paused/resumed explicitly, and on resume it may sit
+    # UNDER the re-attached Kivy surface — hence the re-attach. Without
+    # this trio the app "doesn't stay": backgrounding it once was enough
+    # for the dashboard to freeze or vanish on many phones.
+    def on_pause(self):
+        diag.stage("lifecycle: paused (webview paused)")
+        _webview_ui(lambda wv: wv.onPause())
+        return True                               # keep the process alive
+
+    def on_resume(self):
+        diag.stage("lifecycle: resumed (webview resumed + re-attached)")
+        wv = _WEBVIEW.get("wv")
+
+        def _do(wv):
+            try:
+                wv.onResume()
+                # p4a re-adds the SDL/GL surface on top after resume —
+                # pull the WebView back to the front of the same window.
+                parent = wv.getParent()
+                if parent is not None:
+                    parent.removeView(wv)
+                _android_activity().addContentView(wv, _WEBVIEW["lp"])
+                wv.bringToFront()
+                wv.invalidate()                   # repaint now, not on touch
+            except BaseException:
+                traceback.print_exc()
+        _webview_ui(_do)
+        return True
+
+    def on_stop(self):
+        diag.stage("lifecycle: stop")
+
 
 def run():
     diag.stage("kivy: App.run() entering the event loop")
-    OduTrackerAndroidApp().run()
+    try:
+        OduTrackerAndroidApp().run()
+    except BaseException:
+        # any exception that escaped the app loop — paint it, don't exit
+        # silently (start.c would just logcat + exit(1))
+        diag.fatal_exc(detail="the app loop crashed")
+        raise
+    # App.run() returned: either the user closed it (normal) or the window
+    # died before the dashboard ever came up (premature exit — diagnostics
+    # decides which and reports the latter on screen).
+    diag.report_premature_exit()
 
 
 if __name__ == "__main__":

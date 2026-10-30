@@ -58,6 +58,13 @@ def create_app(cfg: Config, poller: Poller):
     def index():
         return send_from_directory(os.path.join(STATIC_DIR), "index.html")
 
+    @app.route("/mobile")
+    def mobile():
+        """Phone-first dashboard — what the Android app's WebView loads.
+        Same APIs, thumb-sized UI (the desktop dashboard is unusable on a
+        phone screen)."""
+        return send_from_directory(os.path.join(STATIC_DIR), "mobile.html")
+
     # ------------------------------------------------------------- helpers
     def require_auth(fn):
         from functools import wraps

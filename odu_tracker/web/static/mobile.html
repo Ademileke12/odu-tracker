@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05070b">
+<title>ODU Tracker</title>
+<style>
+/* ============ phone-first dashboard (served to the Android app at /mobile) ============ */
+:root{
+  --bg:#05070b; --panel:#0d121c; --panel2:#131a27;
+  --ink:#e8ecf3; --mut:#8b94a6; --faint:#5b6474;
+  --acc:#ffb632; --green:#3ecf6f; --red:#e5484d; --blue:#5b9dff;
+  --mono:ui-monospace,'SF Mono',Roboto Mono,monospace;
+  --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+  overscroll-behavior-y:contain;-webkit-font-smoothing:antialiased}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;
+  padding:calc(10px + var(--sat)) 16px 10px;background:rgba(5,7,11,.92);
+  backdrop-filter:blur(8px);border-bottom:1px solid #171e2c}
+.top .mark{width:30px;height:30px;border-radius:9px;background:var(--acc);
+  display:grid;place-items:center;font-weight:800;color:#05070b;font-size:15px}
+.top b{font-size:16px;letter-spacing:.4px}
+.top b span{color:var(--acc)}
+.chip{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:700;
+  padding:4px 9px;border-radius:999px;border:1px solid #2a3345;color:var(--mut);
+  display:flex;align-items:center;gap:6px}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.chip.on i{background:var(--green);box-shadow:0 0 6px var(--green)}
+.chip.bad i{background:var(--red)}
+
+/* ---------- views ---------- */
+main{padding:14px 14px calc(84px + var(--sab))}
+.view{display:none;animation:fade .18s ease}
+.view.show{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+
+/* ---------- gauge ---------- */
+.gauge{display:flex;flex-direction:column;align-items:center;padding:18px 0 8px}
+.gauge svg{width:210px;height:210px;transform:rotate(-90deg)}
+.gauge .ring-bg{stroke:#182031}
+.gauge .ring-fg{stroke:var(--acc);stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.gauge .center{margin-top:-136px;text-align:center;pointer-events:none}
+.gauge .big{font-family:var(--mono);font-size:40px;font-weight:700;line-height:1}
+.gauge .big small{font-size:16px;color:var(--mut)}
+.gauge .cap{font-family:var(--mono);font-size:10.5px;color:var(--mut);
+  letter-spacing:1.4px;text-transform:uppercase;margin-top:7px}
+.gauge .sub{font-size:12.5px;color:var(--faint);margin-top:3px}
+
+/* ---------- cards row ---------- */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.card{background:var(--panel);border:1px solid #171e2c;border-radius:14px;padding:13px 14px}
+.card .k{font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--mut)}
+.card .v{font-family:var(--mono);font-size:21px;font-weight:700;margin-top:5px}
+.card .v small{font-size:11px;color:var(--mut);font-weight:400}
+.card .v.acc{color:var(--acc)} .card .v.grn{color:var(--green)}
+
+/* ---------- sparkline ---------- */
+.spark-box{background:var(--panel);border:1px solid #171e2c;border-radius:14px;
+  padding:13px 14px 8px;margin-top:10px}
+.spark-box .k{font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+.spark-box svg{width:100%;height:64px;display:block}
+.spark-box .ln{fill:none;stroke:var(--acc);stroke-width:2;stroke-linejoin:round}
+.spark-box .ar{fill:url(#sg)}
+
+/* ---------- device / alert rows ---------- */
+.row{display:flex;align-items:center;gap:11px;background:var(--panel);
+  border:1px solid #171e2c;border-radius:13px;padding:12px 13px;margin-bottom:8px}
+.row .dot{width:9px;height:9px;border-radius:50%;background:#242c3c;flex:none}
+.row .dot.on{background:var(--green);box-shadow:0 0 7px var(--green)}
+.row .dot.blk{background:var(--red)}
+.row .main{min-width:0;flex:1}
+.row .t{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-family:var(--mono);font-size:10.5px;color:var(--mut);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{font-family:var(--mono);font-size:9px;font-weight:700;padding:3px 7px;
+  border-radius:6px;letter-spacing:.5px;flex:none}
+.tag.risk-hi{background:#3a1417;color:#ff8f94}
+.tag.risk-md{background:#3a2c10;color:#ffd27a}
+.tag.risk-lo{background:#11281a;color:#7ee2a3}
+.tag.iface{background:#152036;color:#9db8e8}
+.tag.block{background:#3a1417;color:#ff8f94}
+
+.row.alert{align-items:flex-start}
+.row.alert .lv{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:none}
+.lv.info{background:var(--blue)} .lv.warning{background:var(--acc)}
+.lv.danger{background:var(--red)} .lv.success{background:var(--green)}
+.row.alert.unread{border-color:#2c3a56;background:#101828}
+
+/* ---------- misc ---------- */
+.h{font-family:var(--mono);font-size:10.5px;letter-spacing:1.6px;color:var(--mut);
+  text-transform:uppercase;margin:20px 4px 10px}
+.h:first-child{margin-top:4px}
+.empty{text-align:center;color:var(--faint);font-size:13px;padding:34px 0}
+.btn{display:block;width:100%;padding:13px;border:none;border-radius:12px;
+  background:var(--acc);color:#05070b;font-weight:800;font-size:15px;letter-spacing:.5px;
+  font-family:inherit;cursor:pointer}
+.btn.ghost{background:var(--panel2);color:var(--mut);font-weight:600;font-size:13px;padding:11px}
+.spin{display:inline-block;width:15px;height:15px;border:2.5px solid rgba(5,7,11,.3);
+  border-top-color:#05070b;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ---------- bottom tabs ---------- */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;
+  background:rgba(13,18,28,.96);backdrop-filter:blur(10px);border-top:1px solid #1b2434;
+  padding-bottom:var(--sab)}
+nav button{flex:1;background:none;border:none;color:var(--faint);font-family:inherit;
+  padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:10.5px;font-weight:600;cursor:pointer;position:relative}
+nav button .ic{font-size:19px;line-height:1}
+nav button.act{color:var(--acc)}
+nav .bdg{position:absolute;top:5px;right:calc(50% - 18px);background:var(--red);
+  color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;
+  display:grid;place-items:center;padding:0 4px}
+
+/* ---------- login ---------- */
+#login{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;
+  flex-direction:column;align-items:center;justify-content:center;padding:32px}
+#login .logo{width:74px;height:74px;border-radius:20px;background:var(--acc);
+  display:grid;place-items:center;font-size:34px;font-weight:800;color:#05070b;margin-bottom:18px}
+#login h1{font-size:23px;letter-spacing:.5px}
+#login h1 span{color:var(--acc)}
+#login p{color:var(--mut);font-size:13.5px;margin:8px 0 26px;text-align:center;line-height:1.5}
+#login input{width:100%;max-width:330px;padding:15px;border-radius:12px;border:1.5px solid #242c3c;
+  background:var(--panel);color:var(--ink);font-size:16px;font-family:var(--mono);outline:none}
+#login input:focus{border-color:var(--acc)}
+#login .btn{max-width:330px;margin-top:14px}
+#loginErr{color:var(--red);font-size:12.5px;font-family:var(--mono);margin-top:12px;min-height:16px}
+#login .hint{font-size:11px;color:var(--faint);margin-top:22px;max-width:300px}
+</style>
+</head>
+<body>
+
+<!-- ================================================ login -->
+<div id="login">
+  <div class="logo">O</div>
+  <h1>ODU <span>TRACKER</span></h1>
+  <p>Your ODU's cockpit — usage, devices and alerts.<br>Everything stays on this phone.</p>
+  <input id="pw" type="password" placeholder="ODU admin password" autocomplete="off">
+  <button class="btn" id="loginBtn">SIGN IN</button>
+  <div id="loginErr"></div>
+  <div class="hint">Join the ODU's Wi-Fi first — the tracker talks directly to
+    <span id="routerIpHint">192.168.0.1</span> and never sends anything to the cloud.</div>
+</div>
+
+<!-- ================================================ app -->
+<header class="top">
+  <div class="mark">O</div><b>ODU <span>TRACKER</span></b>
+  <div class="chip" id="conn"><i></i><span>…</span></div>
+</header>
+
+<main>
+  <!-- ------------------------------------------------ overview -->
+  <section class="view show" id="v-home">
+    <div class="gauge">
+      <svg viewBox="0 0 210 210">
+        <circle class="ring-bg" cx="105" cy="105" r="88" fill="none" stroke-width="17"/>
+        <circle class="ring-fg" id="ring" cx="105" cy="105" r="88" fill="none" stroke-width="17"
+                stroke-dasharray="553" stroke-dashoffset="553"/>
+      </svg>
+      <div class="center">
+        <div class="big" id="used">—<small> GB</small></div>
+        <div class="cap">this month</div>
+        <div class="sub" id="quota">of — GB</div>
+      </div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">Today</div><div class="v acc" id="today">—<small> GB</small></div></div>
+      <div class="card"><div class="k">Live now</div><div class="v grn" id="live">—<small> Mbps</small></div></div>
+      <div class="card"><div class="k">Signal 4G/5G</div><div class="v" id="sig">—<small> dBm</small></div></div>
+      <div class="card"><div class="k">WAN uptime</div><div class="v" id="uptime">—</div></div>
+    </div>
+    <div class="spark-box">
+      <div class="k">Throughput — last hour</div>
+      <svg viewBox="0 0 300 64" preserveAspectRatio="none">
+        <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffb632" stop-opacity=".35"/>
+          <stop offset="1" stop-color="#ffb632" stop-opacity="0"/></linearGradient></defs>
+        <path class="ar" id="sparkA"/><polyline class="ln" id="sparkL"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ devices -->
+  <section class="view" id="v-dev">
+    <div class="h">Devices on your network — <span id="devCount">0</span></div>
+    <div id="devList"><div class="empty">loading…</div></div>
+  </section>
+
+  <!-- ------------------------------------------------ alerts -->
+  <section class="view" id="v-alerts">
+    <div class="h">Alerts</div>
+    <button class="btn ghost" id="readAll" style="margin-bottom:10px">mark all as read</button>
+    <div id="alList"><div class="empty">loading…</div></div>
+  </section>
+</main>
+
+<nav>
+  <button class="act" data-v="home"><span class="ic">◉</span>Overview</button>
+  <button data-v="dev"><span class="ic">▤</span>Devices</button>
+  <button data-v="alerts"><span class="ic">⚑</span>Alerts<span class="bdg" id="alBdg" hidden>0</span></button>
+</nav>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const RING = 2 * Math.PI * 88;            // ring circumference (dasharray)
+
+/* ------------------------------------------------------- helpers */
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (r.status === 401) { showLogin(); throw 401; }
+  if (!r.ok) throw new Error('http ' + r.status);
+  return r.json();
+}
+function ago(ts) {
+  const s = Math.max(0, Date.now() / 1000 - ts);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function dur(secs) {
+  const n = parseInt(secs, 10) || 0;
+  const d = Math.floor(n / 86400), h = Math.floor(n % 86400 / 3600);
+  return d ? d + 'd ' + h + 'h' : (h ? h + 'h ' : '') + Math.floor(n % 3600 / 60) + 'm';
+}
+
+/* ------------------------------------------------------- tabs */
+document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('act', x === b));
+  document.querySelectorAll('.view').forEach((v) =>
+    v.classList.toggle('show', v.id === 'v-' + b.dataset.v));
+}));
+
+/* ------------------------------------------------------- login */
+function showLogin() { $('#login').style.display = 'flex'; }
+function hideLogin() { $('#login').style.display = 'none'; }
+
+$('#loginBtn').addEventListener('click', doLogin);
+$('#pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+async function doLogin() {
+  const pw = $('#pw').value;
+  if (!pw) return;
+  $('#loginErr').textContent = '';
+  $('#loginBtn').innerHTML = '<span class="spin"></span>';
+  try {
+    await api('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, remember: true }) });
+    $('#pw').value = '';
+    hideLogin();
+    refresh();
+  } catch (e) {
+    $('#loginErr').textContent = e === 401 ? 'wrong password' : 'cannot reach the engine — retry shortly';
+  } finally { $('#loginBtn').textContent = 'SIGN IN'; }
+}
+
+/* ------------------------------------------------------- refresh */
+let busy = false;
+async function refresh() {
+  if (busy) return;
+  busy = true;
+  try {
+    const [st, rates] = await Promise.all([api('/api/status'), api('/api/rates')]);
+    renderHome(st, rates);
+    const conn = $('#conn');
+    if (st.poll && st.poll.running) {
+      conn.className = 'chip' + (st.poll.logged_in ? ' on' : ' bad');
+      conn.querySelector('span').textContent = st.poll.logged_in ? 'LIVE' : 'NO ROUTER LOGIN';
+    }
+    renderDevices(await api('/api/devices'));
+    const al = await api('/api/alerts');
+    renderAlerts(al.alerts || []);
+  } catch (e) { /* 401 handled in api() */ }
+  busy = false;
+}
+
+function renderHome(st, rates) {
+  const u = st.usage || {};
+  const used = u.used || 0, total = u.total || 100;
+  $('#used').innerHTML = used.toFixed(used >= 10 ? 0 : 1) + '<small> GB</small>';
+  $('#quota').textContent = 'of ' + Math.round(total) + ' GB';
+  $('#ring').style.strokeDashoffset = RING * (1 - Math.min(used / total, 1));
+  $('#today').innerHTML = (st.day_usage || 0).toFixed(2) + '<small> GB</small>';
+  const sig = st.signal || {};
+  const rssi = sig.rssi || sig.rssi_5g;
+  $('#sig').innerHTML = (rssi ? rssi + '<small> dBm' + (sig.rssi_5g && sig.rssi ? ' / 5G ' + sig.rssi_5g : '') + '</small>' : '—');
+  $('#uptime').textContent = dur((st.wan || {}).uptime);
+
+  // live rate = newest sample; sparkline = last ~35 samples
+  const series = ((rates || {}).series || []).slice(-35);
+  const last = series.length ? series[series.length - 1].mbps : null;
+  $('#live').innerHTML = (last === null ? '—' : last.toFixed(1)) + '<small> Mbps</small>';
+  const max = Math.max(1, ...series.map((p) => p.mbps));
+  const pts = series.map((p, i) => {
+    const x = series.length > 1 ? i / (series.length - 1) * 300 : 0;
+    const y = 62 - p.mbps / max * 58;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  });
+  $('#sparkL').setAttribute('points', pts.join(' '));
+  $('#sparkA').setAttribute('d', pts.length ? 'M0,64 L' + pts.join(' L') + ' L300,64 Z' : '');
+}
+
+function renderDevices(d) {
+  const list = (d.devices || []).slice().sort((a, b) =>
+    (b.online - a.online) || (b.riskscore - a.riskscore));
+  $('#devCount').textContent = list.length;
+  $('#devList').innerHTML = list.map((x) => {
+    const name = x.last_hostname || 'unknown device';
+    const risk = x.riskscore >= 70 ? ['risk-hi', 'HIGH ' + x.riskscore]
+      : x.riskscore >= 40 ? ['risk-md', 'RISK ' + x.riskscore] : ['risk-lo', 'OK ' + (x.riskscore || 0)];
+    const sub = [x.last_ip, x.vendor || null, x.last_iface ? x.last_iface.toUpperCase() : null]
+      .filter(Boolean).join(' · ');
+    return `<div class="row">
+      <div class="dot ${x.online ? 'on' : ''}"></div>
+      <div class="main"><div class="t">${esc(name)}</div>
+        <div class="s">${esc(sub)} · seen ${ago(x.last_seen)}</div></div>
+      ${x.blocked ? '<span class="tag block">BLOCKED</span>' : ''}
+      ${x.trusted ? '<span class="tag risk-lo">TRUSTED</span>' : `<span class="tag ${risk[0]}">${risk[1]}</span>`}
+    </div>`;
+  }).join('') || '<div class="empty">no devices seen yet</div>';
+}
+
+function renderAlerts(list) {
+  const unread = list.filter((a) => !a.read).length;
+  const bdg = $('#alBdg');
+  bdg.hidden = !unread;
+  bdg.textContent = unread;
+  $('#alList').innerHTML = list.map((a) => `
+    <div class="row alert ${a.read ? '' : 'unread'}">
+      <div class="lv ${esc(a.level)}"></div>
+      <div class="main"><div class="t">${esc(a.title)}</div>
+        <div class="s">${esc(a.detail || '')} · ${ago(a.ts)}</div></div>
+    </div>`).join('') || '<div class="empty">all quiet — no alerts</div>';
+}
+
+$('#readAll').addEventListener('click', async () => {
+  try { await api('/api/alerts/read', { method: 'POST' }); refresh(); } catch { /* ignore */ }
+});
+
+/* ------------------------------------------------------- boot */
+(async () => {
+  try {
+    const m = await api('/api/meta');
+    if (m.router_ip) $('#routerIpHint').textContent = m.router_ip;
+    if (!m.authed) { showLogin(); return; }
+  } catch { showLogin(); return; }
+  hideLogin();
+  refresh();
+  setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 15000);
+  addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
+})();
+</script>
+</body>
+</html>

@@ -23,7 +23,7 @@ source.exclude_dirs = .buildozer,build,dist,node_modules,.venv,venv,__pycache__
 source.exclude_patterns = packaging/*,tools/*,site/*,dist/*,build/*,*.md,*.spec,*.bat,*.sh,*.desktop,*.iss,ODU-Tracker.spec,win.txt,requirements.txt,.git*
 
 # (str) Application versioning
-version = 1.2.0
+version = 1.2.1
 
 # (list) Application requirements (kivy = splash screen; pyjnius = WebView)
 # charset-normalizer is a transitive dep of `requests`; from 3.5.x PyPI also

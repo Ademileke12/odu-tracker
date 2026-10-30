@@ -10,12 +10,16 @@ no browser, no server needed.
 ┌─────────────────────────────────────────────┐
 │           Kivy splash / logo                │   ← while the engine boots
 ├─────────────────────────────────────────────┤
-│  native WebView (full screen, stays awake)  │   ← dashboard at
-│  http://127.0.0.1:8770/                     │     127.0.0.1:8770
+│  native WebView (full screen, stays awake)  │   ← phone-first dashboard
+│  http://127.0.0.1:8770/mobile               │     at /mobile
 └─────────────────────────────────────────────┘
         Python engine (this same app process)
         config + SQLite in the app's private dir
 ```
+
+The WebView loads **`/mobile`** — a phone-first page (big usage gauge,
+bottom tabs for Overview / Devices / Alerts) built for a thumb, not the
+desktop dashboard squeezed onto a small screen.
 
 ## Install (users, not developers)
 
