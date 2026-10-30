@@ -414,6 +414,25 @@ h2 {
   font-family: var(--mono); text-decoration: none;
 }
 .dl-alt:hover { color: var(--ink); text-decoration: underline; }
+/* disabled card — Android APK is being rebuilt; the button must look
+   unclickable and the release-fetch logic skips it (no .dl-link class) */
+.dl-card-soon { opacity: .78; }
+.dl-card-soon:hover { transform: none; box-shadow: none; }
+.btn-soon {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--panel-2); color: var(--muted);
+  border: 1.5px dashed var(--muted);
+  cursor: not-allowed; user-select: none;
+  font-family: var(--display); font-size: 15px; letter-spacing: .06em;
+  padding: 12px 14px; border-radius: 9px;
+}
+.soon-chip {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  background: var(--accent); color: var(--ink);
+  border: 1.5px solid var(--ink); border-radius: 999px;
+  padding: 2px 8px;
+}
 .dl-cmd {
   display: block; margin-top: 12px;
   font-family: var(--mono); font-size: 11.5px; color: var(--ink);
