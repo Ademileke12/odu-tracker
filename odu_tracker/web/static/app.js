@@ -108,13 +108,23 @@ function initOfflineState() {
    ---------------------------------------------------------------- */
 const tip = () => $("#chartTip");
 
-function showTip(evt, box, text) {
-  const t = tip(), r = box.getBoundingClientRect();
-  t.innerHTML = text;
+/* Tooltip pinned close to the cursor (design revamp 2026-10-30).
+   .chart-tip is position:fixed, so left/top are viewport coordinates —
+   exactly where the pointer is. Flipped inside the chart near its right
+   edge, clamped so it never leaves the screen. */
+function showTip(evt, box, html) {
+  const t = tip();
+  t.innerHTML = html;
   t.style.display = "block";
-  const x = evt.clientX - r.left + 14, y = evt.clientY - r.top - 34;
-  t.style.left = Math.max(2, Math.min(x, r.width - t.offsetWidth - 4)) + "px";
-  t.style.top  = Math.max(2, y) + "px";
+  const r = box.getBoundingClientRect();
+  const w = t.offsetWidth, h = t.offsetHeight;
+  let x = evt.clientX + 16;
+  if (x + w > r.right - 4) x = evt.clientX - 16 - w;   // flip near the edge
+  x = Math.max(r.left + 4, Math.min(x, r.right - w - 4));
+  let y = evt.clientY - h / 2;
+  y = Math.max(6, Math.min(y, innerHeight - h - 6));
+  t.style.left = x + "px";
+  t.style.top = y + "px";
 }
 function hideTip() { tip().style.display = "none"; }
 
@@ -125,13 +135,79 @@ function niceMax(v) {
   return 10 * p;
 }
 
+/* ---------- axis + hover-readout helpers (design revamp) ---------- */
+/* compact axis scale: "0.6 GB" reads better as "600 MB", 12.4 GB as "12 GB" */
+function axisFmt(v, unit) {
+  if (unit === "GB") return v >= 1 ? v.toFixed(v >= 10 ? 0 : 1) + " GB"
+                                    : (v * 1000).toFixed(0) + " MB";
+  if (unit === "Mbps") return v.toFixed(v >= 10 ? 0 : 1);
+  return v.toFixed(v >= 10 ? 0 : 2) + (unit ? " " + unit : "");
+}
+const hhmm = t => new Date(t * 1000).toLocaleTimeString(
+  [], {hour: "2-digit", minute: "2-digit", hour12: false});
+const hhmmss = t => new Date(t * 1000).toLocaleTimeString(
+  [], {hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false});
+const dayKey = t => new Date(t * 1000).toLocaleDateString(
+  [], {weekday: "short", day: "numeric", month: "short"});
+
+/* rounded-top bar path (base stays square on the axis) */
+function topRound(x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h));
+  return `M${x} ${y + h} V${y + r} Q${x} ${y} ${x + r} ${y} H${x + w - r} ` +
+         `Q${x + w} ${y} ${x + w} ${y + r} V${y + h} Z`;
+}
+
+/* smooth (Catmull-Rom → bezier) curve, control points clamped so the
+   line can't overshoot the plot box */
+function smoothD(pts, top, bot) {
+  const cy = v => Math.max(top, Math.min(bot, v));
+  if (pts.length < 3)
+    return "M" + pts.map(p => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" L");
+  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = cy(p1[1] + (p2[1] - p0[1]) / 6);
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = cy(p2[1] - (p3[1] - p1[1]) / 6);
+    d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)},${c2x.toFixed(1)} ${c2y.toFixed(1)},` +
+         `${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+
+/* Rich hover readout pinned beside the cursor: data spent in this bucket,
+   a share-of-window gauge, and the DAY's total usage — the 2026-10-30 ask
+   ("show usage of the day close to the cursor"). Hidden for month bars,
+   where the bucket already IS the day. */
+function hoverReadout(p, i, s, o) {
+  const isRate = o.isRate;
+  const pct = isRate ? (o.max ? p.v / o.max * 100 : 0)
+                     : (o.total ? p.v / o.total * 100 : 0);
+  let range = p.label || "";
+  if (p.ts) {
+    const span = (i + 1 < s.length && s[i + 1].ts) ? s[i + 1].ts - p.ts : 0;
+    if (isRate || span <= 0) range = p.label || hhmmss(p.ts);
+    else if (span >= 86400 * 0.9) range = p.label;
+    else range = `${hhmm(p.ts)} – ${hhmm(p.ts + span)}`;
+  }
+  let big = o.fmt(p.v);
+  if (!/[a-z]/i.test(big) && o.unit) big += " " + o.unit;  // rate fmt has no unit
+  const dayTot = !isRate && p.ts ? (o.dayMap.get(dayKey(p.ts)) || 0) : 0;
+  return `<div class="tt-h"><b>${big}</b><span>${esc(String(range))}</span></div>` +
+         `<div class="tt-track"><i style="width:${Math.min(100, Math.max(2, pct)).toFixed(1)}%"></i></div>` +
+         (isRate
+           ? `<div class="tt-sub">${pct.toFixed(0)}% of ${o.fmt(o.max)} ${o.unit} peak` +
+             ` · avg ${o.fmt(o.avg)} ${o.unit}</div>`
+           : `<div class="tt-sub">${pct.toFixed(1)}% of ${o.fmt(o.total)} in this window</div>` +
+             (dayTot > p.v * 1.001 + 1e-9
+               ? `<div class="tt-row"><span>📅 ${dayKey(p.ts)}</span>` +
+                 `<b>${o.fmt(dayTot)} spent</b></div>`
+               : ""));
+}
+
 function chart(box, cfg) {
   box.innerHTML = "";
   hideTip();
   const H = cfg.height || 200, W = 760;
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  box.appendChild(svg);
   const NS = "http://www.w3.org/2000/svg";
   const el = (n, at) => {
     const e = document.createElementNS(NS, n);
@@ -139,79 +215,205 @@ function chart(box, cfg) {
     return e;
   };
   const uid = "g" + (chart.uid = (chart.uid || 0) + 1);
-  const gold = cfg.color || "var(--accent)";
   if (cfg.type === "donut") { donut(box, cfg, NS, el, uid); return; }
-  const cfg_fill_color = cfg.color || (cfg.type === "bar" ? "#ffb632" : "#6fa7ff");
-  const defs = el("defs", {});
-  defs.innerHTML =
-    `<linearGradient id="${uid}b" x1="0" y1="0" x2="0" y2="1">
-       <stop offset="0" stop-color="${cfg_fill_color}" stop-opacity=".95"/>
-       <stop offset="1" stop-color="${cfg_fill_color}" stop-opacity=".28"/>
-     </linearGradient>`;
-  svg.appendChild(defs);
+  const col = cfg.color || (cfg.type === "bar" ? "#ffb632" : "#6fa7ff");
 
   const series = (cfg.series || []).map(p => ({...p, v: Math.max(0, +p.v || 0)}));
   if (!series.length) {
     box.innerHTML = '<div class="empty">no data yet — the poller is filling samples</div>';
     return;
   }
-  const padL = 46, padR = 10, padT = 12, padB = 24;
+  /* entrance animation only when the chart's SHAPE changes (type / point
+     count / height) — steady live polling must not re-bounce it */
+  const sig = cfg.type + ":" + series.length + ":" + H;
+  const anim = box._sig !== sig;
+  box._sig = sig;
+
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  box.appendChild(svg);
+  const defs = el("defs", {});
+  defs.innerHTML =
+    `<linearGradient id="${uid}b" x1="0" y1="0" x2="0" y2="1">
+       <stop offset="0" stop-color="${col}" stop-opacity=".95"/>
+       <stop offset="1" stop-color="${col}" stop-opacity=".28"/>
+     </linearGradient>
+     <filter id="${uid}f" x="-10%" y="-50%" width="120%" height="200%">
+       <feGaussianBlur stdDeviation="3.5"/>
+     </filter>`;
+  svg.appendChild(defs);
+
+  const n = series.length;
+  const padL = 50, padR = 12, padT = 16, padB = 26;
   const iw = W - padL - padR, ih = H - padT - padB;
-  const max = niceMax(Math.max(...series.map(p => p.v)) * 1.15);
-  const fmt = cfg.fmt || (v => v.toFixed(2) + " " + (cfg.unit || ""));
-  // grid + y labels
+  const maxV = Math.max(...series.map(p => p.v));
+  const max = niceMax(maxV * 1.15) || 1;
+  const total = series.reduce((a, p) => a + p.v, 0);
+  const isRate = cfg.unit === "Mbps";
+  const dayMap = new Map();
+  if (!isRate) series.forEach(p => {
+    if (p.ts) { const k = dayKey(p.ts); dayMap.set(k, (dayMap.get(k) || 0) + p.v); }
+  });
+  const ro = {fmt: cfg.fmt || (v => v.toFixed(2) + " " + (cfg.unit || "")),
+              unit: cfg.unit || "", total, max: maxV,
+              avg: total / n, dayMap, isRate};
+  const ai = series.findIndex(p => p.v === maxV);
+
+  // grid + compact y labels + a firmer baseline
   for (let i = 0; i <= 4; i++) {
     const y = padT + ih - ih * i / 4;
     svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: y, y2: y,
       stroke: "var(--grid-line)", "stroke-width": 1}));
     const t = el("text", {x: padL - 8, y: y + 3.5, "text-anchor": "end",
       fill: "var(--faint)", "font-size": 10});
-    t.textContent = fmt(max * i / 4);
+    t.textContent = axisFmt(max * i / 4, cfg.unit);
     svg.appendChild(t);
   }
-  const xLabel = (i, t) => {
-    const x = padL + iw * (i + .5) / series.length;
+  svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: padT + ih, y2: padT + ih,
+    stroke: "var(--line2)", "stroke-width": 1}));
+  const xlabels = [];
+  const xLabel = (i, txt) => {
+    const x = padL + iw * (i + .5) / n;
     const e = el("text", {x, y: H - 8, "text-anchor": "middle",
-      fill: "var(--faint)", "font-size": 10});
-    e.textContent = t;
+      fill: "var(--faint)", "font-size": 10, class: "xlab"});
+    e.textContent = txt;
     svg.appendChild(e);
+    xlabels[i] = e;
   };
-  const xAt = (i) => padL + iw * (i + .5) / series.length;
 
+  let band = null, peakEl = null;
+  let marks = [];                                   // paths (bars) or pts (line)
   if (cfg.type === "bar") {
-    const gap = iw / series.length;
-    const bw = Math.min(46, Math.max(3, gap * 0.62));
-    series.forEach((p, i) => {
-      const h = Math.max(1.5, ih * p.v / max);
-      const r = el("rect", {x: xAt(i) - bw / 2, y: padT + ih - h, width: bw, height: h,
-        rx: Math.min(5, bw / 3), fill: `url(#${uid}b)`, class: "cbar"});
-      r.style.transition = "opacity .15s";
-      const tipTxt = `<b>${fmt(p.v)}</b> · ${p.label}`;
-      r.addEventListener("mousemove", e => { r.style.opacity = 0.75; showTip(e, box, tipTxt); });
-      r.addEventListener("mouseleave", () => { r.style.opacity = 1; hideTip(); });
+    const gap = iw / n;
+    const bw = Math.min(44, Math.max(3, gap * 0.6));
+    band = el("rect", {class: "cbnd", x: padL, y: padT, width: gap, height: ih, rx: 7});
+    band.style.opacity = 0;
+    svg.appendChild(band);
+    marks = series.map((p, i) => {
+      const h = Math.max(2, ih * p.v / max);
+      const x = padL + gap * i + (gap - bw) / 2, y = padT + ih - h;
+      const r = el("path", {d: topRound(x, y, bw, h, Math.min(7, bw / 2.6)),
+                            fill: `url(#${uid}b)`, class: "cbar"});
+      if (anim) r.style.animation = `barIn .5s cubic-bezier(.2,.8,.25,1) ${i * 16}ms both`;
       svg.appendChild(r);
-      if (series.length <= 14 || i % Math.ceil(series.length / 9) === 0) xLabel(i, p.label);
+      if (n <= 14 || i % Math.ceil(n / 9) === 0) xLabel(i, p.label);
+      return r;
     });
-  } else {                                    // line / area
-    const pts = series.map((p, i) => [padL + iw * (series.length === 1 ? .5 : i / (series.length - 1)),
+  } else {                                         // line / area
+    const pts = series.map((p, i) => [padL + iw * (n === 1 ? .5 : i / (n - 1)),
                                       padT + ih - Math.max(1, ih * p.v / max)]);
-    let d = "M" + pts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L");
+    const d = smoothD(pts, padT, padT + ih);
     if (cfg.type === "area") {
-      const area = d + ` L${pts[pts.length - 1][0].toFixed(1)} ${padT + ih} L${pts[0][0].toFixed(1)} ${padT + ih} Z`;
-      svg.appendChild(el("path", {d: area, fill: `url(#${uid}b)`, stroke: "none"}));
+      const area = d + ` L${pts[n - 1][0].toFixed(1)} ${padT + ih} ` +
+                         `L${pts[0][0].toFixed(1)} ${padT + ih} Z`;
+      const ar = el("path", {d: area, fill: `url(#${uid}b)`, stroke: "none"});
+      if (anim) ar.style.animation = "fadeIn .5s .1s ease-out both";
+      svg.appendChild(ar);
     }
-    svg.appendChild(el("path", {d, fill: "none", stroke: cfg_fill_color,
-      "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round"}));
-    if (series.length <= 40) pts.forEach((p, i) => {
-      const c = el("circle", {cx: p[0], cy: p[1], r: 3, fill: "var(--panel)",
-        stroke: cfg_fill_color, "stroke-width": 2});
-      c.addEventListener("mousemove", e => showTip(e, box, `<b>${fmt(series[i].v)}</b> · ${series[i].label}`));
-      c.addEventListener("mouseleave", hideTip);
-      svg.appendChild(c);
-    });
-    const step = Math.max(1, Math.ceil(series.length / 8));
-    series.forEach((p, i) => { if (i % step === 0 || i === series.length - 1) xLabel(i, p.label); });
+    const glow = el("path", {d, fill: "none", stroke: col, "stroke-width": 7,
+      filter: `url(#${uid}f)`, class: "cglow"});
+    svg.appendChild(glow);
+    const line = el("path", {d, fill: "none", stroke: col, "stroke-width": 2.6,
+      "stroke-linecap": "round", "stroke-linejoin": "round", class: "cline"});
+    svg.appendChild(line);
+    /* draw-in via pure CSS animation — NO rAF/inline-offset trickery: the
+       resting state is offset 0 (fully drawn), the keyframe only animates
+       FROM the full offset. If the animation never runs (background tab,
+       headless, whatever) the line is simply already there. */
+    if (anim && line.getTotalLength) {
+      const L = Math.ceil(line.getTotalLength()) + 2;
+      line.style.strokeDasharray = L;
+      line.style.setProperty("--ld", L);
+      line.classList.add("drawin");
+      glow.classList.add("fadein");
+    }
+    if (n <= 40) pts.forEach(p => svg.appendChild(
+      el("circle", {cx: p[0], cy: p[1], r: 2.8, fill: "var(--panel)",
+                    stroke: col, "stroke-width": 1.6})));
+    // peak marker (detail ask: max is readable at a glance)
+    if (n >= 4 && ai >= 0 && maxV > 0) {
+      peakEl = el("text", {class: "cpeak", "text-anchor": "middle",
+        x: Math.max(padL + 24, Math.min(W - padR - 24, pts[ai][0])),
+        y: Math.max(padT + 10, pts[ai][1] - 11)});
+      let pk = ro.fmt(maxV);
+      if (!/[a-z]/i.test(pk) && ro.unit) pk += " " + ro.unit;
+      peakEl.textContent = "▲ peak " + pk;
+      svg.appendChild(peakEl);
+    }
+    marks = pts;
+    const step = Math.max(1, Math.ceil(n / 8));
+    series.forEach((p, i) => { if (i % step === 0 || i === n - 1) xLabel(i, p.label); });
   }
+
+  /* hover furniture: column crosshair → value guide → glowing point → pill */
+  const guide = el("line", {class: "cxg", x1: padL});
+  const halo = el("circle", {class: "chal", r: 11, fill: col});
+  const hdot = el("circle", {class: "cdot", r: 5.5, fill: "var(--panel)",
+                             stroke: col, "stroke-width": 2.4});
+  const cross = el("line", {class: "cxh", y1: padT, y2: padT + ih});
+  const pill = el("text", {class: "cvp", "text-anchor": "middle"});
+  const furniture = [cross, guide, halo, hdot, pill];
+  furniture.forEach(e => { e.style.opacity = 0; svg.appendChild(e); });
+
+  const ov = el("rect", {x: padL, y: padT, width: iw, height: ih, fill: "transparent"});
+  ov.style.cursor = "crosshair";
+  svg.appendChild(ov);
+
+  let cur = -1;
+  const clear = () => {
+    if (cur < 0) return;
+    cur = -1;
+    furniture.forEach(e => e.style.opacity = 0);
+    if (band) band.style.opacity = 0;
+    if (peakEl) peakEl.style.opacity = 1;
+    marks.forEach(m => { if (m.style) m.style.opacity = 1; });
+    xlabels.forEach(l => l && l.classList.remove("xhot"));
+    hideTip();
+  };
+  ov.addEventListener("mouseleave", clear);
+  ov.addEventListener("mousemove", e => {
+    const sr = svg.getBoundingClientRect();
+    const vx = (e.clientX - sr.left) / (sr.width || 1) * W;
+    let i = cfg.type === "bar" ? Math.floor((vx - padL) / (iw / n))
+                               : (n === 1 ? 0 : Math.round((vx - padL) / iw * (n - 1)));
+    i = Math.max(0, Math.min(n - 1, i));
+    if (i !== cur) {
+      cur = i;
+      const p = series[i];
+      let mx, my;
+      if (cfg.type === "bar") {
+        const gap = iw / n;
+        band.setAttribute("x", padL + gap * i);
+        band.style.opacity = 1;
+        mx = padL + gap * i + gap / 2;
+        my = padT + ih - Math.max(2, ih * p.v / max);
+        marks.forEach((m, k) => m.style.opacity = k === i ? 1 : .4);
+      } else {
+        mx = marks[i][0];
+        my = marks[i][1];
+        if (peakEl) peakEl.style.opacity = i === ai ? 0 : 1;
+      }
+      cross.setAttribute("x1", mx); cross.setAttribute("x2", mx);
+      cross.style.opacity = .55;
+      guide.setAttribute("x2", mx); guide.setAttribute("y1", my); guide.setAttribute("y2", my);
+      guide.style.opacity = .4;
+      halo.setAttribute("cx", mx); halo.setAttribute("cy", my);
+      halo.style.opacity = .16;
+      hdot.setAttribute("cx", mx); hdot.setAttribute("cy", my);
+      hdot.style.opacity = 1;
+      pill.setAttribute("x", mx); pill.setAttribute("y", Math.max(padT + 9, my - 13));
+      pill.textContent = ro.fmt(p.v);
+      pill.style.opacity = 1;
+      /* highlight the nearest DRAWN x-label (and unstick the previous one) */
+      xlabels.forEach(l => l && l.classList.remove("xhot"));
+      let best = -1, bd = Infinity;
+      xlabels.forEach((l, j) => {
+        if (l && Math.abs(j - i) < bd) { bd = Math.abs(j - i); best = j; }
+      });
+      if (best >= 0) xlabels[best].classList.add("xhot");
+    }
+    showTip(e, box, hoverReadout(series[i], i, series, ro));
+  });
 }
 
 function donut(box, cfg, NS, el, uid) {
@@ -225,27 +427,45 @@ function donut(box, cfg, NS, el, uid) {
   const svg = document.createElementNS(NS, "svg");
   svg.setAttribute("viewBox", `0 0 ${cx * 2 + 330} ${H}`);
   svg.setAttribute("width", "100%");
+  svg.setAttribute("class", "dsvg");
   box.appendChild(svg);
   const colors = ["var(--accent)", "#6fa7ff", "#3fd68e", "#b18cff", "#ff7b72"];
+  const fmt = cfg.fmt || (v => v.toFixed(1) + " " + (cfg.unit || ""));
+  const baseCap = cfg.center || "total";
+  const center = el("text", {x: cx, y: cy - 2, "text-anchor": "middle",
+    fill: "var(--text)", "font-size": 20, "font-weight": 700});
+  const cl = el("text", {x: cx, y: cy + 16, "text-anchor": "middle",
+    fill: "var(--faint)", "font-size": 10});
+  center.textContent = fmt(total);
+  cl.textContent = baseCap;
+
   let off = 0;
   parts.forEach((p, i) => {
     const frac = p.value / total;
     const ring = el("circle", {cx, cy, r: R, fill: "none",
       stroke: colors[i % colors.length], "stroke-width": 21,
-      "stroke-dasharray": `${Math.max(0.5, frac * C - 2)} ${C}`, "stroke-dashoffset": -off + C / 4,
-      "stroke-linecap": "butt"});
-    ring.addEventListener("mousemove", e =>
-      showTip(e, box, `<b>${((frac * 100)).toFixed(1)}%</b> · ${p.label} (${fmt(p.value)})`));
-    ring.addEventListener("mouseleave", hideTip);
+      "stroke-dasharray": `${Math.max(0.5, frac * C - 2)} ${C}`,
+      "stroke-dashoffset": -off + C / 4, "stroke-linecap": "butt", class: "dseg"});
+    const pct = (frac * 100).toFixed(1);
+    const html = `<div class="tt-h"><b>${pct}%</b><span>${esc(p.label)}</span></div>` +
+      `<div class="tt-track"><i style="width:${Math.min(100, Math.max(2, frac * 100)).toFixed(1)}%"></i></div>` +
+      `<div class="tt-sub">${fmt(p.value)} of ${fmt(total)} ${baseCap}</div>`;
+    ring.addEventListener("mouseenter", e => {
+      svg.classList.add("dim"); ring.classList.add("on");
+      center.textContent = fmt(p.value);      // readout swaps to the hovered slice
+      cl.textContent = p.label;
+      showTip(e, box, html);
+    });
+    ring.addEventListener("mousemove", e => showTip(e, box, html));
+    ring.addEventListener("mouseleave", () => {
+      svg.classList.remove("dim"); ring.classList.remove("on");
+      center.textContent = fmt(total); cl.textContent = baseCap;
+      hideTip();
+    });
     svg.appendChild(ring);
     off += frac * C;
   });
-  const center = el("text", {x: cx, y: cy - 2, "text-anchor": "middle", fill: "var(--text)",
-    "font-size": 20, "font-weight": 700});
-  center.textContent = cfg.fmt ? cfg.fmt(total) : total.toFixed(1);
   svg.appendChild(center);
-  const cl = el("text", {x: cx, y: cy + 16, "text-anchor": "middle", fill: "var(--faint)", "font-size": 10});
-  cl.textContent = cfg.center || "total";
   svg.appendChild(cl);
   // legend
   let ly = cy - parts.length * 11 + 22;
@@ -254,8 +474,9 @@ function donut(box, cfg, NS, el, uid) {
     svg.appendChild(el("rect", {x: 262, y: ly - 8, width: 11, height: 11, rx: 3, fill: col}));
     const t = el("text", {x: 282, y: ly + 1, fill: "var(--text)", "font-size": 12.5});
     t.textContent = p.label;
-    const v = el("text", {x: cx * 2 + 318, y: ly + 1, fill: "var(--faint)", "font-size": 12, "text-anchor": "end"});
-    v.textContent = cfg.fmt ? cfg.fmt(p.value) : p.value;
+    const v = el("text", {x: cx * 2 + 318, y: ly + 1, fill: "var(--faint)",
+      "font-size": 12, "text-anchor": "end"});
+    v.textContent = fmt(p.value);
     svg.appendChild(t); svg.appendChild(v);
     ly += 23;
   });

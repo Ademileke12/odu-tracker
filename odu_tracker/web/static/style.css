@@ -252,11 +252,54 @@ chart-switch{display:flex;gap:4px;background:var(--panel2);border:1px solid var(
 .seg button.active{background:var(--panel3);color:var(--accent);box-shadow:0 1px 0 var(--line) inset}
 .chartbox{position:relative;min-height:180px}
 .chartbox svg{width:100%;display:block;overflow:visible}
+/* hover readout card — pinned next to the cursor (position:fixed) */
 .chart-tip{
-  position:absolute;pointer-events:none;background:var(--panel3);color:var(--text);
-  border:1px solid var(--line2);border-radius:9px;padding:7px 11px;font-size:.75rem;
-  box-shadow:var(--shadow);display:none;z-index:30;white-space:nowrap;font-family:var(--font-d);
+  position:fixed;pointer-events:none;background:var(--panel3);color:var(--text);
+  border:1px solid var(--line2);border-left:3px solid var(--accent);
+  border-radius:11px;padding:9px 12px 10px;font-size:.75rem;
+  box-shadow:0 18px 40px rgba(2,6,12,.45),0 4px 12px rgba(2,6,12,.3);
+  display:none;z-index:80;min-width:172px;max-width:290px;
+  font-family:var(--font);animation:ttIn .14s ease-out;
 }
+html[data-theme="light"] .chart-tip{box-shadow:0 14px 34px rgba(19,28,43,.20)}
+@keyframes ttIn{from{opacity:0;transform:translateY(5px) scale(.985)}}
+.tt-h{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+.tt-h b{font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:-.03em}
+.tt-h span{color:var(--faint);font-size:.68rem;font-family:var(--mono);white-space:nowrap}
+.tt-track{height:5px;border-radius:4px;background:var(--line);margin:7px 0 5px;overflow:hidden}
+.tt-track i{display:block;height:100%;min-width:3px;border-radius:4px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  box-shadow:0 0 8px rgba(255,182,50,.45)}
+html[data-theme="light"] .tt-track i{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.tt-sub{color:var(--muted);font-size:.7rem;line-height:1.35}
+.tt-row{display:flex;justify-content:space-between;gap:14px;align-items:baseline;
+  margin-top:6px;padding-top:6px;border-top:1px dashed var(--line2);
+  font-size:.7rem;color:var(--muted)}
+.tt-row b{color:var(--text);font-family:var(--mono);font-weight:600;font-size:.75rem}
+/* bar / line marks */
+.cbar{transition:opacity .15s;transform-box:fill-box;transform-origin:bottom}
+@keyframes barIn{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes fadeIn{from{opacity:0}}
+.cbnd{fill:var(--accent);fill-opacity:.07;transition:opacity .13s}
+.cxh{stroke:var(--accent);stroke-width:1;stroke-dasharray:3 4;transition:opacity .12s}
+.cxg{stroke:var(--accent);stroke-width:1;stroke-dasharray:2 5;transition:opacity .12s}
+.chal{transition:opacity .15s}
+.cdot{transition:opacity .12s}
+.cglow{opacity:.22}
+.cglow.fadein{animation:glowIn .8s .15s ease-out both}
+@keyframes glowIn{from{opacity:0}to{opacity:.22}}
+.cline.drawin{animation:lineDraw .8s ease-out both}
+@keyframes lineDraw{from{stroke-dashoffset:var(--ld)}to{stroke-dashoffset:0}}
+.cvp{font-family:var(--mono);font-size:11.5px;font-weight:700;fill:var(--text);
+  paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round;
+  pointer-events:none;transition:opacity .12s}
+.xlab{transition:fill .15s;pointer-events:none}
+.xhot{fill:var(--accent);font-weight:700}
+.cpeak{font-family:var(--mono);font-size:10px;fill:var(--muted);transition:opacity .15s}
+/* donut hover: dim the rest, swell the hovered ring */
+.dseg{transition:stroke-width .2s,opacity .2s;cursor:pointer}
+.dsvg.dim .dseg{opacity:.32}
+.dsvg.dim .dseg.on{opacity:1;stroke-width:27}
 .chart-note{color:var(--faint);font-size:.72rem;margin-top:8px}
 
 /* devices leaderboard */
