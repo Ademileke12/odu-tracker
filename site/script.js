@@ -24,6 +24,21 @@ modeBtn?.addEventListener('click', () => {
   applyMode(!document.body.classList.contains('dark'));
 });
 
+/* ------------------------------------------------ release announcement
+   Dismissal is stored PER RELEASE (keyed on data-rel) — when v1.4.0
+   ships the strip comes back on its own. */
+const newsbar = document.getElementById('newsbar');
+if (newsbar) {
+  const rel = newsbar.dataset.rel || 'v1';
+  let gone = '';
+  try { gone = localStorage.getItem('odu-news-dismissed') || ''; } catch { /* ignore */ }
+  if (gone === rel) newsbar.hidden = true;
+  document.getElementById('newsbarX')?.addEventListener('click', () => {
+    newsbar.hidden = true;
+    try { localStorage.setItem('odu-news-dismissed', rel); } catch { /* private mode */ }
+  });
+}
+
 /* ------------------------------------------------ reveal on scroll */
 const io = new IntersectionObserver((entries) => {
   for (const e of entries) {

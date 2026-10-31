@@ -32,6 +32,7 @@
   </a>
   <nav class="topnav">
     <a href="#features">Features</a>
+    <a class="nw" href="#whatsnew">What's new <i class="nw-dot"></i></a>
     <a href="#download">Download</a>
     <a href="#how">How it works</a>
     <a class="gh" href="https://github.com/Ademileke12/odu-tracker" target="_blank" rel="noopener">GitHub ↗</a>
@@ -40,6 +41,17 @@
   <button class="mode-btn" id="modeBtn" title="Toggle light / dark" aria-label="Toggle theme"><span id="modeIco">☾</span></button>
   <a class="topbar-cta" href="#download">Get the app</a>
 </header>
+
+<!-- ================================================ release announcement -->
+<div class="newsbar" id="newsbar" data-rel="v1.3.0">
+  <a class="newsbar-in" href="#whatsnew">
+    <span class="newsbar-tag">NEW</span>
+    <b>v1.3.0 is out</b>
+    <span class="newsbar-txt">— voucher codes · you never get kicked off Wi-Fi · rebuilt Android app · new charts</span>
+    <span class="newsbar-go">SEE WHAT'S NEW →</span>
+  </a>
+  <button class="newsbar-x" id="newsbarX" aria-label="Dismiss announcement">✕</button>
+</div>
 
 <main id="top">
 
@@ -152,6 +164,67 @@
         <h3>LOCAL SAVE FILE</h3>
         <p>Events, alerts and usage history in a local SQLite DB. Your router password never leaves the machine.</p>
       </article>
+    </div>
+  </section>
+
+  <!-- ================================================== what's new -->
+  <section id="whatsnew" class="section wn">
+    <p class="kicker reveal">// RELEASE NOTES · 30 OCT 2026</p>
+    <h2 class="reveal">NEW IN <span class="hl">v1.3.0</span></h2>
+    <p class="section-sub reveal">
+      The biggest update yet — running your ODU as a shareable network just became real.
+      Already have an app installed? Grab the same file again and you're updated.
+    </p>
+
+    <div class="cards">
+      <article class="card reveal">
+        <div class="card-ico">¢</div>
+        <div class="wn-tag">NEW</div>
+        <h3>VOUCHER CODES</h3>
+        <p>Hand out internet like airtime. Mint a pool of codes with GB + validity, guests claim one
+           on their own at the portal — no admin work, no password sharing.</p>
+      </article>
+      <article class="card reveal">
+        <div class="card-ico">↯</div>
+        <div class="wn-tag">NEW</div>
+        <h3>NEVER KICKED OFF</h3>
+        <p>When a device burns through its quota it's not cut from Wi-Fi — it's parked on the portal
+           where a new code brings it straight back. Downloads keep their session.</p>
+      </article>
+      <article class="card reveal">
+        <div class="card-ico">↻</div>
+        <div class="wn-tag">NEW</div>
+        <h3>REBOOT-PROOF</h3>
+        <p>Enforcement now survives router reboots: DHCP-pushed DNS drift self-heals every poll,
+           per-device usage is preserved, and only your explicit Reset forgives it.</p>
+      </article>
+      <article class="card reveal">
+        <div class="card-ico">AND</div>
+        <div class="wn-tag">NEW</div>
+        <h3>ANDROID IS BACK</h3>
+        <p>The APK returns rebuilt from scratch — no more crashing after launch — with a proper
+           phone-first dashboard. It's on the download grid below.</p>
+      </article>
+      <article class="card reveal">
+        <div class="card-ico">%</div>
+        <div class="wn-tag">NEW</div>
+        <h3>CHARTS, REDONE</h3>
+        <p>Bars, lines, area and donut rebuilt: hover anywhere and a readout pinned to your cursor
+           shows the value, time range, share of the window and that day's total spend.</p>
+      </article>
+      <article class="card reveal">
+        <div class="card-ico">▤</div>
+        <div class="wn-tag">NEW</div>
+        <h3>MOBILE DASHBOARD</h3>
+        <p>A phone-first <code>/mobile</code> view ships inside every app: plan meter, live rate,
+           device list and sparkline without pinching a desktop layout.</p>
+      </article>
+    </div>
+
+    <div class="wn-cta reveal">
+      <a class="btn btn-black" href="#download">⤓ GET v1.3.0 <small>free</small></a>
+      <a class="btn btn-white" href="https://github.com/Ademileke12/odu-tracker/releases/tag/v1.3.0" target="_blank" rel="noopener">FULL RELEASE NOTES ↗</a>
+      <span class="wn-meta">5 files · Windows · Linux · Android — same version everywhere</span>
     </div>
   </section>
 
