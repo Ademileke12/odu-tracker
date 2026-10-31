@@ -114,6 +114,33 @@ document.querySelectorAll('.dl-link').forEach((a) => {
   a.addEventListener('click', () => beacon({ e: 'click', a: a.dataset.asset || 'unknown' }));
 });
 
+/* ------------------------------------------------ copy donation account */
+const copyAcct = document.getElementById('copyAcct');
+copyAcct?.addEventListener('click', async () => {
+  const num = (document.getElementById('supportAcct')?.textContent || '').trim();
+  if (!num) return;
+  try {
+    await navigator.clipboard.writeText(num);
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = num;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.left = '-9999px';
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); } catch { /* ignore */ }
+    area.remove();
+  }
+  const label = copyAcct.textContent;
+  copyAcct.textContent = 'Copied';
+  copyAcct.classList.add('copied');
+  setTimeout(() => {
+    copyAcct.textContent = label;
+    copyAcct.classList.remove('copied');
+  }, 1600);
+});
+
 /* ------------------------------------------------ konami boost */
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown',
                 'ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
