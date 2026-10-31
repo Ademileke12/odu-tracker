@@ -89,10 +89,20 @@ def _serve(port):
                         use_reloader=False, threaded=True)
         except BaseException:
             # The app is useless without the engine — surface it on screen.
-            # (runs on the engine thread: the Kivy loop is already going,
-            #  so no nested Kivy fallback — native screen only)
-            diag.fatal_exc(detail="the local engine failed to start",
-                           allow_kivy_fallback=False)
+            # Record the failure FIRST: the splash loop polls ENGINE_ERROR and
+            # will retry the error screen from the main thread if this
+            # thread's native overlay draw fails (pyjnius view construction
+            # is unreliable off the UI thread — that once meant an eternal
+            # "Booting the local engine…" spinner with the crash only shown
+            # on the NEXT launch).
+            diag.ENGINE_ERROR["exc"] = "".join(
+                traceback.format_exception(*sys.exc_info()))
+            diag.stage("engine: FAILED to start")
+            try:
+                diag.fatal_exc(detail="the local engine failed to start",
+                               allow_kivy_fallback=False)
+            except BaseException:
+                traceback.print_exc()   # splash loop will surface it instead
     return boot
 
 
@@ -243,6 +253,7 @@ class OduTrackerAndroidApp(App):
         self._ready = False
         self._pct = 6
         self._elapsed = 0
+        self._error_shown = False
         Clock.schedule_interval(self._tick, 0.25)
         diag.stage("kivy: splash live — waiting for the engine")
         return self.root
@@ -268,6 +279,22 @@ class OduTrackerAndroidApp(App):
         if _server_up():
             self._install_webview()
             return False
+
+        # Engine thread died (bad data dir, DB error, import failure...):
+        # stop the spinner NOW and paint the error from the main thread,
+        # where pyjnius reliably draws. fatal() is a no-op if the engine
+        # thread already got a screen up. Never sit on "Booting…" again.
+        exc_text = diag.ENGINE_ERROR.get("exc")
+        if exc_text and not self._error_shown:
+            self._error_shown = True
+            self.progress.value = 100
+            self.subtitle.text = "Engine failed to start."
+            self.tip.text = "See the error report on screen."
+            diag.fatal(detail="the local engine failed to start",
+                       exc_text=exc_text,
+                       allow_kivy_fallback=False)
+            return False
+
         self._pct = min(int(self._pct + 4), 96)
         self.progress.value = self._pct
         if self._elapsed > 90:

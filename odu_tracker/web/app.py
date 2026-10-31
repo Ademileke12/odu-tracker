@@ -13,7 +13,7 @@ import time
 from flask import Flask, jsonify, request, session, send_from_directory
 
 from odu_tracker import store
-from odu_tracker.config import Config
+from odu_tracker.config import Config, on_android
 from odu_tracker import dns_proxy as _dp
 from odu_tracker import portal as _portal
 from odu_tracker.poller import Poller
@@ -813,7 +813,9 @@ def create_app(cfg: Config, poller: Poller):
     # ------------------------------------ auto-start the DNS/portal stack
     # Restarting the app must not silently leave the LAN un-monitored (or,
     # with enforcement armed, un-enforced): restore whatever was running.
-    if cfg.get("dns_proxy_enabled") or cfg.get("portal_enforced"):
+    # Never on Android — binding UDP :53 / TCP :80 needs root there, and
+    # enforcement belongs on the machine wired into the ODU, not the phone.
+    if not on_android() and (cfg.get("dns_proxy_enabled") or cfg.get("portal_enforced")):
         cfg.set("dns_proxy_enabled", True, persist=False)  # portal needs DNS
         try:
             start_dns_stack()

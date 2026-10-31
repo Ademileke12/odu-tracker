@@ -48,7 +48,14 @@ _stage_lock = threading.Lock()
 _reached_dashboard = False
 
 _lock = threading.Lock()
-_fatal_seen = False            # only the first fatal() draws an error screen
+_fatal_seen = False            # a fatal() call happened (heading suffix only)
+_fatal_screen_up = False       # an error screen is ACTUALLY displayed
+
+# Engine-thread failures are mirrored here so the Kivy splash loop (main
+# thread) can stop spinning and surface the error itself — a native overlay
+# posted from a background thread can fail to draw, and until now nothing
+# retried it: the splash just spun forever under "Booting the local engine".
+ENGINE_ERROR = {"exc": None, "detail": None}
 
 # pyjnius proxies queued for the Android UI thread must be kept alive on the
 # Python side until they have run (p4a's android.runnable does the same).
@@ -428,11 +435,21 @@ def fatal(detail="", exc_text=None, on_ui_thread=False,
     Returns True when an error screen is up (process stays alive until the
     user taps CLOSE APP, which exits it), False when nothing could be drawn
     (report is then only in logcat + odu-crash.txt).
+
+    De-duplication is keyed on an error screen ACTUALLY being displayed
+    (``_fatal_screen_up``), not on "fatal() was called once". The engine
+    thread may call this first and fail to draw the native overlay (pyjnius
+    view construction is safest on the UI thread); when the splash loop —
+    main thread — then retries, it must NOT be turned away, or the user
+    stares at the booting spinner forever. The report is written on every
+    call (overwriting the same file), so no content is lost either way.
     """
-    global _fatal_seen
+    global _fatal_seen, _fatal_screen_up
     with _lock:
         first = not _fatal_seen
         _fatal_seen = True
+        if _fatal_screen_up:
+            return False                            # a screen is already up
 
     if exc_text is None:
         exc_text = traceback.format_exc()
@@ -448,8 +465,6 @@ def fatal(detail="", exc_text=None, on_ui_thread=False,
     if written:
         print("[diag] report saved: " + ", ".join(written), flush=True)
 
-    if not first:
-        return False                                # an error screen is up
     if not is_android():
         return False                                # desktop: log only
 
@@ -459,13 +474,16 @@ def fatal(detail="", exc_text=None, on_ui_thread=False,
         on_ui_thread=on_ui_thread,
     )
     if drawn:
+        _fatal_screen_up = True
         if not on_ui_thread and dismissed is not None:
             dismissed.wait()                        # keep the process alive
         return True
 
     if allow_kivy_fallback and not on_ui_thread:
         try:
-            return bool(_kivy_overlay(report, heading))
+            ok = bool(_kivy_overlay(report, heading))
+            _fatal_screen_up = _fatal_screen_up or ok
+            return ok
         except BaseException:
             traceback.print_exc()
     return False

@@ -3,6 +3,14 @@ r"""Local configuration + SQLite layout bootstrap.
 Everything app-related lives under a per-user data dir:
   Linux:   ~/.local/share/odu-tracker    (falls back to ~/.odu-tracker)
   Windows: %APPDATA%\OduTracker
+  Android: <app-private files dir>/odu-tracker   (see on_android())
+
+Android gotcha (the v1.3.0 boot crash): the platform exports HOME=/data —
+that's a mount POINT, not a writable directory for an app UID — so the
+historic `Path.home()/.local/share/...` fallback resolved to
+/data/.local/share/odu-tracker, mkdir() failed, and the engine died before
+the dashboard ever answered. p4a exports ANDROID_PRIVATE (the app's own
+files dir) for every process; that is the only trustworthy base there.
 """
 import base64
 import binascii
@@ -16,21 +24,65 @@ from pathlib import Path
 APP_DIR = None
 
 
+def on_android() -> bool:
+    """True inside a python-for-android app process.
+
+    p4a's bootstrap exports ANDROID_ARGUMENT/ANDROID_PRIVATE for every app
+    process — that's a more reliable signal than sys.platform, which is
+    plain "linux" on devices.
+    """
+    return bool(os.environ.get("ANDROID_ARGUMENT")
+                or os.environ.get("ANDROID_PRIVATE")
+                or os.environ.get("ANDROID_APP_PATHS"))
+
+
+def _try_dir(d: Path):
+    """mkdir -p + a writability probe; None when the dir is unusable."""
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        probe = d / ".writable-probe"
+        probe.touch()
+        probe.unlink()
+        return d
+    except OSError:
+        return None
+
+
 def app_dir() -> Path:
-    """Resolve (and create) the per-user application data directory."""
+    """Resolve (and create) the per-user application data directory.
+
+    Candidates are tried in order and the first WRITABLE one wins — an
+    unwritable home (Android's /data, a read-only NFS home, ...) must
+    degrade to the next location, never crash the app.
+    """
     global APP_DIR
     if APP_DIR is not None:
         return APP_DIR
-    if os.name == "nt":
+    candidates = []
+    if on_android():
+        # App-private storage, the only place an app UID may always write.
+        priv = os.environ.get("ANDROID_PRIVATE") or os.environ.get("ANDROID_ARGUMENT")
+        if priv:
+            candidates.append(Path(priv) / "odu-tracker")
+        # Last resort: whatever working dir the bootstrap left us in.
+        candidates.append(Path.cwd() / "odu-tracker")
+    elif os.name == "nt":
         base = os.environ.get("APPDATA") or os.path.expanduser("~")
-        d = Path(base) / "OduTracker"
+        candidates.append(Path(base) / "OduTracker")
     else:
-        d = Path(os.environ.get("XDG_DATA_HOME", "")) if os.environ.get("XDG_DATA_HOME") else None
-        if d is None:
-            d = Path.home() / ".local" / "share" / "odu-tracker"
-    d.mkdir(parents=True, exist_ok=True)
-    APP_DIR = d
-    return d
+        xdg = os.environ.get("XDG_DATA_HOME")
+        if xdg:
+            candidates.append(Path(xdg) / "odu-tracker")
+        candidates.append(Path.home() / ".local" / "share" / "odu-tracker")
+    tried = []
+    for cand in candidates:
+        d = _try_dir(cand)
+        if d is not None:
+            APP_DIR = d
+            return d
+        tried.append(str(cand))
+    raise OSError("no writable app data dir (tried: "
+                  + ", ".join(tried) + ")")
 
 
 CONFIG_PATH = None
