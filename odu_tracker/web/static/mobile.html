@@ -135,6 +135,17 @@ main{padding:16px 14px calc(86px + var(--sab))}
   stroke-linecap:round}
 .spark .ar{fill:url(#sg)}
 
+/* ---------- data-usage card (daily / weekly / monthly) ---------- */
+.khead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.khead .utotal{font-family:var(--mono);font-size:12px;font-weight:700;
+  color:#b98a00;white-space:nowrap}
+#uChart{width:100%;height:auto;display:block;margin-top:12px}
+#uChart .ubar{fill:var(--acc);stroke:var(--ink);stroke-width:1.3}
+#uChart text{font-family:var(--mono);font-size:9px;font-weight:700;
+  fill:var(--faint);letter-spacing:.3px}
+#uNote{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:7px;
+  min-height:12px;letter-spacing:.4px}
+
 /* ---------- device rows ---------- */
 .dev .main{min-width:0;flex:1}
 .dev .t{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;
@@ -289,6 +300,17 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
       <div class="stat"><div class="k">Live rate</div><div class="v grn" id="live">…</div></div>
       <div class="stat"><div class="k">Signal</div><div class="v" id="sig">…</div></div>
       <div class="stat"><div class="k">Network</div><div class="v" id="net" style="font-size:15px">…</div></div>
+    </div>
+
+    <div class="card" id="usageCard" style="margin-top:12px">
+      <div class="khead"><div class="k">Data usage</div><div class="utotal" id="uTotal">…</div></div>
+      <div class="seg" id="uSeg" style="margin-top:10px">
+        <button data-r="24" class="act">24 H</button>
+        <button data-r="168">7 DAYS</button>
+        <button data-r="month">MONTH</button>
+      </div>
+      <svg id="uChart" viewBox="0 0 320 128"></svg>
+      <div id="uNote"></div>
     </div>
 
     <div class="card flat spark" style="margin-top:12px">
@@ -512,6 +534,7 @@ async function refresh() {
     const [st, rates] = await Promise.all([api('/api/status'), api('/api/rates')]);
     renderHome(st, rates);
     renderMore(st);
+    loadUsage();
     const conn = $('#conn');
     if (st.poll && st.poll.running) {
       conn.className = 'chip' + (st.poll.logged_in ? ' on' : ' bad');
@@ -552,6 +575,84 @@ function renderHome(st, rates) {
   $('#fw').textContent = (w.fw || '').split(',').slice(-1)[0] || '…';
   const b = st.battery || {};
   $('#batt').textContent = b.percent != null ? b.percent + '%' : (b.state ? b.state : 'headless');
+}
+
+/* ------------------------------------------------------- usage ranges
+   Same engine data the PC usage chart uses: 24 h in hourly bars,
+   7 days in daily bars, and the calendar month day by day.
+   Samples carry GB counters (older stores may still carry MB). */
+let uRange = '24', uAt = 0;
+const uGB = (r) => (r.delta || 0) / (r.unit === 'MB' ? 1024 : 1);
+$('#uSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  uRange = b.dataset.r;
+  $$('#uSeg button').forEach((x) => x.classList.toggle('act', x === b));
+  loadUsage(true);
+});
+function bucketUsage(rows, per) {
+  const map = new Map();
+  for (const r of rows) {
+    const v = uGB(r);
+    if (!v) continue;
+    const k = Math.floor(r.ts / per) * per;
+    map.set(k, (map.get(k) || 0) + v);
+  }
+  return [...map].sort((a, b) => a[0] - b[0]).map(([ts, v]) => ({ ts, v: Math.round(v * 100) / 100 }));
+}
+async function loadUsage(force) {
+  if (!force && Date.now() - uAt < 60000) return;
+  uAt = Date.now();
+  let d;
+  try {
+    d = uRange === 'month' ? await api('/api/usage?month=1')
+                           : await api('/api/usage?hours=' + uRange);
+  } catch { return; }
+  const rows = d.series || [];
+  const total = rows.reduce((a, r) => a + uGB(r), 0);
+  $('#uTotal').textContent = '\u03a3 ' + total.toFixed(total >= 100 ? 1 : 2) + ' GB';
+  const bars = uRange === '24' ? bucketUsage(rows, 3600)
+             : uRange === '168' ? bucketUsage(rows, 86400)
+             : rows.map((r) => ({ ts: r.ts, v: uGB(r) }));
+  drawUsage(bars, uRange, total, d.first);
+}
+function drawUsage(bars, range, total, sinceTs) {
+  const svg = $('#uChart'), W = 320, H = 128, L = 3, B = 104, CH = 94;
+  if (!bars.length) {
+    svg.setAttribute('viewBox', '0 0 320 30');
+    svg.innerHTML = '<text x="10" y="21">no usage recorded yet</text>';
+    $('#uNote').textContent = '';
+    return;
+  }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const fmtL = (ts) => {
+    const t = new Date(ts * 1000);
+    if (range === '24') return String(t.getHours()).padStart(2, '0');
+    if (range === '168') return ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][t.getDay()];
+    return String(t.getDate()).padStart(2, '0');
+  };
+  const step = (W - 2 * L) / bars.length;
+  const bw = Math.min(step - (bars.length > 18 ? 2 : 5), 34);
+  const every = Math.ceil(bars.length / 12);
+  const max = Math.max(0.5, ...bars.map((x) => x.v));
+  const out = ['<line x1="' + L + '" y1="' + B + '" x2="' + (W - L) + '" y2="' + B +
+               '" stroke-width="1.5" style="stroke:var(--hair)"/>'];
+  bars.forEach((b, i) => {
+    const h = Math.max(2, b.v / max * CH);
+    const x = L + i * step + (step - bw) / 2;
+    out.push(`<rect class="ubar" x="${x.toFixed(1)}" y="${(B - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3"/>`);
+    if (i % every === 0 || i === bars.length - 1)
+      out.push(`<text x="${(L + i * step + step / 2).toFixed(1)}" y="${B + 14}" text-anchor="middle">${fmtL(b.ts)}</text>`);
+  });
+  svg.innerHTML = out.join('');
+  const noteEl = $('#uNote');
+  if (range === '168') {
+    noteEl.textContent = `\u03a3 ${total.toFixed(1)} GB this week · avg ${(total / bars.length).toFixed(2)} GB/day`;
+  } else if (range === 'month' && sinceTs) {
+    noteEl.textContent = 'recording since ' +
+      new Date(sinceTs * 1000).toLocaleDateString([], { day: 'numeric', month: 'short' });
+  } else {
+    noteEl.textContent = 'hourly buckets · sampled every 15 s';
+  }
 }
 
 /* ------------------------------------------------------- devices */
@@ -766,7 +867,7 @@ async function renderMore(st) {
   } catch { return; }
   let m;
   try { m = await api('/api/meta'); } catch { return; }
-  $('#mVer').textContent = m.version || 'v1.3.1';
+  $('#mVer').textContent = m.version ? 'v' + m.version : '…';
   $('#routerIpHint') && ($('#routerIpHint').textContent = m.router_ip || $('#routerIpHint').textContent);
   let s;
   try { s = await api('/api/sites'); } catch { return; }
@@ -829,6 +930,7 @@ $('#resetBtn').addEventListener('click', () => {
         headers: { 'Content-Type': 'application/json' }, body: '{}' });
       toast('counters forgiven');
       refresh();
+      loadUsage(true);
     } catch { toast('failed'); }
     $('#resetBtn').textContent = 'RESET ALL USAGE';
   });
@@ -842,6 +944,7 @@ $('#resetBtn').addEventListener('click', () => {
   if (!m.authed) { showLogin(); return; }
   hideLogin();
   refresh();
+  loadUsage(true);
   refreshDevices();
   refreshVouchers();
   refreshAlerts();

@@ -14,5 +14,5 @@ Features:
   - System status: signal, network type, battery (ODU has internal battery)
 """
 
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 APP_NAME = "ODU Tracker"

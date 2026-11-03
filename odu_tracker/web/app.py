@@ -158,6 +158,7 @@ def create_app(cfg: Config, poller: Poller):
             "router_logged_in": st["logged_in"],
             "reachable": reachable,
             "odu": is_odu,
+            "version": __import__("odu_tracker").__version__,
             **lock,
         })
 
