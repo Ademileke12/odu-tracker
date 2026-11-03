@@ -1,5 +1,5 @@
 /* ============================================================
-   ODU TRACKER landing — theme toggle, release data, reveal, boost
+   ODU TRACKER landing, theme toggle, release data, reveal, boost
    ============================================================ */
 'use strict';
 
@@ -24,8 +24,42 @@ modeBtn?.addEventListener('click', () => {
   applyMode(!document.body.classList.contains('dark'));
 });
 
+/* ------------------------------------------------ light ads
+   Paste your Google AdSense publisher id below (Vercel settings can also
+   hold it, but this is the one switch). Empty string = the slot on the
+   page stays hidden and ZERO ad code is ever loaded.
+   1. AD_CLIENT: your id from AdSense, like "ca-pub-1234567890123456"
+   2. optionally AD_SLOT: the id of one responsive display unit you create
+      in AdSense. If you leave it empty, only the page-wide "Auto ads"
+      toggle in AdSense will place anything.
+   3. name site/ads.txt.example to ads.txt with your id, see that file.   */
+const AD_CLIENT = '';
+const AD_SLOT = '';
+(function ads() {
+  const slot = document.getElementById('adSlot');
+  if (!slot || !AD_CLIENT) return;
+  const s = document.createElement('script');
+  s.async = true;
+  s.crossOrigin = 'anonymous';
+  s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='
+    + encodeURIComponent(AD_CLIENT);
+  document.head.appendChild(s);
+  if (!AD_SLOT) return;                     // auto ads only
+  slot.classList.add('on');
+  slot.setAttribute('aria-hidden', 'false');
+  const ins = document.createElement('ins');
+  ins.className = 'adsbygoogle';
+  ins.style.display = 'block';
+  ins.setAttribute('data-ad-client', AD_CLIENT);
+  ins.setAttribute('data-ad-slot', AD_SLOT);
+  ins.setAttribute('data-ad-format', 'auto');
+  ins.setAttribute('data-full-width-responsive', 'true');
+  slot.appendChild(ins);
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch { /* retry noop */ }
+})();
+
 /* ------------------------------------------------ release announcement
-   Dismissal is stored PER RELEASE (keyed on data-rel) — when v1.4.0
+   Dismissal is stored PER RELEASE (keyed on data-rel), when v1.4.0
    ships the strip comes back on its own. */
 const newsbar = document.getElementById('newsbar');
 if (newsbar) {
@@ -71,14 +105,14 @@ fetch(API, { headers: { Accept: 'application/vnd.github+json' } })
     document.querySelectorAll('.dl-card').forEach((card) => {
       const holder = card.querySelector('.dl-size');
       const asset = holder?.dataset.asset;
-      // external mirrors (data-external) aren't in the GitHub release — skip them
+      // external mirrors (data-external) aren't in the GitHub release, skip them
       const external = card.querySelector('.dl-link')?.dataset.external === 'true';
       const size = !external && asset && SIZES.get(asset);
       if (size && holder) holder.textContent = pretty(size);
     });
   })
   .catch((code) => {
-    /* 404 is the ONLY case where the direct URLs genuinely can't resolve —
+    /* 404 is the ONLY case where the direct URLs genuinely can't resolve 
        no release published yet. Anything else (API rate limit, ad blocker,
        network drop) leaves the buttons untouched: they point at
        …/releases/latest/download/<asset>, permanent direct-download URLs
@@ -98,7 +132,7 @@ fetch(API, { headers: { Accept: 'application/vnd.github+json' } })
 /* ------------------------------------------------ stats beacon
    Counters land in the KV store behind /api/track (admin page reads them).
    sendBeacon survives navigation, so a download click is counted even
-   though the browser immediately leaves for GitHub. Failures are silent —
+   though the browser immediately leaves for GitHub. Failures are silent 
    analytics must never break the page. */
 function beacon(payload) {
   try {

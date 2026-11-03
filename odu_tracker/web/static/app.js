@@ -1,5 +1,5 @@
 /* ================================================================
-   ODU TRACKER · UI v3  — vanilla JS, no dependencies
+   ODU TRACKER · UI v3 , vanilla JS, no dependencies
    charts: bar / line / area / donut (+ toast, theme, live pollers)
    ================================================================ */
 "use strict";
@@ -8,11 +8,11 @@
 const $  = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 
-const fmtGB    = mb => mb == null ? "—" : (mb / 1024).toFixed(mb >= 10240 ? 1 : 2) + " GB";
-const fmtG     = g  => g == null ? "—" : (+g >= 100 ? (+g).toFixed(1) : (+g).toFixed(2)) + " GB";
+const fmtGB    = mb => mb == null ? "…" : (mb / 1024).toFixed(mb >= 10240 ? 1 : 2) + " GB";
+const fmtG     = g  => g == null ? "…" : (+g >= 100 ? (+g).toFixed(1) : (+g).toFixed(2)) + " GB";
 const fmtMbp   = v  => (+v || 0) >= 100 ? (+v).toFixed(0) : (+v || 0).toFixed(2);
-const fmtT     = ts => ts ? new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : "—";
-const fmtDT    = ts => ts ? new Date(ts * 1000).toLocaleString([], {day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"}) : "—";
+const fmtT     = ts => ts ? new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : "…";
+const fmtDT    = ts => ts ? new Date(ts * 1000).toLocaleString([], {day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"}) : "…";
 const ago      = ts => {
   if (!ts) return "never";
   const s = Date.now() / 1000 - ts;
@@ -93,8 +93,8 @@ function initOfflineState() {
     const connText = document.getElementById("connText");
     if (!connDot || !connText) return;
     connDot.className = online ? "dot on" : "dot warn";
-    connText.textContent = online ? "router connected" : "offline — waiting for network";
-    if (!online) toast("Offline — the dashboard is waiting for the local ODU network.", 3000);
+    connText.textContent = online ? "router connected" : "offline, waiting for network";
+    if (!online) toast("Offline, the dashboard is waiting for the local ODU network.", 3000);
   };
   window.addEventListener("online", syncStatus);
   window.addEventListener("offline", syncStatus);
@@ -109,7 +109,7 @@ function initOfflineState() {
 const tip = () => $("#chartTip");
 
 /* Tooltip pinned close to the cursor (design revamp 2026-10-30).
-   .chart-tip is position:fixed, so left/top are viewport coordinates —
+   .chart-tip is position:fixed, so left/top are viewport coordinates 
    exactly where the pointer is. Flipped inside the chart near its right
    edge, clamped so it never leaves the screen. */
 function showTip(evt, box, html) {
@@ -175,7 +175,7 @@ function smoothD(pts, top, bot) {
 }
 
 /* Rich hover readout pinned beside the cursor: data spent in this bucket,
-   a share-of-window gauge, and the DAY's total usage — the 2026-10-30 ask
+   a share-of-window gauge, and the DAY's total usage, the 2026-10-30 ask
    ("show usage of the day close to the cursor"). Hidden for month bars,
    where the bucket already IS the day. */
 function hoverReadout(p, i, s, o) {
@@ -220,11 +220,11 @@ function chart(box, cfg) {
 
   const series = (cfg.series || []).map(p => ({...p, v: Math.max(0, +p.v || 0)}));
   if (!series.length) {
-    box.innerHTML = '<div class="empty">no data yet — the poller is filling samples</div>';
+    box.innerHTML = '<div class="empty">no data yet, the poller is filling samples</div>';
     return;
   }
   /* entrance animation only when the chart's SHAPE changes (type / point
-     count / height) — steady live polling must not re-bounce it */
+     count / height), steady live polling must not re-bounce it */
   const sig = cfg.type + ":" + series.length + ":" + H;
   const anim = box._sig !== sig;
   box._sig = sig;
@@ -316,7 +316,7 @@ function chart(box, cfg) {
     const line = el("path", {d, fill: "none", stroke: col, "stroke-width": 2.6,
       "stroke-linecap": "round", "stroke-linejoin": "round", class: "cline"});
     svg.appendChild(line);
-    /* draw-in via pure CSS animation — NO rAF/inline-offset trickery: the
+    /* draw-in via pure CSS animation, NO rAF/inline-offset trickery: the
        resting state is offset 0 (fully drawn), the keyframe only animates
        FROM the full offset. If the animation never runs (background tab,
        headless, whatever) the line is simply already there. */
@@ -560,7 +560,7 @@ $("#noOduRetry").onclick = async () => {
       boot();
     } else {
       $("#noOduStatus").textContent =
-        `still nothing at ${c.ip || "192.168.0.1"} — are you on the ODU Wi-Fi?`;
+        `still nothing at ${c.ip || "192.168.0.1"}, are you on the ODU Wi-Fi?`;
       setTimeout(() => $("#noOduStatus").textContent =
         "Waiting for the ODU network… rechecking every 4 s", 3000);
     }
@@ -576,13 +576,13 @@ async function route(meta) {
   showAuth();
   $("#authTitle").textContent = meta.setup_done ? "Welcome back" : "Set up your tracker";
   $("#authSub").textContent = meta.setup_done
-    ? "Sign in with your ODU admin password — one time, then this PC is remembered for 30 days."
+    ? "Sign in with your ODU admin password, one time, then this PC is remembered for 30 days."
     : "Create the link to your router: enter the ODU admin password (it is stored only on this PC).";
   const lockWarn = meta.lock_secs && meta.lock_secs > 3600
     ? `⚠ Router login locked ${(meta.lock_secs / 3600).toFixed(1)} h remaining`
-    : (meta.lock_secs ? `Router login cooldown — try again in ${meta.lock_secs}s` : "");
+    : (meta.lock_secs ? `Router login cooldown, try again in ${meta.lock_secs}s` : "");
   const lowWarn = meta.attempts_left != null && meta.attempts_left <= 2
-    ? `⚠ Only ${meta.attempts_left} login attempt${meta.attempts_left === 1 ? "" : "s"} left before a 24h router lock — only type the correct password`
+    ? `⚠ Only ${meta.attempts_left} login attempt${meta.attempts_left === 1 ? "" : "s"} left before a 24h router lock, only type the correct password`
     : "";
   const warn = lockWarn || lowWarn;
   if (warn) {
@@ -685,7 +685,7 @@ async function pollStatus() {
     const st = d.flow || {};
     const u = d.usage || {};
     // KPIs
-    $("#kpiMonth").textContent = d.rates ? fmtGB(st.total_mb) : "—";
+    $("#kpiMonth").textContent = d.rates ? fmtGB(st.total_mb) : "…";
     const limitGB = st.limit_switch === "1" || st.limit_switch === 1
       ? parseFloat(st.limit_size) : null;
     const usedGB = st.total_mb != null ? st.total_mb / 1024 : null;
@@ -697,15 +697,15 @@ async function pollStatus() {
       $("#kpiMonthMeter > div").style.width = "0%";
       $("#kpiMonthSub").textContent = `down ${fmtGB(st.down_mb)} · up ${fmtGB(st.up_mb)} (meter off)`;
     }
-    $("#kpiReset").textContent = d.since_reset ? fmtG(d.since_reset.gb) : "—";
+    $("#kpiReset").textContent = d.since_reset ? fmtG(d.since_reset.gb) : "…";
     $("#kpiResetSub").textContent = d.since_reset ? "since " + fmtDT(d.since_reset.ts) : "no reset yet";
-    $("#kpiToday").textContent = d.day_usage != null ? fmtG(d.day_usage) : "—";
+    $("#kpiToday").textContent = d.day_usage != null ? fmtG(d.day_usage) : "…";
     $("#kpiRateNow").textContent = fmtMbp(d.rates?.current) + " Mbps";
     $("#kpiRateSub").textContent = `1-h avg ${fmtMbp(d.rates?.avg_hour)} · 10-m ${fmtMbp(d.rates?.avg_10m)}`;
     // chips
     const lvl = d.sys?.signal_lvl, op = d.sys?.network_operator;
-    $("#chipSignal").textContent = lvl != null ? `▮ ${lvl}/5` : "—";
-    $("#chipNet").textContent = `${d.sys?.network_type_str || "—"} · ${op || ""}`;
+    $("#chipSignal").textContent = lvl != null ? `▮ ${lvl}/5` : "…";
+    $("#chipNet").textContent = `${d.sys?.network_type_str || "…"} · ${op || ""}`;
     const ok = d.poll?.logged_in && !d.poll?.error;
     $("#chipStatus").innerHTML = ok
       ? '<span class="chip-ic ok">✓</span><span>Live</span>'
@@ -714,14 +714,14 @@ async function pollStatus() {
     // system kv
     const net = d.network || {};
     const rows = [
-      ["Board", `${d.sys?.board_type || "—"}`],
-      ["IDU", d.sys?.idu_dev_type || "—"],
-      ["Firmware", d.wan?.fw || "—"],
-      ["WAN IP", d.wan?.wan_ip || "—"],
-      ["Uptime", (d.wan?.uptime != null && d.wan.uptime !== "") ? Math.round(d.wan.uptime / 3600) + " h" : "—"],
+      ["Board", `${d.sys?.board_type || "…"}`],
+      ["IDU", d.sys?.idu_dev_type || "…"],
+      ["Firmware", d.wan?.fw || "…"],
+      ["WAN IP", d.wan?.wan_ip || "…"],
+      ["Uptime", (d.wan?.uptime != null && d.wan.uptime !== "") ? Math.round(d.wan.uptime / 3600) + " h" : "…"],
       ["SSID", `${d.wan?.ssid24 || ""}${d.wan?.ssid58 ? " · " + d.wan.ssid58 : ""}`],
-      ["RSRP", d.signal?.rsrp != null ? d.signal.rsrp + " dBm" : (d.signal?.rsrp_5g != null ? d.signal.rsrp_5g + " dBm (5G)" : "—")],
-      ["Battery", d.battery && d.battery.battery_capacity ? d.battery.battery_capacity + "%" : "—"],
+      ["RSRP", d.signal?.rsrp != null ? d.signal.rsrp + " dBm" : (d.signal?.rsrp_5g != null ? d.signal.rsrp_5g + " dBm (5G)" : "…")],
+      ["Battery", d.battery && d.battery.battery_capacity ? d.battery.battery_capacity + "%" : "…"],
     ].concat(net.temp != null ? [["Temp", net.temp + " °C"]] : []);
     $("#sysKv").innerHTML = rows.map(r => `<span>${esc(r[0])}</span><b>${esc(r[1])}</b>`).join("");
     // conn dot
@@ -753,7 +753,7 @@ async function pollUsage() {
         label: new Date(r.ts * 1000).toLocaleDateString([], {day: "numeric", month: "short"})}));
       $("#usageNote").textContent =
         `${fmtG(total)} this month${d.first ? ` · recording since ${fmtDT(d.first)}` : ""}` +
-        (rows.length ? "" : " — no samples recorded yet");
+        (rows.length ? "" : ", no samples recorded yet");
       chart($("#usageChart"), {type: cfgType, series: labeled, unit: "GB",
         height: 210, color: "#3fd68e", fmt: v => v.toFixed(v >= 10 ? 1 : 2) + " GB"});
     } else {
@@ -826,7 +826,7 @@ function renderDevTable() {
     if (!x.trusted && x.age_days < 7) flags.push('<span class="badge yellow">new</span>');
     return `<tr>
       <td><b>${esc(x.last_hostname || "unknown")}</b><br><span class="tagline">${esc(x.vendor || (x.mac.startsWith("2E") || x.mac.startsWith("62") ? "randomized MAC" : "unknown vendor"))}</span></td>
-      <td class="mono">${esc(x.last_ip || "—")}</td>
+      <td class="mono">${esc(x.last_ip || "…")}</td>
       <td class="mono" style="font-size:.72rem">${esc(x.mac)}</td>
       <td>${badge}<div style="margin-top:4px">${flags.join(" ")}</div></td>
       <td><span class="tr-pill tr-${lvl}" title="score ${(+x.riskscore).toFixed(2)}">${lvl}</span></td>
@@ -943,7 +943,7 @@ function renderVoucherWps(w) {
     const s = w[b] || {};
     if (s.error) return `<b>${b}</b> error: ${esc(s.error)}`;
     return `<b>${b}</b> ` + (s.on
-      ? '<span class="badge yellow">ON — gate not enforced</span>'
+      ? '<span class="badge yellow">ON, gate not enforced</span>'
       : '<span class="badge green">off</span>');
   });
   el.innerHTML = parts.join(" &nbsp; ");
@@ -1019,14 +1019,14 @@ $("#btnPortalOff").addEventListener("click", () =>
 function renderVoucherPool(p) {
   $("#vpPurchased").textContent = fmtGB(p.purchased_mb);
   $("#vpUsed").textContent = fmtGB(p.used_total_mb);
-  $("#vpRemaining").textContent = p.remaining_mb == null ? "—" : fmtGB(p.remaining_mb);
+  $("#vpRemaining").textContent = p.remaining_mb == null ? "…" : fmtGB(p.remaining_mb);
   $("#vpRemainingSub").textContent = p.planned_limit_mb == null
     ? "redeem a code to anchor the pool"
     : `cap ${fmtGB(p.planned_limit_mb)} = baseline ${fmtGB(p.baseline_mb)} + purchased ${fmtGB(p.purchased_mb)} + grace ${fmtGB(p.grace_mb)}`;
   const r = p.router || {};
   const cap = $("#vpCap"), capSub = $("#vpCapSub");
-  if (r.error) { cap.textContent = "—"; capSub.textContent = "router: " + r.error; }
-  else if (r.limitSwitch == null) { cap.textContent = "—"; capSub.textContent = "router unreachable"; }
+  if (r.error) { cap.textContent = "…"; capSub.textContent = "router: " + r.error; }
+  else if (r.limitSwitch == null) { cap.textContent = "…"; capSub.textContent = "router unreachable"; }
   else if (r.limitSwitch === "1") {
     cap.textContent = r.limitSize;
     capSub.textContent = `ON · unit ${r.flow_limit_unit || "?"} · billing day ${r.startDate || "?"}`;
@@ -1041,7 +1041,7 @@ function renderVoucherGate(g) {
   if (!g) { el.innerHTML = '<div class="empty">gate state not loaded</div>'; return; }
   el.innerHTML = ["2.4g", "5g"].map(b => {
     const s = g[b] || {};
-    if (s.error) return `<div style="margin:6px 0"><b>${b}</b> — error: ${esc(s.error)}</div>`;
+    if (s.error) return `<div style="margin:6px 0"><b>${b}</b>, error: ${esc(s.error)}</div>`;
     const mode = s.mode || "close";
     const badge = mode === "close" ? '<span class="badge gray">filter off</span>'
       : mode === "deny" ? '<span class="badge red">deny list</span>'
@@ -1058,7 +1058,7 @@ function renderVoucherTable(list) {
     const badge = v.status === "claimed" ? '<span class="badge green">claimed</span>'
       : v.status === "revoked" ? '<span class="badge gray">revoked</span>'
       : '<span class="badge yellow">active</span>';
-    const dev = v.mac ? `<span class="mono" style="font-size:.72rem">${esc(v.mac)}</span>` : "—";
+    const dev = v.mac ? `<span class="mono" style="font-size:.72rem">${esc(v.mac)}</span>` : "…";
     const act = v.status === "active"
       ? `<button class="btn xs danger" data-vrevoke="${esc(v.code)}">Revoke</button>` : "";
     return `<tr>
@@ -1066,10 +1066,10 @@ function renderVoucherTable(list) {
       <td class="right">${fmtGB(v.quota_mb)}</td>
       <td>${badge}</td>
       <td>${dev}</td>
-      <td>${v.claimed_at ? fmtDT(v.claimed_at) : "—"}</td>
+      <td>${v.claimed_at ? fmtDT(v.claimed_at) : "…"}</td>
       <td>${esc(v.note || "")}</td>
       <td class="right">${act}</td></tr>`;
-  }).join("") || '<tr><td colspan="7"><div class="empty">no codes yet — generate some above</div></td></tr>';
+  }).join("") || '<tr><td colspan="7"><div class="empty">no codes yet, generate some above</div></td></tr>';
 }
 
 $("#btnVGen").addEventListener("click", async () => {
@@ -1141,7 +1141,7 @@ function renderSites(d) {
   $("#siteDomTable tbody").innerHTML = dom.map(r =>
     `<tr><td class="mono">${esc(r.domain)}</td><td class="right"><b>${r.hits}</b></td>
      <td class="right">${r.clients}</td><td class="right tagline">${ago(r.last_seen)}</td></tr>`)
-    .join("") || '<tr><td colspan="4"><div class="empty">No domains yet — see the notice above ⤴</div></td></tr>';
+    .join("") || '<tr><td colspan="4"><div class="empty">No domains yet, see the notice above ⤴</div></td></tr>';
   const rules = d.url_rules || [];
   $("#siteRules").className = rules.length ? "" : "empty";
   $("#siteRules").innerHTML = rules.length
@@ -1162,8 +1162,8 @@ async function pollDnscfg() {
       `Router DHCP DNS: <b class="mono">${esc(d.router_dns_main || "?")}</b>` +
       (d.router_dns_vice ? ` (backup ${esc(d.router_dns_vice)})` : "") + "<br>" +
       (pointed
-        ? `<span class="badge green">${idx} pointed at this app</span> — devices pick it up as DHCP leases renew (toggle Wi-Fi on a device for an instant refresh).`
-        : `<span class="badge yellow">${idx} router DNS is ${d.router_dns_main || "not set"}</span> — per-device site tracking needs the one-click connect.`);
+        ? `<span class="badge green">${idx} pointed at this app</span>, devices pick it up as DHCP leases renew (toggle Wi-Fi on a device for an instant refresh).`
+        : `<span class="badge yellow">${idx} router DNS is ${d.router_dns_main || "not set"}</span>, per-device site tracking needs the one-click connect.`);
     $("#btnDnsRestore").disabled = !pointed && !d.router_dns_main;
   } catch { /* transient */ }
 }
@@ -1198,22 +1198,22 @@ async function pollSpeed(silent) {
     const d = await api("/api/speedtest");
     S.speedState = d; SPEED = d;
     const st = d.running ? d.phase : (d.last ? "done" : "idle");
-    $("#stStatus").textContent = d.running ? `⏳ ${d.phase} — uses your data while running` :
+    $("#stStatus").textContent = d.running ? `⏳ ${d.phase}, uses your data while running` :
       d.last ? `last test ${fmtDT(d.last.ts)}` : "idle";
     $("#stBar").style.width = d.running ? "50%" : d.last ? "100%" : "0%";
     if (d.last && !d.running) {
       $("#stDownVal").textContent = fmtMbp(d.last.down_mbps);
       $("#stUpVal").textContent = d.last.up_mbps ? fmtMbp(d.last.up_mbps) : "skipped";
-      $("#stPing").textContent = d.last.ping_ms != null ? Math.round(d.last.ping_ms) + " ms" : "—";
+      $("#stPing").textContent = d.last.ping_ms != null ? Math.round(d.last.ping_ms) + " ms" : "…";
     }
-    $("#stAvg").textContent = d.avg_down ? fmtMbp(d.avg_down) + " Mbps" : "—";
+    $("#stAvg").textContent = d.avg_down ? fmtMbp(d.avg_down) + " Mbps" : "…";
     $("#stAvgUp").textContent = d.avg_up ? "avg up " + fmtMbp(d.avg_up) + " Mbps" : `${d.count || 0} tests stored`;
     $("#stHistory tbody").innerHTML = (d.history || []).map(r =>
       `<tr><td>${fmtDT(r.ts)}</td><td class="right"><b>${fmtMbp(r.down_mbps)}</b></td>
-       <td class="right">${r.up_mbps ? fmtMbp(r.up_mbps) : "—"}</td>
-       <td class="right">${r.ping_ms != null ? Math.round(r.ping_ms) : "—"}</td>
-       <td class="right tagline">${r.bytes_used ? fmtGB(r.bytes_used / 1024) : "—"}</td></tr>`)
-      .join("") || '<tr><td colspan="5"><div class="empty">no tests yet — press ▶ Run test</div></td></tr>';
+       <td class="right">${r.up_mbps ? fmtMbp(r.up_mbps) : "…"}</td>
+       <td class="right">${r.ping_ms != null ? Math.round(r.ping_ms) : "…"}</td>
+       <td class="right tagline">${r.bytes_used ? fmtGB(r.bytes_used / 1024) : "…"}</td></tr>`)
+      .join("") || '<tr><td colspan="5"><div class="empty">no tests yet, press ▶ Run test</div></td></tr>';
   } catch (e) { if (!silent) console.warn(e); }
 }
 $("#btnSpeed").onclick = async () => {
@@ -1222,7 +1222,7 @@ $("#btnSpeed").onclick = async () => {
   try {
     await api("/api/speedtest/run", {method: "POST", body: JSON.stringify({
       size_mb: +$("#stDown").value, up_mb: +$("#stUp").value})});
-    toast("Speed test running — data is being consumed");
+    toast("Speed test running, data is being consumed");
     pollSpeed(true);
   } catch (err) { toast("Failed: " + err.message); }
   btn.disabled = false; btn.textContent = "▶ Run test";
@@ -1240,7 +1240,7 @@ async function pollAlerts() {
         <div style="flex:1"><b style="font-size:.9rem">${esc(x.title)}</b>
           <div class="tagline" style="margin-top:2px">${esc(x.detail || "")}</div></div>
         <span class="tagline" style="white-space:nowrap">${ago(x.ts)}</span></div>`)
-      .join("") || '<div class="empty">no alerts — all quiet 🎉</div>';
+      .join("") || '<div class="empty">no alerts, all quiet 🎉</div>';
     pollAlertBadge();
   } catch { /* transient */ }
 }
@@ -1273,8 +1273,8 @@ $("#resetBtn").onclick = async () => {
   try {
     const d = await api("/api/usage/reset", {method: "POST"});
     toast(d.firmware?.ok
-      ? "✓ Router counters cleared — counting from 0 now"
-      : "Reset baseline saved — counting from now", 5000);
+      ? "✓ Router counters cleared, counting from 0 now"
+      : "Reset baseline saved, counting from now", 5000);
     renderResetNote(); pollStatus(); pollUsage();
   } catch (err) { toast("Failed: " + err.message); }
   b.disabled = false; b.textContent = "↺ Reset usage from now";

@@ -57,6 +57,22 @@ It lives at `<your-site>/admin` and is excluded from search engines.
 Without the env vars the site still works fully — `/api/track` fails
 silently and `/admin` answers `503 backend not configured`.
 
+## Monetization (light ads)
+
+The landing page has a **single, hidden-by-default ad slot** between Download
+and Support. Nothing loads until you opt in:
+
+1. Register at https://adsense.google.com and add your Vercel domain
+   (approval usually takes a few days and prefers real content/traffic).
+2. Fill `AD_CLIENT` (your `ca-pub-…`) — and optionally `AD_SLOT` (a
+   responsive display unit) — at the top of `site/script.js`.
+   Empty strings = no ad script is ever loaded.
+   Letting only `AD_CLIENT` be set enables AdSense **Auto ads** sitewide.
+3. Copy `site/ads.txt.example` to `site/ads.txt`, paste your `ca-pub-…`.
+
+Keep it to one slot: this is an installer landing page, and a modest
+banner between Download and Support converts far better than a wall.
+
 ## Deploy to Vercel
 
 1. Push this repo to **https://github.com/Ademileke12/odu-tracker.git**.

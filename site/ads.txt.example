@@ -1,0 +1,11 @@
+# ODU TRACKER ads.txt template
+#
+# Google AdSense requires an /ads.txt file naming the accounts allowed to
+# sell this site's inventory, otherwise browsers get "unauthorized
+# inventory" and revenue drops.
+#
+# 1. In AdSense, copy your publisher id (ca-pub-XXXXXXXXXXXXXXXX)
+# 2. Replace both X-strings below
+# 3. Save this file as  site/ads.txt  (drop ".example"), commit, push.
+#
+google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0

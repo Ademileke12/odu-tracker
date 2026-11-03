@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ODU Tracker — admin stats</title>
+<title>ODU Tracker · admin stats</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#efece4">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='13' fill='%23ffb632'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%230a0a0a' stroke-width='5.5'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%23ffffff' stroke-width='5.5' stroke-linecap='round' stroke-dasharray='50 75.4' transform='rotate(-90 24 26)'/%3E%3Ccircle cx='24' cy='26' r='3' fill='%230a0a0a'/%3E%3C/svg%3E">
@@ -53,7 +53,7 @@ footer{margin-top:34px;font-family:var(--mono);font-size:11px;color:var(--mut)}
 <!-- ================================================ login -->
 <div id="loginView" class="card">
   <h1>ADMIN<span style="color:var(--amber)"> GATE</span></h1>
-  <p class="sub">odu tracker — site stats</p>
+  <p class="sub">odu tracker, site stats</p>
   <form id="loginForm" autocomplete="off">
     <label for="pw">Password</label>
     <input type="password" id="pw" name="password" autocomplete="current-password" required>
@@ -67,29 +67,29 @@ footer{margin-top:34px;font-family:var(--mono);font-size:11px;color:var(--mut)}
   <div class="head">
     <div>
       <h1>SITE <span style="color:var(--amber)">STATS</span></h1>
-      <p class="sub" id="genAt">—</p>
+      <p class="sub" id="genAt">…</p>
     </div>
     <button class="ghost" id="logoutBtn">Log out</button>
   </div>
 
   <div class="grid">
-    <div class="kpi"><div class="n" id="kDownloads">—</div><div class="l">Total downloads (GitHub, all-time)</div></div>
-    <div class="kpi"><div class="n" id="kViews">—</div><div class="l">Page views (tracked)</div></div>
-    <div class="kpi"><div class="n" id="kClicks">—</div><div class="l">Download clicks (tracked)</div></div>
-    <div class="kpi"><div class="n" id="kReleases">—</div><div class="l">Releases published</div></div>
+    <div class="kpi"><div class="n" id="kDownloads">…</div><div class="l">Total downloads (GitHub, all-time)</div></div>
+    <div class="kpi"><div class="n" id="kViews">…</div><div class="l">Page views (tracked)</div></div>
+    <div class="kpi"><div class="n" id="kClicks">…</div><div class="l">Download clicks (tracked)</div></div>
+    <div class="kpi"><div class="n" id="kReleases">…</div><div class="l">Releases published</div></div>
   </div>
 
-  <p class="sec">Downloads per file — real GitHub counts</p>
+  <p class="sec">Downloads per file, real GitHub counts</p>
   <table><thead><tr><th>Asset</th><th class="num">Downloads</th><th class="num">Clicks on site</th></tr></thead>
     <tbody id="assetRows"></tbody></table>
 
-  <p class="sec">Last 14 days — page views</p>
+  <p class="sec">Last 14 days, page views</p>
   <div class="spark" id="viewSpark" title="daily page views"></div>
 
-  <p class="sec">Last 14 days — download clicks</p>
+  <p class="sec">Last 14 days, download clicks</p>
   <div class="spark" id="clickSpark" title="daily download clicks"></div>
 
-  <p class="sec">Last 14 days — daily numbers</p>
+  <p class="sec">Last 14 days, daily numbers</p>
   <table><thead><tr><th>Day</th><th class="num">Views</th><th class="num">Clicks</th></tr></thead>
     <tbody id="dayRows"></tbody></table>
 
@@ -140,7 +140,7 @@ async function load() {
     $('#kDownloads').textContent = d.downloads ? fmt(d.downloads.total) : (d.ghError ? 'n/a' : '0');
     $('#kViews').textContent = fmt(d.views);
     $('#kClicks').textContent = fmt(d.clicks);
-    $('#kReleases').textContent = d.downloads ? fmt(d.downloads.releases) : '—';
+    $('#kReleases').textContent = d.downloads ? fmt(d.downloads.releases) : '…';
     $('#genAt').textContent = 'generated ' + new Date(d.generatedAt).toLocaleString();
 
     const names = new Set([...Object.keys(d.downloads?.perAsset || {}), ...Object.keys(d.clickAssets || {})]);

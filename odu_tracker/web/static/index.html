@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="ODU Tracker monitors MTN router usage, devices, risk alerts, and speed tests locally.">
-<title>ODU Tracker — MTN data & device monitor</title>
+<title>ODU Tracker · MTN data & device monitor</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%23ffb632'/%3E%3Cpath d='M16 33v-9' stroke='%23221701' stroke-width='3.6' stroke-linecap='round'/%3E%3Cpath d='M16 24a7 7 0 0 1 8.5 8.6M16 24a13 13 0 0 1 15.4 15.1' stroke='%23221701' stroke-width='3.6' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='16' cy='33' r='3.1' fill='%23221701'/%3E%3C/svg%3E">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
@@ -64,7 +64,7 @@
     <div>
       <h2>Know your data.<br>Trust your <em>network</em>.</h2>
       <p class="lede">Live usage from your ZLT ODU, connected-device watch with risk flags,
-         per-device website activity and real speed tests — all on your own machine.</p>
+         per-device website activity and real speed tests, all on your own machine.</p>
       <div class="feat">
         <div class="f"><div class="fi">↓</div>Usage totals, hourly charts &amp; reset-from-now counter</div>
         <div class="f"><div class="fi">◉</div>New &amp; dangerous device alerts (MAC risk engine)</div>
@@ -125,8 +125,8 @@
       <div><h1 id="pageTitle">Dashboard</h1><div class="sub" id="pageSub">Live view of your ODU</div></div>
       <div class="head-chips">
         <div class="chip" id="chipStatus"><span class="chip-ic warn">•</span><span>Link</span></div>
-        <div class="chip"><b id="chipSignal">—</b><span id="chipNet">—</span></div>
-        <div class="chip"><span>Month</span><b id="chipMonth">—</b></div>
+        <div class="chip"><b id="chipSignal"></b><span id="chipNet"></span></div>
+        <div class="chip"><span>Month</span><b id="chipMonth"></b></div>
         <button class="btn ghost xs" id="btnLogout" title="Sign out">⎋&nbsp;Exit</button>
       </div>
     </header>
@@ -137,25 +137,25 @@
         <div class="grid g4">
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">This month</span><span class="kpi-ic">Σ</span></div>
-            <div class="kpi-val accent" id="kpiMonth">—</div>
+            <div class="kpi-val accent" id="kpiMonth"></div>
             <div class="meter" id="kpiMonthMeter"><div></div></div>
-            <div class="kpi-sub" id="kpiMonthSub">—</div>
+            <div class="kpi-sub" id="kpiMonthSub"></div>
           </div>
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">Since reset</span><span class="kpi-ic">↺</span></div>
-            <div class="kpi-val okv" id="kpiReset">—</div>
+            <div class="kpi-val okv" id="kpiReset"></div>
             <div class="meter" style="display:none"></div>
             <div class="kpi-sub" id="kpiResetSub">Counting from your last reset</div>
           </div>
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">Today</span><span class="kpi-ic">☀</span></div>
-            <div class="kpi-val" id="kpiToday">—</div>
+            <div class="kpi-val" id="kpiToday"></div>
             <div class="kpi-sub" id="kpiTodaySub">Since 00:00 (router clock)</div>
           </div>
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">Throughput</span><span class="kpi-ic">≈</span></div>
-            <div class="kpi-val" id="kpiRateNow">—</div>
-            <div class="kpi-sub" id="kpiRateSub">1-h avg: —</div>
+            <div class="kpi-val" id="kpiRateNow"></div>
+            <div class="kpi-sub" id="kpiRateSub">1-h avg: </div>
           </div>
         </div>
 
@@ -178,7 +178,7 @@
               </div>
             </div>
             <div class="chartbox" id="usageChart"></div>
-            <div class="chart-note" id="usageNote">—</div>
+            <div class="chart-note" id="usageNote"></div>
           </div>
         </div>
 
@@ -198,10 +198,10 @@
               </div>
             </div>
             <div class="chartbox" id="ratesChart"></div>
-            <div class="chart-note" id="ratesNote">—</div>
+            <div class="chart-note" id="ratesNote"></div>
           </div>
           <div class="card">
-            <div class="card-head"><h3>Devices online</h3><span class="tagline" id="devOnlineCount">—</span></div>
+            <div class="card-head"><h3>Devices online</h3><span class="tagline" id="devOnlineCount"></span></div>
             <div id="devChips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
             <div class="chart-note" style="margin-top:14px"><a class="link" data-tab="devices">Open device monitor →</a></div>
             <div class="card-head" style="margin-top:20px"><h3>System</h3></div>
@@ -215,7 +215,7 @@
         <div class="card" style="margin-bottom:16px">
           <div class="card-head"><h3>Top data activity</h3><span class="tagline">ranked by DNS lookups through this app</span></div>
           <div class="lbr" id="devRankList"></div>
-          <div class="chart-note" style="margin-top:12px">This firmware keeps no per-device byte counters — enable <a class="link" data-tab="websites">Website tracking</a> for the per-device activity this ranks. Router-reported usage appears automatically when the ODU provides it.</div>
+          <div class="chart-note" style="margin-top:12px">This firmware keeps no per-device byte counters, enable <a class="link" data-tab="websites">Website tracking</a> for the per-device activity this ranks. Router-reported usage appears automatically when the ODU provides it.</div>
         </div>
         <div class="card">
           <div class="card-head">
@@ -267,22 +267,22 @@
         <div class="grid g4">
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">Pool purchased</span><span class="kpi-ic">⛁</span></div>
-            <div class="kpi-val accent" id="vpPurchased">—</div>
+            <div class="kpi-val accent" id="vpPurchased"></div>
             <div class="kpi-sub" id="vpPurchasedSub">sum of claimed codes</div>
           </div>
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">Pool remaining</span><span class="kpi-ic">◔</span></div>
-            <div class="kpi-val okv" id="vpRemaining">—</div>
+            <div class="kpi-val okv" id="vpRemaining"></div>
             <div class="kpi-sub" id="vpRemainingSub">planned cap − SIM used</div>
           </div>
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">SIM used (month)</span><span class="kpi-ic">Σ</span></div>
-            <div class="kpi-val" id="vpUsed">—</div>
+            <div class="kpi-val" id="vpUsed"></div>
             <div class="kpi-sub" id="vpUsedSub">router counter (cmd 337)</div>
           </div>
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">Router cap</span><span class="kpi-ic">⛨</span></div>
-            <div class="kpi-val" id="vpCap">—</div>
+            <div class="kpi-val" id="vpCap"></div>
             <div class="kpi-sub" id="vpCapSub">limit switch state</div>
           </div>
         </div>
@@ -320,12 +320,12 @@
               </div>
               <button class="btn primary" id="btnVClaim" style="align-self:flex-end">Redeem</button>
             </div>
-            <div class="chart-note" style="margin-top:12px">Redeeming adds the quota to the pool and clears that device from the Wi-Fi deny list. The router has no per-device byte counter, so each device's usage is estimated by splitting the shared SIM counter across who's online — see Device data below.</div>
+            <div class="chart-note" style="margin-top:12px">Redeeming adds the quota to the pool and clears that device from the Wi-Fi deny list. The router has no per-device byte counter, so each device's usage is estimated by splitting the shared SIM counter across who's online, see Device data below.</div>
           </div>
         </div>
 
         <div class="card" style="margin-top:16px">
-          <div class="card-head"><h3>Codes</h3><span class="tagline" id="vCountTag">—</span></div>
+          <div class="card-head"><h3>Codes</h3><span class="tagline" id="vCountTag"></span></div>
           <div class="tablewrap"><table id="vTable">
             <thead><tr><th>Code</th><th class="right">Quota</th><th>Status</th><th>Device</th><th>Claimed</th><th>Note</th><th class="right">Actions</th></tr></thead>
             <tbody></tbody>
@@ -368,7 +368,7 @@
         </div>
 
         <div class="card" style="margin-top:16px">
-          <div class="card-head"><h3>Wi-Fi gate</h3><span class="tagline">cmd 278 deny list per band — wired clients bypass this</span></div>
+          <div class="card-head"><h3>Wi-Fi gate</h3><span class="tagline">cmd 278 deny list per band, wired clients bypass this</span></div>
           <div id="vGate" class="empty">loading…</div>
         </div>
       </section>
@@ -388,13 +388,13 @@
             </div>
             <button class="btn primary" id="btnSpeed">▶ Run test</button>
           </div>
-          <div class="chart-note" style="margin-top:12px">⚠ Runs over your metered MTN connection — data consumed equals roughly the sizes above.</div>
+          <div class="chart-note" style="margin-top:12px">⚠ Runs over your metered MTN connection, data consumed equals roughly the sizes above.</div>
         </div>
         <div class="grid g4" style="margin-bottom:16px">
-          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Download</span></div><div class="kpi-val accent" id="stDownVal">—</div></div>
-          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Upload</span></div><div class="kpi-val" id="stUpVal">—</div></div>
-          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Ping</span></div><div class="kpi-val" id="stPing">—</div></div>
-          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Average (all tests)</span></div><div class="kpi-val" id="stAvg">—</div><div class="kpi-sub" id="stAvgUp">—</div></div>
+          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Download</span></div><div class="kpi-val accent" id="stDownVal"></div></div>
+          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Upload</span></div><div class="kpi-val" id="stUpVal"></div></div>
+          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Ping</span></div><div class="kpi-val" id="stPing"></div></div>
+          <div class="card kpi"><div class="kpi-top"><span class="kpi-label">Average (all tests)</span></div><div class="kpi-val" id="stAvg"></div><div class="kpi-sub" id="stAvgUp"></div></div>
         </div>
         <div class="card">
           <div class="card-head"><h3>Status</h3><span class="tagline" id="stStatus">idle</span></div>
@@ -423,13 +423,13 @@
               Reset the counter so “Since reset” starts from <b>now</b>. When possible this also clears
               the router's own statistics (firmware statistics-reset); otherwise a local baseline is used.</p>
             <button class="btn danger" id="resetBtn">↺ Reset usage from now</button>
-            <div class="chart-note" id="resetNote" style="margin-top:12px">—</div>
+            <div class="chart-note" id="resetNote" style="margin-top:12px"></div>
           </div>
           <div class="card">
             <div class="card-head"><h3>Router password</h3></div>
             <p style="color:var(--muted);font-size:.88rem;margin-bottom:14px">
               Update the password the tracker uses to sign in to your ODU.
-              The router verifies it first — a wrong one burns a login attempt.</p>
+              The router verifies it first, a wrong one burns a login attempt.</p>
             <div class="field"><div class="pwholder"><input type="password" id="newPw" placeholder="new router admin password"><button type="button" class="eye" id="eyeBtn2">◉</button></div></div>
             <div class="err" id="pwErr"></div>
             <button class="btn" id="btnChangePw">Save password</button>
@@ -439,12 +439,12 @@
             <label class="switchrow" style="margin-bottom:12px"><input type="checkbox" id="dnsEnable"><span class="sw2"></span>Broadcast DNS logging (port <span id="dnsPort">5353</span>)</label>
             <p style="color:var(--muted);font-size:.84rem;margin-bottom:12px">
               For per-device website tracking, the router's DHCP must hand out this PC as the DNS server.
-              This app can set that itself through the router's API — one click, fully reversible.</p>
+              This app can set that itself through the router's API, one click, fully reversible.</p>
             <div class="st-row">
               <button class="btn primary" id="btnDnsPoint">Connect router DNS → this PC</button>
               <button class="btn" id="btnDnsRestore">Restore router default</button>
             </div>
-            <div class="chart-note" id="dnsStatus" style="margin-top:12px">—</div>
+            <div class="chart-note" id="dnsStatus" style="margin-top:12px"></div>
           </div>
           <div class="card">
             <div class="card-head"><h3>Advanced · raw router data</h3></div>
@@ -452,7 +452,7 @@
               <select id="rawName" style="flex:1;min-width:130px"><option value="fast">fast snapshot</option><option value="slow">slow snapshot</option><option value="url_filter">URL filter</option><option value="mac_filter">MAC filter</option></select>
               <button class="btn" id="btnRawLoad">Load</button>
             </div>
-            <div class="rawpre" id="rawPre">—</div>
+            <div class="rawpre" id="rawPre"></div>
           </div>
         </div>
       </section>

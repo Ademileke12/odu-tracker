@@ -547,6 +547,18 @@ body.dark .newsbar { background: var(--accent); }
 }
 
 /* ---------------------------------------------------------- support */
+/* ---------------------------------------------------------- ad slot
+   Light monetization: one slot only, hidden until AD_CLIENT is set in
+   script.js. Renders a slim "sponsored" kicker like the section headers. */
+.adslot { display: none; margin: 0 0 54px; }
+.adslot.on {
+  display: flex; flex-direction: column; gap: 10px;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em;
+  color: var(--muted); text-transform: uppercase;
+}
+.adslot.on::before { content: "sponsored"; color: var(--muted); }
+.adslot.on ins.adsbygoogle { width: 100%; display: block; }
+
 .support { padding-bottom: clamp(40px, 6vh, 72px); }
 .support-card {
   max-width: 560px;
