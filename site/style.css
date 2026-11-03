@@ -414,6 +414,21 @@ h2 {
   font-family: var(--mono); text-decoration: none;
 }
 .dl-alt:hover { color: var(--ink); text-decoration: underline; }
+
+/* Redmi/MIUI install help inside the Android download card */
+.dl-help {
+  margin-top: 12px; text-align: left;
+  font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+  border: 1.5px dashed var(--hair); border-radius: 10px;
+  padding: 10px 12px; background: var(--panel-2);
+}
+.dl-help summary {
+  cursor: pointer; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink);
+}
+.dl-help[open] summary { margin-bottom: 2px; }
+.dl-help ol { margin: 10px 0 2px; padding-left: 18px; display: grid; gap: 7px; line-height: 1.55; }
+.dl-help b { color: var(--ink); }
 .dl-cmd {
   display: block; margin-top: 12px;
   font-family: var(--mono); font-size: 11.5px; color: var(--ink);
