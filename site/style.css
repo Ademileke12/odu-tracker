@@ -363,6 +363,90 @@ h2 {
 }
 .card p { color: var(--muted); font-size: 14.5px; margin: 0; }
 
+/* ----------------------------------------------------- screen previews
+   Real screenshots of the exact UI, framed in CSS-drawn devices: a laptop
+   with a hinged lid and a hinge bar, and a phone with island + buttons. */
+.screens {
+  display: grid; grid-template-columns: 1fr 348px;
+  gap: clamp(28px, 5vw, 64px); align-items: center;
+  max-width: 1120px; margin: 46px auto 0;
+}
+.scr-laptop, .scr-phone { margin: 0; text-align: center; }
+
+.scr-laptop { perspective: 1400px; }
+.scr-laptop .lid {
+  position: relative; margin: 0 auto; transform: rotateX(0deg);
+  transform-origin: 50% 100%;
+  border: 2.5px solid var(--ink); border-radius: 18px 18px 0 0;
+  background: #0d0f14; padding: 14px 10px 16px;
+  box-shadow: 8px 10px 0 rgba(10, 10, 10, 0.14);
+  transition: transform .35s cubic-bezier(.2, .7, .2, 1.2);
+}
+.scr-laptop:hover .lid { transform: rotateX(7deg); }
+.scr-laptop .cam {
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #2a2f38; box-shadow: inset 0 0 2px #000;
+}
+.scr-laptop img {
+  display: block; width: 100%; height: auto; border-radius: 8px;
+  border: 1.5px solid #1c2028; background: #fff;
+}
+.scr-laptop .deck {
+  position: relative; width: 118%; margin: 0 auto; left: -9%;
+  height: 19px; background: linear-gradient(#fdfbf6, #e8e2d3);
+  border: 2.5px solid var(--ink); border-top-width: 2px;
+  border-radius: 4px 4px 14px 14px; box-shadow: 0 9px 0 rgba(10, 10, 10, 0.1);
+}
+.scr-laptop .deck .keys {
+  position: absolute; left: 50%; top: -1px; transform: translateX(-50%);
+  width: 120px; height: 7px; border-radius: 0 0 8px 8px;
+  background: #d8d1bf; border: 1.5px solid var(--ink); border-top: none;
+}
+.scr-laptop .deck .pad {
+  position: absolute; left: 50%; bottom: -21px; transform: translateX(-50%);
+  width: 22px; height: 4px; border-radius: 0 0 6px 6px; background: var(--ink);
+}
+
+.scr-phone { position: relative; z-index: 2; margin-bottom: 26px; }
+.scr-phone .phn {
+  position: relative; width: min(300px, 78vw); margin: 0 auto;
+  background: var(--ink); border-radius: 42px;
+  padding: 46px 9px 13px;              /* forehead for the island */
+  box-shadow: 7px 9px 0 rgba(255, 182, 50, 0.55), 10px 13px 0 rgba(10, 10, 10, 0.14);
+  transition: transform .3s cubic-bezier(.2, .7, .2, 1.3);
+}
+.scr-phone:hover .phn { transform: translateY(-7px) rotate(-1.6deg); }
+.scr-phone .island {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  width: 84px; height: 25px; border-radius: 20px; background: #2a2e36; z-index: 3;
+  box-shadow: inset 0 0 0 2px #05060a;
+}
+.scr-phone img {
+  display: block; width: 100%; height: auto; border-radius: 33px;
+}
+.scr-phone .pk {
+  position: absolute; right: -4px; top: 118px; width: 3.5px; height: 46px;
+  background: var(--ink); border-radius: 0 3px 3px 0;
+}
+.scr-phone .pk.long { top: 68px; height: 72px; }
+
+.scr-laptop figcaption, .scr-phone figcaption {
+  margin-top: 16px; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .1em; color: var(--muted); line-height: 1.8;
+  text-transform: uppercase;
+}
+.scr-tag {
+  display: inline-block; margin-right: 8px; padding: 3px 9px;
+  background: var(--accent); border: 1.5px solid var(--ink);
+  border-radius: 999px; color: var(--ink); font-weight: 700;
+  letter-spacing: .12em; box-shadow: 2px 2px 0 var(--ink);
+}
+@media (max-width: 980px) {
+  .screens { grid-template-columns: 1fr; align-items: center; gap: 44px; }
+  .scr-phone { order: -1; margin-bottom: 0; }
+}
+
 /* ---------------------------------------------------------- downloads */
 .dl-grid {
   display: grid; gap: 16px;
