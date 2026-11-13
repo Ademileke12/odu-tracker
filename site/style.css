@@ -447,6 +447,25 @@ h2 {
   .scr-phone { order: -1; margin-bottom: 0; }
 }
 
+/* -------------------------------------------------- voucher access how-to
+   Paid-feature walkthrough: 3 steps (reuses .steps) + before/after phone
+   shots + the desktop paywall + contact buttons. */
+.vflow {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  align-items: flex-start; gap: clamp(24px, 5vw, 64px);
+  margin: 46px auto 0;
+}
+.vcenter { max-width: 880px; margin: 64px auto 0; }
+.vnote {
+  max-width: 720px; margin: 44px auto 0; text-align: center;
+  color: var(--muted); font-size: 14.5px; line-height: 1.75;
+}
+.vnote b { color: var(--ink); }
+.vcta {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
+  margin: 30px auto 0;
+}
+
 /* ---------------------------------------------------------- downloads */
 .dl-grid {
   display: grid; gap: 16px;

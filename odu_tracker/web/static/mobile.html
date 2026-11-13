@@ -1036,6 +1036,8 @@ $('#resetBtn').addEventListener('click', () => {
   if (m.router_ip) $('#routerIpHint').textContent = m.router_ip;
   if (!m.authed) { showLogin(); return; }
   hideLogin();
+  const want = new URLSearchParams(location.search).get('tab');
+  if (want && $('#v-' + want)) openTab(want);   // deep link, e.g. /mobile?tab=vch
   refresh();
   loadUsage(true);
   refreshDevices();

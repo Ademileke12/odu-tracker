@@ -621,6 +621,10 @@ function enterMain() {
   bindNav();
   refreshAll();
   startTimers();
+  // deep link: /?tab=vouchers opens straight on that tab (support links,
+  // scripted captures)
+  const want = new URLSearchParams(location.search).get("tab");
+  if (want && $(`main [data-view="${want}"]`)) go(want);
 }
 
 /* ---------------------------------------------------------------- nav */
