@@ -5,15 +5,17 @@ Two roles, one listener:
   1. Logging: every LAN client's DNS lookup flows through this app, giving a
      real per-device "visited websites" view without touching the firmware.
   2. Hijack (captive portal): clients whose device has NO active voucher
-     claim get DNS answers pointing at this machine instead of the real
-     site — their HTTP traffic lands on the voucher-claim portal (portal.py).
-     Answered clients are forwarded upstream untouched.
+     claim, or whose voucher is exhausted, get DNS answers pointing at this
+     machine instead of the real site — their HTTP traffic lands on the
+     voucher-claim portal (portal.py). Other clients are forwarded upstream.
 
-  UDP :53 (was 5353): receive query -> [log] -> deny? answer with portal IP
+  UDP :53 (was 5353): receive query -> [log] -> deny? sinkhole
                        : forward to upstream -> reply.
-Non-address types (MX/TXT/SRV...) are always forwarded transparently.
-AAAA queries from denied clients get an empty NOERROR answer so only the
-IPv4 path (-> portal) is used.
+A denied client is NEVER forwarded upstream. A (1) is answered with the
+portal IP, AAAA (28) with an empty NOERROR, and every other type (HTTPS/SVCB
+65, TXT, MX, ...) with an empty NOERROR too. Forwarding those used to hand
+back ipv4hint/ipv6hint and the real address, so the phone browsed normally
+while the soft cut looked armed.
 
 Binding port 53 needs an unprivileged-port raise or a file capability —
 bind failures are recorded in DnsProxy.error and surfaced in the UI rather
@@ -50,10 +52,11 @@ def parse_query_name(data: bytes, offset: int):
 
 
 def build_portal_reply(query: bytes, qtype: int, portal_ip: str, ttl: int = 60):
-    """Synthesize a DNS response for `query`.
+    """Synthesize a DNS response for a denied client. Never reveals a real address.
 
-    A (1)    -> one answer record with portal_ip (hijack)
-    AAAA (28) -> NOERROR with no answers, so clients fall back to IPv4/portal
+    A (1)     -> one answer record with portal_ip (hijack)
+    anything else (AAAA, HTTPS/SVCB, TXT, ...) -> NOERROR with no answers,
+    so the client cannot learn ipv4hint/ipv6hint and walk around the portal.
     """
     if len(query) < 12:
         return None
@@ -61,15 +64,13 @@ def build_portal_reply(query: bytes, qtype: int, portal_ip: str, ttl: int = 60):
     if qend + 4 > len(query):
         return None
     question = query[12:qend + 4]          # name + qtype + qclass
-    if qtype == 1:
+    if qtype == 1 and portal_ip:
         answer = (b"\xc0\x0c" + struct.pack(">HHIH", 1, 1, ttl, 4)
                   + socket.inet_aton(portal_ip))
         ancount = 1
-    elif qtype == 28:
+    else:
         answer = b""
         ancount = 0
-    else:
-        return None
     header = (query[0:2]                       # transaction id
               + struct.pack(">H", 0x8180)      # QR=1 RD=1 RA=1 NOERROR
               + struct.pack(">HHHH", 1, ancount, 0, 0))
@@ -178,15 +179,19 @@ class DnsProxy(threading.Thread):
             if interesting:
                 store.add_site(int(time.time()), addr[0], None, dom)
                 self.logged += 1
-                if self._denied(addr[0]):
-                    reply = build_portal_reply(data, qtype, self.portal_ip)
-                    if reply:
-                        self.hijacked += 1
-                        try:
-                            self.sock.sendto(reply, addr)
-                        except OSError:
-                            pass
-                        return
+            # Denied clients must not reach the upstream resolver at all.
+            # An HTTPS/SVCB (type 65) answer carries ipv4hint and the phone
+            # then opens the real site, so the soft cut looks armed while
+            # the internet still works.
+            if self._denied(addr[0]):
+                reply = build_portal_reply(data, qtype, self.portal_ip)
+                if reply:
+                    self.hijacked += 1
+                    try:
+                        self.sock.sendto(reply, addr)
+                    except OSError:
+                        pass
+                return
             _worker(self.sock, data, addr, self.upstream, self.upstream_port)
         except Exception:
             pass

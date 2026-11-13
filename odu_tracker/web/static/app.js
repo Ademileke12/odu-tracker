@@ -823,6 +823,7 @@ function renderDevTable() {
     const flags = [];
     if (x.trusted) flags.push('<span class="badge green">trusted</span>');
     if (x.blocked) flags.push('<span class="badge red">blocked</span>');
+    if (x.softcut) flags.push('<span class="badge orange">soft cut</span>');
     if (!x.trusted && x.age_days < 7) flags.push('<span class="badge yellow">new</span>');
     return `<tr>
       <td><b>${esc(x.last_hostname || "unknown")}</b><br><span class="tagline">${esc(x.vendor || (x.mac.startsWith("2E") || x.mac.startsWith("62") ? "randomized MAC" : "unknown vendor"))}</span></td>
@@ -833,13 +834,14 @@ function renderDevTable() {
       <td>${fmtDT(x.first_seen)}</td>
       <td class="right">
         <button class="btn xs" data-act="trust" data-mac="${esc(x.mac)}">${x.trusted ? "Untrust" : "Trust"}</button>
-        <button class="btn xs ${x.blocked ? "" : "danger"}" data-act="block" data-mac="${esc(x.mac)}">${x.blocked ? "Unblock" : "Block"}</button>
+        <button class="btn xs ${x.softcut ? "" : "warn"}" data-act="softcut" data-mac="${esc(x.mac)}" title="DNS hijack (keeps WiFi)">${x.softcut ? "Lift Cut" : "Soft Cut"}</button>
+        <button class="btn xs ${x.blocked ? "" : "danger"}" data-act="block" data-mac="${esc(x.mac)}" title="Router MAC filter (kicks off WiFi)">${x.blocked ? "Unblock" : "Block"}</button>
       </td></tr>`;
   }).join("") || '<tr><td colspan="7"><div class="empty">no devices matched</div></td></tr>';
 }
 $("#devSearch").addEventListener("input", renderDevTable);
 document.addEventListener("click", async e => {
-  const b = e.target.closest('button[data-act="trust"],button[data-act="block"]');
+  const b = e.target.closest('button[data-act="trust"],button[data-act="block"],button[data-act="softcut"]');
   if (!b) return;
   const {act, mac} = b.dataset;
   try {
@@ -848,6 +850,11 @@ document.addEventListener("click", async e => {
       await api(`/api/devices/${mac}/trust`, {method: "POST",
         body: JSON.stringify({trusted: !(dev && dev.trusted)})});
       toast("Trust updated");
+    } else if (act === "softcut") {
+      const dev = S.devices.find(x => x.mac === mac);
+      await api(`/api/devices/${mac}/softcut`, {method: "POST",
+        body: JSON.stringify({softcut: !(dev && dev.softcut)})});
+      toast(dev && dev.softcut ? "Soft cut removed" : "Device soft cut (DNS hijack) 🚫");
     } else {
       const dev = S.devices.find(x => x.mac === mac);
       await api(`/api/devices/${mac}/block`, {method: "POST",
@@ -856,6 +863,48 @@ document.addEventListener("click", async e => {
     }
     pollDevices();
   } catch (err) { toast("Failed: " + err.message); }
+});
+
+/* ------------------------------------------------ paid-feature licence */
+let licState = null;
+function applyLicense(d) {
+  licState = d;
+  const locked = !!(d && d.locked);
+  const lk = $("#vLocked"), body = $("#vBody");
+  if (lk) lk.hidden = !locked;
+  if (body) body.hidden = locked;
+  if (locked) $("#licDevCode").value = (d && d.device_code) || "";
+  const pz = $("#licPaused");
+  if (pz) { pz.hidden = !(d && d.paused);
+    if (d && d.paused) pz.textContent = "⏸ " + d.paused; }
+}
+async function pollLicense() {
+  try { applyLicense(await api("/api/license")); } catch { /* transient */ }
+}
+function saveText2(text, ok) {
+  if (navigator.clipboard) { navigator.clipboard.writeText(text); toast(ok); return; }
+  const ta = document.createElement("textarea");
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  document.execCommand("copy"); ta.remove(); toast(ok);
+}
+$("#btnLicCopy").addEventListener("click", () =>
+  saveText2($("#licDevCode").value.trim(), "Device code copied — send it after payment"));
+$("#btnLicUnlock").addEventListener("click", async () => {
+  const btn = $("#btnLicUnlock");
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/license/unlock", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: $("#licCode").value.trim() }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { $("#licErr").textContent = d.error || "invalid code"; return; }
+    $("#licErr").textContent = "";
+    $("#licCode").value = "";
+    applyLicense(d);
+    toast("Vouchers unlocked 🎉");
+    pollVouchers();
+  } catch (err) { $("#licErr").textContent = "network error"; }
+  btn.disabled = false;
 });
 
 /* ---------------------------------------------------------------- vouchers */
@@ -871,6 +920,9 @@ function fillClaimDevices() {
 
 async function pollVouchers() {
   try {
+    const lic = await api("/api/license");
+    applyLicense(lic);
+    if (lic.locked) return;
     if (!S.devices) {
       try { const dd = await api("/api/devices"); S.devices = dd.devices || []; } catch { /* transient */ }
     }
@@ -933,6 +985,8 @@ function renderPortal(p) {
   if (p.hijacked) parts.push(`<span class="tagline">${p.hijacked} hijacked</span>`);
   if (!p.dns_pointed_at_app)
     parts.push('<span class="badge yellow">router DNS not pointing here</span>');
+  if (p.enforced && p.myIp && p.router_dns_vice && p.router_dns_vice !== p.myIp)
+    parts.push('<span class="badge yellow">secondary DNS bypasses the cut</span>');
   el.innerHTML = parts.join(" &nbsp; ");
 }
 

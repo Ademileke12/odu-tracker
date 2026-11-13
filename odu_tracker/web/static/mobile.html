@@ -255,6 +255,21 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   min-height:16px}
 #login .hint{font-size:11px;color:var(--faint);margin-top:24px;max-width:300px;
   text-align:center;line-height:1.6}
+/* paid Vouchers paywall */
+#vchLocked .lic{padding:16px}
+#vchLocked .lic p{font-size:12.5px;color:var(--mut);line-height:1.6;margin:8px 0 12px}
+#vchLocked .lic b{color:var(--ink)}
+#vchLocked .lic .code{display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:15px;letter-spacing:1px;
+  background:var(--panel2);border:1.5px solid var(--hair);border-radius:11px;
+  padding:11px 12px;font-weight:700}
+#vchLocked .lic input{width:100%;padding:13px;border-radius:11px;
+  border:1.5px solid var(--ink);background:var(--panel);color:var(--ink);
+  font-size:15px;font-family:var(--mono);outline:none;
+  box-shadow:inset 2px 2px 0 rgba(10,10,10,.06);text-transform:uppercase}
+#vchLocked .lic input:focus{box-shadow:3px 3px 0 var(--acc)}
+#vchLocked .lic .err{color:var(--red);font-size:12px;font-family:var(--mono);
+  min-height:15px;margin-top:8px}
 @media (min-width:640px){ main{max-width:560px;margin:0 auto} nav{max-width:none} }
 </style>
 </head>
@@ -340,6 +355,33 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
 
   <!-- ------------------------------------------------ vouchers -->
   <section class="view" id="v-vch">
+    <!-- paywall: paid feature, unlocked with a per-device code -->
+    <div id="vchLocked" hidden>
+      <div class="card lic">
+        <div class="h" style="margin-bottom:2px">🔒 Vouchers is a paid feature</div>
+        <p>Pay for access, then unlock it here. Chat me up on
+          <b>TikTok @leke_abudu</b> or email
+          <b>srimpkoyonko@gmail.com</b>, send me the <b>device code</b>
+          below after payment, and I'll reply with your unlock code.</p>
+        <p id="licPaused" hidden
+           style="font-size:12px;color:var(--red);margin:0 0 10px"></p>
+        <div class="k">Your device code</div>
+        <div class="code" style="margin-top:6px"><span id="licDevCode">…</span>
+          <button class="btn ghost" id="licCopy"
+                  style="width:auto;padding:8px 12px;font-size:11px;
+                         border-radius:9px">COPY</button></div>
+        <div class="k" style="margin-top:14px">Unlock code</div>
+        <input id="licCode" placeholder="XXXX-XXXX-XXXX-XXXX"
+               autocapitalize="characters" autocomplete="off" spellcheck="false">
+        <button class="btn" id="licUnlock" style="margin-top:12px">UNLOCK VOUCHERS</button>
+        <div class="err" id="licErr"></div>
+        <p style="font-size:11px;color:var(--faint);margin:2px 0 0">
+          One unlock code works on one device only — it can't be shared or
+          moved to another phone.</p>
+      </div>
+    </div>
+
+    <div id="vchBody">
     <div class="h">Shared pool</div>
     <div class="card" id="poolCard">
       <div class="sw">
@@ -382,6 +424,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
 
     <div class="h">Issued codes <span id="vchCount" style="color:var(--ink)">0</span></div>
     <div id="vchList"><div class="empty">loading…</div></div>
+    </div><!-- /vchBody -->
   </section>
 
   <!-- ------------------------------------------------ alerts -->
@@ -672,6 +715,7 @@ async function refreshDevices() {
       .filter(Boolean).join(' · ');
     const tags = [
       x.blocked ? '<span class="tag block">BLOCKED</span>' : '',
+      x.softcut ? '<span class="tag warn">SOFT CUT</span>' : '',
       x.trusted ? '<span class="tag risk-lo">TRUSTED</span>' : '<span class="tag ' + risk[0] + '">' + risk[1] + '</span>',
       x.last_iface ? '<span class="tag iface">' + esc(x.last_iface.toUpperCase()) + '</span>' : '',
     ].join('');
@@ -682,6 +726,7 @@ async function refreshDevices() {
       ${tags}
       <div class="actions">
         <button class="btn ghost" data-act="trust">${x.trusted ? 'UNTRUST' : 'TRUST'}</button>
+        <button class="btn ${x.softcut ? 'ghost' : 'warn'}" data-act="softcut">${x.softcut ? 'LIFT CUT' : 'SOFT CUT'}</button>
         <button class="btn ${x.blocked ? 'ghost' : 'warn'}" data-act="block">${x.blocked ? 'LIFT BLOCK' : 'BLOCK'}</button>
       </div>
     </div>`;
@@ -707,7 +752,19 @@ $('#devList')?.addEventListener('click', async (e) => {
         await api('/api/devices/' + mac + '/block',
           { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ blocked: !want }) });
-        toast(want ? 'block lifted' : 'device parked on portal');
+        toast(want ? 'block lifted' : 'device blocked on router');
+        refreshDevices();
+      } catch { toast('failed'); }
+    });
+  } else if (act === 'softcut') {
+    armed(actBtn, 'TAP AGAIN', async () => {
+      const want = row.textContent.includes('SOFT CUT');
+      actBtn.innerHTML = '<span class="spin dark"></span>';
+      try {
+        await api('/api/devices/' + mac + '/softcut',
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ softcut: !want }) });
+        toast(want ? 'soft cut lifted' : 'device DNS hijacked');
         refreshDevices();
       } catch { toast('failed'); }
     });
@@ -759,9 +816,45 @@ function saveText(text) {
 }
 function copyCodes() { saveText($('#codeBlock').innerText); }
 
+/* --------------------------------------------- paid-feature licence */
+let licState = null;
+function applyLicense(d) {
+  licState = d;
+  const locked = !!(d && d.locked);
+  $('#vchLocked').hidden = !locked;
+  $('#vchBody').hidden = locked;
+  if (locked) $('#licDevCode').textContent = (d && d.device_code) || '…';
+  const pz = $('#licPaused');
+  if (pz) { pz.hidden = !(d && d.paused);
+    if (d && d.paused) pz.textContent = '⏸ ' + d.paused; }
+}
+async function refreshLicense() {
+  try { applyLicense(await api('/api/license')); } catch { /* transient */ }
+}
+$('#licCopy').addEventListener('click', () => saveText($('#licDevCode').textContent.trim()));
+$('#licUnlock').addEventListener('click', async () => {
+  const btn = $('#licUnlock'), code = $('#licCode').value.trim();
+  btn.innerHTML = '<span class="spin"></span>';
+  try {
+    const r = await fetch('/api/license/unlock', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { $('#licErr').textContent = d.error || 'invalid code'; return; }
+    $('#licErr').textContent = '';
+    $('#licCode').value = '';
+    applyLicense(d);
+    toast('Vouchers unlocked 🎉');
+  } catch { $('#licErr').textContent = 'network error'; }
+  btn.textContent = 'UNLOCK VOUCHERS';
+});
+
 async function refreshVouchers() {
   let d;
   try {
+    const lic = await api('/api/license');
+    applyLicense(lic);
+    if (lic.locked) return;
     d = await api('/api/vouchers');
   } catch { return; }
   const pool = d.pool || {};

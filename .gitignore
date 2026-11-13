@@ -19,3 +19,6 @@ odu-tracker-server.spec
 
 # firmware SPA dump (regenerate with: python3 tools/scan_spa.py --dump spa_raw/)
 spa_raw/
+
+# editor-local
+.vscode/

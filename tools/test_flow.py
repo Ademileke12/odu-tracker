@@ -113,12 +113,23 @@ def seed_poller_pass():
 
 
 def test_dns_parser():
-    from odu_tracker.dns_proxy import parse_query_name
+    import struct
+    from odu_tracker.dns_proxy import build_portal_reply, parse_query_name
     # A query for example.com
-    data = bytes.fromhex("e3f80120000100000000000007657861")  # too short; build manually
     qname = b"\x07example\x03com\x00"
     dom, end = parse_query_name(qname, 0)
     assert dom == "example.com", dom
+    # Denied clients: A is the portal, HTTPS/SVCB (65) must not carry a hint.
+    def query(qtype):
+        return (b"\x12\x34" + struct.pack(">HHHHHH", 0x0100, 1, 0, 0, 0, 0)
+                + qname + struct.pack(">HH", qtype, 1))
+    a = build_portal_reply(query(1), 1, "192.168.0.50")
+    assert a[2:4] == struct.pack(">H", 0x8180)
+    assert struct.unpack(">H", a[6:8])[0] == 1          # one answer
+    assert a.endswith(bytes(map(int, "192.168.0.50".split("."))))
+    https = build_portal_reply(query(65), 65, "192.168.0.50")
+    assert struct.unpack(">H", https[6:8])[0] == 0      # no answers, no hint
+    assert b"192.168.0.50" not in https and len(https) < len(query(65)) + 16
     print("dns name parser      ok")
 
 

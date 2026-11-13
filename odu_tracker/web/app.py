@@ -20,6 +20,7 @@ from odu_tracker.poller import Poller
 from odu_tracker.router import OduRouter, RouterError, LoginLocked
 from odu_tracker.security import normalize_mac
 from odu_tracker import voucher
+from odu_tracker import license as voucher_license
 import os
 
 def _resolve_static_dir():
@@ -52,6 +53,7 @@ def create_app(cfg: Config, poller: Poller):
     from odu_tracker.speedtest import SpeedTestRunner
     runner = SpeedTestRunner()
     voucher.init()          # voucher/claim tables (idempotent)
+    voucher_license.init(cfg, store)   # grandfather prior voucher users
 
     # ------------------------------------------------------------------ ui
     @app.route("/")
@@ -72,6 +74,23 @@ def create_app(cfg: Config, poller: Poller):
         def wrapper(*args, **kwargs):
             if not session.get("auth"):
                 return jsonify({"error": "auth_required"}), 401
+            return fn(*args, **kwargs)
+        return wrapper
+
+    def require_license(fn):
+        """Paid-feature gate: the Voucher endpoints answer 403 with the
+        device code + contacts until a valid unlock code was entered."""
+        from functools import wraps
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if not voucher_license.is_unlocked(cfg):
+                return jsonify({
+                    "locked": True,
+                    "error": "voucher_locked",
+                    "device_code": voucher_license.device_code(),
+                    "contact_email": voucher_license.CONTACT_EMAIL,
+                    "contact_tiktok": voucher_license.CONTACT_TIKTOK,
+                }), 403
             return fn(*args, **kwargs)
         return wrapper
 
@@ -309,6 +328,31 @@ def create_app(cfg: Config, poller: Poller):
         store.exec("INSERT INTO events(ts, mac, kind, level, detail) VALUES(?,?,?,?,?)",
                    (store.now(), m, "block_change", "warning", "blocked=" + state))
         return jsonify(result)
+
+    @app.post("/api/devices/<mac>/softcut")
+    @require_auth
+    def softcut(mac):
+        """Manually soft cut (DNS hijack) a device, even if it has a valid voucher.
+        
+        Soft cut keeps the device on WiFi but redirects all DNS to the portal.
+        This is useful for admin control without kicking devices off completely.
+        """
+        m = normalize_mac(mac)
+        if not m:
+            return jsonify({"error": "bad mac"}), 400
+        want = bool((request.json or {}).get("softcut", True))
+        store.set_softcut(m, want)
+        voucher.invalidate_softcut_cache()  # apply immediately to DNS proxy
+        state = "yes" if want else "no"
+        store.exec("INSERT INTO events(ts, mac, kind, level, detail) VALUES(?,?,?,?,?)",
+                   (store.now(), m, "softcut_change", "warning", 
+                    f"manual soft cut={state} (DNS hijack)"))
+        store.add_alert(
+            "warning" if want else "info",
+            f"Device soft cut {'ON' if want else 'OFF'}",
+            f"{m} {'redirected to portal' if want else 'restored to normal DNS'}"
+        )
+        return jsonify({"ok": True, "softcut": want, "mac": m})
 
     def _toggle_mac_filter(mac, block: bool):
         """Push the MAC exclusion into the router's Wi-Fi gate (cmd 278).
@@ -573,14 +617,39 @@ def create_app(cfg: Config, poller: Poller):
         cfg.set("portal_enforced", enabled)
         if enabled:
             proxy, my_ip = start_dns_stack()   # brings up DNS + claim page
+            # Close the public-resolver bypass immediately. The poller
+            # self-heal does the same, but only on its next pass.
+            dns_align = _align_portal_dns(my_ip, enforced=True)
             store.add_alert("warning", "Portal enforcement ON",
-                            "unclaimed devices now get the voucher claim page")
+                            "unclaimed and exhausted devices now get the "
+                            "voucher claim page (no public DNS fallback)")
             return jsonify({"ok": True, "enabled": True,
                             "dns_error": proxy.error, "myIp": my_ip,
-                            "portal": _portal.status()})
+                            "dns": dns_align, "portal": _portal.status()})
+        dns_align = _align_portal_dns(_my_ip(), enforced=False)
         store.add_alert("info", "Portal enforcement OFF",
                         "DNS answers normal again for all devices")
-        return jsonify({"ok": True, "enabled": False})
+        return jsonify({"ok": True, "enabled": False, "dns": dns_align})
+
+    def _align_portal_dns(my_ip, enforced: bool):
+        """While the portal is armed, DHCP must not advertise a public DNS.
+        When it is disarmed, put 8.8.8.8 back as the fallback so the LAN
+        still resolves if this PC is off — but only if we already own DNS.
+        """
+        router = getattr(poller, "router", None)
+        if router is None or not getattr(router, "logged_in", False) or not my_ip:
+            return {"ok": False, "skipped": "router not ready"}
+        try:
+            if enforced:
+                return poller.push_dhcp_dns(my_ip, my_ip)
+            cur = router.cmd(3, "GET") or {}
+            if str(cur.get("main_dns") or "") != my_ip:
+                return {"ok": True, "unchanged": True, "skipped": "dns not ours"}
+            if str(cur.get("vice_dns") or "") in ("", "8.8.8.8"):
+                return {"ok": True, "unchanged": True}
+            return poller.push_dhcp_dns(my_ip, "8.8.8.8")
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)[:160]}
 
     @app.post("/api/dnscfg")
     @require_auth
@@ -613,18 +682,28 @@ def create_app(cfg: Config, poller: Poller):
         except OSError:
             return jsonify({"ok": False, "error": "cannot determine this PC's IP"}), 500
         if mode == "app":
-            if cur.get("main_dns") == my_ip:
+            # Armed portal: both servers are this PC. A public secondary
+            # (8.8.8.8) is exactly how a cut device kept its internet —
+            # phones query every DNS the lease lists. Fallback stays for
+            # logging-only mode, so the LAN still resolves if this PC is off.
+            enforced = bool(cfg.get("portal_enforced"))
+            new_vice_wanted = my_ip if enforced else "8.8.8.8"
+            if (cur.get("main_dns") == my_ip
+                    and (cur.get("vice_dns") or "") == new_vice_wanted):
                 start_dns_stack()
                 return jsonify({"ok": True, "mode": mode,
-                                "message": f"router DNS already points at {my_ip}"})
+                                "message": f"router DNS already points at {my_ip}"
+                                + ("" if enforced else " with 8.8.8.8 fallback")})
             # remember the pre-change values so "restore" is faithful
             if not store.setting_get("dns_original"):
                 store.setting_set("dns_original", {
                     "main_dns": cur.get("main_dns") or "",
                     "vice_dns": cur.get("vice_dns") or "",
                 })
-            new_main, new_vice = my_ip, "8.8.8.8"
-            note = (f"router DHCP DNS now prefers this app ({my_ip}) "
+            new_main, new_vice = my_ip, new_vice_wanted
+            note = (f"router DHCP DNS now points at this app ({my_ip}) only"
+                    if enforced else
+                    f"router DHCP DNS now prefers this app ({my_ip}) "
                     f"with 8.8.8.8 fallback")
         else:
             orig = store.setting_get("dns_original") or {}
@@ -673,8 +752,29 @@ def create_app(cfg: Config, poller: Poller):
         return jsonify({"series": poller.rate_series(window_s=minutes * 60)})
 
     # ----------------------------------------------------------- vouchers
+    # Paid feature: every /api/voucher* route sits behind require_license.
+    @app.get("/api/license")
+    @require_auth
+    def license_status():
+        """Paywall state: locked?, device code, contacts (for both UIs)."""
+        return jsonify(voucher_license.status(cfg))
+
+    @app.post("/api/license/unlock")
+    @require_auth
+    def license_unlock():
+        code = str((request.json or {}).get("code") or "")
+        ok, err = voucher_license.unlock(cfg, code)
+        if not ok:
+            return jsonify({"error": err}), 400
+        store.exec("INSERT INTO events(ts, kind, level, detail) "
+                   "VALUES(?,?,?,?)",
+                   (store.now(), "voucher_license", "info",
+                    "voucher feature unlocked (paid code)"))
+        return jsonify(voucher_license.status(cfg))
+
     @app.get("/api/vouchers")
     @require_auth
+    @require_license
     def vouchers_list():
         out = {
             "vouchers": voucher.list_vouchers(),
@@ -687,6 +787,7 @@ def create_app(cfg: Config, poller: Poller):
 
     @app.post("/api/vouchers")
     @require_auth
+    @require_license
     def vouchers_create():
         body = request.json or {}
         try:
@@ -705,6 +806,7 @@ def create_app(cfg: Config, poller: Poller):
 
     @app.post("/api/vouchers/<code>/revoke")
     @require_auth
+    @require_license
     def vouchers_revoke(code):
         ok = voucher.revoke(code)
         if ok:
@@ -712,15 +814,20 @@ def create_app(cfg: Config, poller: Poller):
                        "VALUES(?,?,?,?)",
                        (store.now(), "voucher_revoke", "warning",
                         f"code={code}"))
+            # revoked claim no longer counts -> device may lose access
+            voucher.invalidate_deny_cache()
+            voucher.invalidate_usage_cache()
         return jsonify({"ok": ok})
 
     @app.get("/api/voucher/validity")
     @require_auth
+    @require_license
     def voucher_validity():
         return jsonify({"validity_days": voucher.validity_days()})
 
     @app.get("/api/voucher/usage")
     @require_auth
+    @require_license
     def voucher_usage():
         """Per-device estimated usage vs quota (time-share split — see
         voucher.attribute_usage). Shows who is close to / past their data."""
@@ -740,6 +847,7 @@ def create_app(cfg: Config, poller: Poller):
 
     @app.post("/api/voucher/validity")
     @require_auth
+    @require_license
     def voucher_validity_set():
         """How long a redeemed voucher keeps data + device access (0 = never)."""
         body = request.json or {}
@@ -754,12 +862,14 @@ def create_app(cfg: Config, poller: Poller):
                     f"{applied} days" if applied else "never expires"))
         # a shorter window may expire claims right now -> cap can drop
         voucher.invalidate_deny_cache()
+        voucher.invalidate_usage_cache()      # quotas changed, re-check exhaustion
         return jsonify({"validity_days": applied,
                         "pool": voucher.pool_status(
                             getattr(poller, "router", None))})
 
     @app.post("/api/voucher/claim")
     @require_auth
+    @require_license
     def voucher_claim():
         body = request.json or {}
         code = str(body.get("code") or "").strip()
@@ -772,6 +882,8 @@ def create_app(cfg: Config, poller: Poller):
                                 router=getattr(poller, "router", None))
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
+        voucher.invalidate_deny_cache()       # next DNS query passes now
+        voucher.invalidate_usage_cache()      # clear exhausted cache (quota grew)
         # a claimed device must not stay gated out (grace-deny cleanup)
         gate = {}
         if getattr(poller, "router", None):
@@ -784,6 +896,7 @@ def create_app(cfg: Config, poller: Poller):
 
     @app.post("/api/voucher/pool")
     @require_auth
+    @require_license
     def voucher_pool_toggle():
         """Arm/disarm the SIM data cap on the router (cmd 337)."""
         body = request.json or {}
@@ -800,6 +913,7 @@ def create_app(cfg: Config, poller: Poller):
 
     @app.post("/api/voucher/wps")
     @require_auth
+    @require_license
     def voucher_wps_off():
         """Turn WPS off on both bands (cmd 132) — required for the cmd 278
         gate to be enforced by the firmware."""

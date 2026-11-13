@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS devices(
     trusted INTEGER DEFAULT 0,
     blocked INTEGER DEFAULT 0,
     blocked_at INTEGER,
+    softcut INTEGER DEFAULT 0,
+    softcut_at INTEGER,
     riskscore REAL DEFAULT 0,
     risklevel TEXT DEFAULT 'unknown',
     riskreasons TEXT DEFAULT '[]',
@@ -92,6 +94,17 @@ def init():
         with _lock:
             _conn.executescript(SCHEMA)
             _conn.commit()
+            # Migration: add softcut columns if they don't exist
+            try:
+                _conn.execute("ALTER TABLE devices ADD COLUMN softcut INTEGER DEFAULT 0")
+                _conn.commit()
+            except sqlite3.OperationalError:
+                pass  # column already exists
+            try:
+                _conn.execute("ALTER TABLE devices ADD COLUMN softcut_at INTEGER")
+                _conn.commit()
+            except sqlite3.OperationalError:
+                pass  # column already exists
     return _conn
 
 
@@ -182,6 +195,17 @@ def set_trust(mac, trusted: bool):
 def set_blocked(mac, blocked: bool):
     exec("UPDATE devices SET blocked=?, blocked_at=? WHERE mac=?",
          (1 if blocked else 0, now() if blocked else None, mac))
+
+
+def set_softcut(mac, softcut: bool):
+    exec("UPDATE devices SET softcut=?, softcut_at=? WHERE mac=?",
+         (1 if softcut else 0, now() if softcut else None, mac))
+
+
+def softcut_macs():
+    """Return set of MACs manually marked for soft cut (DNS hijack)."""
+    rows = q("SELECT mac FROM devices WHERE softcut=1")
+    return {r["mac"] for r in rows}
 
 
 def online_macs(window=180):

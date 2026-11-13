@@ -264,6 +264,39 @@
 
       <!-- ═══════════════════════ vouchers ═══════════════════════ -->
       <section data-view="vouchers" hidden>
+        <!-- paywall: paid feature, unlocked with a per-device code -->
+        <div id="vLocked" hidden>
+          <div class="card" style="max-width:640px;margin:0 auto">
+            <div class="card-head"><h3>🔒 Vouchers is a paid feature</h3>
+              <span class="tagline">unlock it with the code you receive after payment</span></div>
+            <p style="margin:10px 0 14px;line-height:1.65">Chat me up on
+              <b>TikTok @leke_abudu</b> or email
+              <b>srimpkoyonko@gmail.com</b>. After payment, send me the
+              <b>device code</b> below and I'll reply with your unlock code.</p>
+            <div class="st-row" style="align-items:flex-end">
+              <div style="flex:2;min-width:220px">
+                <label class="kpi-label" style="display:block;margin-bottom:6px">Your device code</label>
+                <input class="search mono" id="licDevCode" readonly>
+              </div>
+              <button class="btn" id="btnLicCopy" style="align-self:flex-end">Copy</button>
+            </div>
+            <div class="st-row" style="align-items:flex-end;margin-top:12px">
+              <div style="flex:2;min-width:220px">
+                <label class="kpi-label" style="display:block;margin-bottom:6px">Unlock code</label>
+                <input class="search mono" id="licCode" placeholder="XXXX-XXXX-XXXX-XXXX"
+                       autocomplete="off" spellcheck="false">
+              </div>
+              <button class="btn primary" id="btnLicUnlock" style="align-self:flex-end">Unlock Vouchers</button>
+            </div>
+            <div id="licErr" class="chart-note" style="color:var(--red,#e5484d);min-height:18px;margin-top:8px"></div>
+            <div id="licPaused" class="chart-note" hidden
+                 style="color:var(--red,#e5484d)"></div>
+            <div class="chart-note">One unlock code works on one device only —
+              it can't be shared or moved to another PC.</div>
+          </div>
+        </div>
+
+        <div id="vBody">
         <div class="grid g4">
           <div class="card kpi">
             <div class="kpi-top"><span class="kpi-label">Pool purchased</span><span class="kpi-ic">⛁</span></div>
@@ -371,6 +404,7 @@
           <div class="card-head"><h3>Wi-Fi gate</h3><span class="tagline">cmd 278 deny list per band, wired clients bypass this</span></div>
           <div id="vGate" class="empty">loading…</div>
         </div>
+        </div><!-- /vBody -->
       </section>
 
       <!-- ═══════════════════════ speed ═══════════════════════ -->

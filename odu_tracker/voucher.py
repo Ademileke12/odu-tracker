@@ -249,6 +249,9 @@ def claim(code: str, mac: str = None, ip: str = None, router=None) -> dict:
                "VALUES(?,?,?,?,?)",
                (store.now(), m, "voucher_claim", "info",
                 f"code={code} quota_mb={row['quota_mb']}"))
+    # Invalidate caches immediately so DNS queries pass within seconds
+    invalidate_deny_cache()        # device now has active claim
+    invalidate_usage_cache()       # quota grew, may lift exhaustion
     # The claim credits our books, but cmd 337 still enforces the OLD cap —
     # redeemed data is unusable until limitSize is rewritten. Do it now in the
     # background (pool_refresh_async is a no-op while the cap is disabled).
@@ -945,7 +948,8 @@ def deny_checker(exempt_ips=()):
     """Build the predicate the DNS proxy uses: True = hijack this client.
 
     Denied = resolvable device with NO active voucher claim, OR one whose
-    estimated usage has reached its quota (exhausted — see attribute_usage).
+    estimated usage has reached its quota (exhausted — see attribute_usage),
+    OR one manually marked for soft cut by admin.
     Exempt: the portal host itself and the router (never hijack infra).
     """
     exempt = {str(x) for x in exempt_ips if x}
@@ -956,10 +960,35 @@ def deny_checker(exempt_ips=()):
         mac = mac_for_ip_local(ip)
         if not mac:
             return False                    # unknown -> fail open (see above)
+        # Manual soft cut overrides everything (admin decision)
+        if mac in manual_softcut_macs():
+            return True
         if mac in exhausted_macs():
             return True                     # used its allocation -> portal
         return mac not in active_claim_macs()
     return deny
+
+
+_manual_softcut_cache = {"ts": 0.0, "macs": None}
+
+
+def manual_softcut_macs(ttl: float = 5.0) -> set:
+    """MACs manually marked for soft cut by admin. Small TTL for quick updates."""
+    now = time.time()
+    if _manual_softcut_cache["macs"] is not None and now - _manual_softcut_cache["ts"] < ttl:
+        return _manual_softcut_cache["macs"]
+    macs = store.softcut_macs()
+    _manual_softcut_cache["macs"] = macs
+    _manual_softcut_cache["ts"] = now
+    return macs
+
+
+def invalidate_softcut_cache():
+    """Call after soft cut changes so DNS hijack applies immediately."""
+    _manual_softcut_cache["macs"] = None
+    _manual_softcut_cache["ts"] = 0.0
+    # Also clear IP cache so IP->MAC lookups are fresh
+    _ip_cache.clear()
 
 
 def mac_for_ip(router, ip: str) -> str:

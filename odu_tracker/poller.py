@@ -313,10 +313,17 @@ class Poller:
                 return False
             dhcp = json.loads(raw["body"]).get("dhcp_data") or {}
             main = str(dhcp.get("main_dns") or "")
+            vice = str(dhcp.get("vice_dns") or "")
             if not main:
                 return False
             me = self._my_lan_ip()
-            return bool(me) and main == me
+            if not me or main != me:
+                return False
+            # A public secondary (the old 8.8.8.8 fallback) answers the real
+            # address. Phones query both servers, so the soft cut never lands
+            # and the device keeps the internet. Vice must be this machine
+            # or unset.
+            return vice in ("", me)
         except Exception:
             return False
 
@@ -342,31 +349,55 @@ class Poller:
         threading.Thread(target=self._repoint_dns, daemon=True,
                          name="dns-heal").start()
 
+    def push_dhcp_dns(self, main: str, vice: str) -> dict:
+        """Set DHCP DNS (cmd 3), keeping every other field the router reported.
+
+        No-op when the router already has this pair. While the portal is
+        armed both servers must be this machine — a public vice DNS is an
+        open bypass of the soft cut.
+        """
+        if self.router is None:
+            return {"ok": False, "error": "no router"}
+        cur = self.router.cmd(3, "GET") or {}
+        if (str(cur.get("main_dns") or "") == main
+                and str(cur.get("vice_dns") or "") == vice):
+            return {"ok": True, "unchanged": True,
+                    "main_dns": main, "vice_dns": vice}
+        payload = {
+            "lanIp": cur.get("lanIp", ""),
+            "netMask": cur.get("netMask", ""),
+            "dhcpServer": cur.get("dhcpServer", "1"),
+            "main_dns": main,
+            "vice_dns": vice,
+            "ipBegin": cur.get("ipBegin", ""),
+            "ipEnd": cur.get("ipEnd", ""),
+            "expireTime": cur.get("expireTime", "24h"),
+        }
+        resp = self.router.cmd(3, "POST", payload) or {}
+        ok = bool(resp.get("success"))
+        return {"ok": ok, "unchanged": False, "main_dns": main,
+                "vice_dns": vice, "router_resp": resp}
+
     def _repoint_dns(self):
-        """Push cmd 3 with this machine as main DNS (8.8.8.8 fallback),
-        preserving every other DHCP field the router reported."""
+        """Push cmd 3 with this machine as BOTH DNS servers.
+
+        The public fallback (8.8.8.8) is only for logging mode, set by the
+        dashboard when the portal is disarmed. Leaving it in place while the
+        portal is armed lets every phone resolve the real internet.
+        """
         try:
             me = self._my_lan_ip()
             if not me:
                 return
-            cur = self.router.cmd(3, "GET") or {}
-            payload = {
-                "lanIp": cur.get("lanIp", ""),
-                "netMask": cur.get("netMask", ""),
-                "dhcpServer": cur.get("dhcpServer", "1"),
-                "main_dns": me,
-                "vice_dns": "8.8.8.8",
-                "ipBegin": cur.get("ipBegin", ""),
-                "ipEnd": cur.get("ipEnd", ""),
-                "expireTime": cur.get("expireTime", "24h"),
-            }
-            resp = self.router.cmd(3, "POST", payload) or {}
-            ok = bool(resp.get("success"))
+            res = self.push_dhcp_dns(me, me)
+            ok = bool(res.get("ok"))
+            if res.get("unchanged"):
+                return
             store.add_alert(
                 "info" if ok else "danger",
                 "Router DNS self-healed" if ok else "Router DNS self-heal FAILED",
-                f"router DNS had drifted (reboot/reset?) — re-pointed at "
-                f"{me} automatically (ok={ok})")
+                f"router DNS had drifted or still advertised a public "
+                f"resolver — both servers now {me} (ok={ok})")
         except Exception:
             traceback.print_exc()
 

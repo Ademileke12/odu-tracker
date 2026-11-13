@@ -144,6 +144,7 @@ def create_portal_app(cfg, poller):
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         voucher.invalidate_deny_cache()       # next DNS query passes now
+        voucher.invalidate_usage_cache()      # clear exhausted cache (quota grew)
         gate = {}
         if router is not None:
             try:

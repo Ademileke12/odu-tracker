@@ -198,9 +198,12 @@ odu-tracker/
   byte field appears automatically if the ODU starts filling it).
 - **Real "visited websites"**: Settings → Website log — one click
   *Connect router DNS → this PC* re-programs the ODU's DHCP-DNS (cmd 3 POST)
-  to hand out this app's IP, with 8.8.8.8 as fallback; *Restore router
-  default* puts back exactly what was configured before (saved on first
-  change). Devices pick new DNS on lease renewal (toggle Wi-Fi to refresh).
+  to hand out this app's IP. While the captive portal is armed, both DNS
+  servers are this PC (a public secondary such as 8.8.8.8 lets a cut device
+  keep resolving the real internet). While the portal is disarmed, 8.8.8.8
+  stays as fallback. *Restore router default* puts back exactly what was
+  configured before (saved on first change). Devices pick new DNS on lease
+  renewal (toggle Wi-Fi to refresh).
 - **Reset usage from now** now clears the router's own statistics through the
   firmware path (`cmd 337 POST statisticsReset=1`) and keeps a local baseline
   as fallback.
@@ -252,8 +255,10 @@ polled twice.
   session; it never changes the admin password unless you explicitly ask.
 - The dashboard Website-log feature points the router's **DHCP-DNS** at this
   PC — that only re-routes client DNS, not the admin panel, which is opened
-  by IP and stays fully reachable while this app runs (and DNS falls back to
-  8.8.8.8 when this PC is offline, so the LAN never goes blind).
+  by IP and stays fully reachable while this app runs. With the portal
+  disarmed, DNS falls back to 8.8.8.8 when this PC is offline, so the LAN
+  never goes blind. With the portal armed there is no public fallback —
+  that fallback was a hole in the soft cut.
 - Usage tracking is read-only (cmd 337 counters); a full statistics-reset
   only happens when you press Reset in this app or clear it in the admin UI.
 - The router's wrong-attempt counter is precious: the app stores your
@@ -286,6 +291,35 @@ polled twice.
 see `android_app/README.md` — `tools/build_android.sh` locally, or
 `.github/workflows/android-apk.yml` to build a signed APK in CI on every
 push. Sideload onto any Android 7+ phone, connect to the ODU Wi-Fi, done.
+
+## 🔐 Paid Voucher feature (access codes)
+
+The **Vouchers tab** (data codes, shared SIM pool, captive-portal gating)
+is a **paid feature** from this release. There is no payment system:
+buyers chat with the author — **srimpkoyonko@gmail.com** or TikTok
+**@leke_abudu** — pay directly, and receive a personal unlock code.
+
+* A locked install shows a **device code** (`ODU-XXXX-XXXX-XXXX`) in the
+  Vouchers tab, derived from the device's own identity.
+* Mint the matching unlock code from the repo (developer only):
+
+      python3 tools/make_unlock_code.py ODU-4F2A-91C3-7B60
+
+* The code is verified **offline** (HMAC, no server) and unlocks **that
+  one device only** — it can't be shared, reused on another phone/PC, or
+  carried over by copying the app's data files. It does survive
+  reinstalling the app on the same device.
+* Installs that already used vouchers keep access automatically
+  (grandfathered, bound to their device).
+* **Remote kill-switch**: `site/voucher-switch.json` (deployed with the
+  site) can pause the feature everywhere or ban specific device codes —
+  even on installs already in the field. Flip it by editing the file and
+  pushing; apps re-check at boot + every 30 min and remember the last
+  known policy while offline:
+
+      { "disabled": false, "banned": [], "message": "" }
+
+* Test the whole gate routerless: `python3 tools/test_license.py`
 
 ## Startup behaviour
 

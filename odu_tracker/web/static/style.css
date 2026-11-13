@@ -334,6 +334,7 @@ th.right,td.right{text-align:right}
 .badge.green{background:rgba(63,214,142,.14);color:var(--ok)}
 .badge.red{background:rgba(255,123,114,.14);color:var(--danger)}
 .badge.yellow{background:rgba(255,176,32,.15);color:var(--warn)}
+.badge.orange{background:rgba(255,140,50,.15);color:#ff8c32}
 .badge.gray{background:var(--panel3);color:var(--muted)}
 .tr-pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.68rem;font-weight:700}
 .tr-high{background:rgba(255,123,114,.14);color:var(--danger)}
