@@ -147,24 +147,24 @@ main{padding:16px 14px calc(86px + var(--sab))}
   min-height:12px;letter-spacing:.4px}
 
 /* ---------- device rows ---------- */
+.dev{flex-wrap:wrap}
 .dev .main{min-width:0;flex:1}
 .dev .t{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
 .dev .s{font-family:var(--mono);font-size:10.5px;color:var(--mut);margin-top:3px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dev.expand{border-color:var(--ink);box-shadow:3px 3px 0 rgba(10,10,10,.85)}
-.dev .actions{display:none;margin-top:12px;gap:8px}
+/* action buttons get their own full-width row so three of them fit a phone
+   screen instead of squeezing/overflowing the card */
+.dev .actions{display:none;width:100%;flex:1 0 100%;margin-top:11px;gap:7px}
 .dev.expand .actions{display:flex}
-.dev .actions .btn{padding:10px;font-size:12.5px;border-radius:11px;flex:1}
+.dev .actions .btn{padding:9px 4px;font-size:12px;border-radius:11px;
+  flex:1;min-width:0;white-space:nowrap;letter-spacing:.2px}
 .dot{width:9px;height:9px;border-radius:50%;background:#cfc9bb;flex:none}
 .dot.on{background:var(--green);box-shadow:0 0 7px var(--green)}
 .dot.blk{background:var(--red)}
 
-/* ---------- voucher bits ---------- */
-.vcode{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;
-  background:var(--paper);border:1.5px dashed var(--ink);border-radius:10px;
-  padding:10px 12px;display:grid;place-content:center;text-align:center;
-  margin-top:10px}
+/* ---------- segmented controls / bars ---------- */
 .seg{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
 .seg button{flex:1;min-width:54px;padding:9px 0;border:1.5px solid var(--hair);
   border-radius:11px;background:var(--panel2);color:var(--ink);
@@ -175,17 +175,6 @@ main{padding:16px 14px calc(86px + var(--sab))}
   background:var(--panel2);overflow:hidden;margin-top:9px}
 .bar i{display:block;height:100%;background:var(--acc);width:0%;
   transition:width .6s ease}
-.sw{display:flex;align-items:center;gap:10px}
-.sw .t{flex:1}
-.sw .t b{display:block;font-size:14px}
-.sw .t span{font-size:11.5px;color:var(--mut)}
-.tgl{width:52px;height:30px;border:1.5px solid var(--ink);border-radius:99px;
-  background:var(--panel2);position:relative;flex:none;cursor:pointer;
-  transition:background .15s}
-.tgl i{position:absolute;top:3px;left:4px;width:20px;height:20px;border-radius:50%;
-  background:#fff;border:1.5px solid var(--ink);transition:left .15s}
-.tgl.on{background:var(--green)}
-.tgl.on i{left:25px;background:#fff}
 
 /* ---------- alerts ---------- */
 .alert{display:flex;gap:11px;align-items:flex-start;background:var(--panel);
@@ -255,21 +244,6 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   min-height:16px}
 #login .hint{font-size:11px;color:var(--faint);margin-top:24px;max-width:300px;
   text-align:center;line-height:1.6}
-/* paid Vouchers paywall */
-#vchLocked .lic{padding:16px}
-#vchLocked .lic p{font-size:12.5px;color:var(--mut);line-height:1.6;margin:8px 0 12px}
-#vchLocked .lic b{color:var(--ink)}
-#vchLocked .lic .code{display:flex;align-items:center;gap:8px;
-  font-family:var(--mono);font-size:15px;letter-spacing:1px;
-  background:var(--panel2);border:1.5px solid var(--hair);border-radius:11px;
-  padding:11px 12px;font-weight:700}
-#vchLocked .lic input{width:100%;padding:13px;border-radius:11px;
-  border:1.5px solid var(--ink);background:var(--panel);color:var(--ink);
-  font-size:15px;font-family:var(--mono);outline:none;
-  box-shadow:inset 2px 2px 0 rgba(10,10,10,.06);text-transform:uppercase}
-#vchLocked .lic input:focus{box-shadow:3px 3px 0 var(--acc)}
-#vchLocked .lic .err{color:var(--red);font-size:12px;font-family:var(--mono);
-  min-height:15px;margin-top:8px}
 @media (min-width:640px){ main{max-width:560px;margin:0 auto} nav{max-width:none} }
 </style>
 </head>
@@ -279,7 +253,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
 <div id="login">
   <div class="logo">O</div>
   <h1>ODU <i>TRACKER</i></h1>
-  <p>Cockpit for your ODU. Usage, devices, vouchers and alerts, straight from the router profile you set up.</p>
+  <p>Cockpit for your ODU. Usage, devices and alerts, straight from the router profile you set up.</p>
   <input id="pw" type="password" placeholder="ODU admin password" autocomplete="off">
   <button class="btn" id="loginBtn">SIGN IN</button>
   <div id="loginErr"></div>
@@ -350,81 +324,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   <section class="view" id="v-dev">
     <div class="h">Devices <span id="devCount" style="color:var(--ink)">0</span></div>
     <div id="devList"><div class="empty">loading…</div></div>
-    <p class="empty" style="padding:6px 0">Tap a device for actions. Blocked devices stay on Wi-Fi and get parked on the voucher portal.</p>
-  </section>
-
-  <!-- ------------------------------------------------ vouchers -->
-  <section class="view" id="v-vch">
-    <!-- paywall: paid feature, unlocked with a per-device code -->
-    <div id="vchLocked" hidden>
-      <div class="card lic">
-        <div class="h" style="margin-bottom:2px">🔒 Vouchers is a paid feature</div>
-        <p>Pay for access, then unlock it here. Chat me up on
-          <b>TikTok @leke_abudu</b> or email
-          <b>srimpkoyonko@gmail.com</b>, send me the <b>device code</b>
-          below after payment, and I'll reply with your unlock code.</p>
-        <p id="licPaused" hidden
-           style="font-size:12px;color:var(--red);margin:0 0 10px"></p>
-        <div class="k">Your device code</div>
-        <div class="code" style="margin-top:6px"><span id="licDevCode">…</span>
-          <button class="btn ghost" id="licCopy"
-                  style="width:auto;padding:8px 12px;font-size:11px;
-                         border-radius:9px">COPY</button></div>
-        <div class="k" style="margin-top:14px">Unlock code</div>
-        <input id="licCode" placeholder="XXXX-XXXX-XXXX-XXXX"
-               autocapitalize="characters" autocomplete="off" spellcheck="false">
-        <button class="btn" id="licUnlock" style="margin-top:12px">UNLOCK VOUCHERS</button>
-        <div class="err" id="licErr"></div>
-        <p style="font-size:11px;color:var(--faint);margin:2px 0 0">
-          One unlock code works on one device only — it can't be shared or
-          moved to another phone.</p>
-      </div>
-    </div>
-
-    <div id="vchBody">
-    <div class="h">Shared pool</div>
-    <div class="card" id="poolCard">
-      <div class="sw">
-        <div class="t">
-          <b>Pool cap</b>
-          <span>limits total data while vouchers are out</span>
-        </div>
-        <div class="tgl" id="poolTgl"><i></i></div>
-      </div>
-      <div id="poolBody" style="margin-top:12px"></div>
-    </div>
-
-    <div class="sw" style="margin:14px 2px 12px">
-      <div class="t">
-        <b style="font-size:14px">Captive portal</b>
-        <span>unclaimed devices see the claim page</span>
-      </div>
-      <div class="tgl" id="portalTgl"><i></i></div>
-    </div>
-
-    <div class="h">Mint codes</div>
-    <div class="card">
-      <div class="k">Quota per code</div>
-      <div class="seg" id="gbSeg">
-        <button data-gb="5">5 GB</button>
-        <button data-gb="10" class="act">10 GB</button>
-        <button data-gb="20">20 GB</button>
-        <button data-gb="50">50 GB</button>
-      </div>
-      <div class="k" style="margin-top:12px">How many</div>
-      <div class="seg" id="cntSeg">
-        <button data-c="1">1</button>
-        <button data-c="5" class="act">5</button>
-        <button data-c="10">10</button>
-        <button data-c="25">25</button>
-      </div>
-      <button class="btn" id="mintBtn" style="margin-top:14px">MINT VOUCHER CODES</button>
-      <div id="mintOut"></div>
-    </div>
-
-    <div class="h">Issued codes <span id="vchCount" style="color:var(--ink)">0</span></div>
-    <div id="vchList"><div class="empty">loading…</div></div>
-    </div><!-- /vchBody -->
+    <p class="empty" style="padding:6px 0">Tap a device for actions. Blocked devices stay on Wi-Fi and get parked on the voucher portal. New devices get no internet until they claim a code — enforcement runs on the ODU-Tracker desktop app on this LAN, not on the phone.</p>
   </section>
 
   <!-- ------------------------------------------------ alerts -->
@@ -473,8 +373,6 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
     <svg viewBox="0 0 24 24"><path d="M4 12.5 12 5l8 7.5M6 11v8h4.5v-5h3v5H18v-8"/></svg>Home</button>
   <button data-v="dev">
     <svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="8" rx="1.5"/><rect x="13" y="4" width="8" height="8" rx="1.5"/><rect x="3" y="14" width="8" height="6" rx="1.5"/><rect x="13" y="14" width="8" height="6" rx="1.5"/></svg>Devices</button>
-  <button data-v="vch">
-    <svg viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"/><path d="M13 6v2m0 3v2m0 3v2" stroke-dasharray="1.5 2.6"/></svg>Vouchers</button>
   <button data-v="ale">
     <svg viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 14 6 10"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>Alerts<span class="bdg" id="alBdg" hidden>0</span></button>
   <button data-v="more">
@@ -493,8 +391,13 @@ const RING = 2 * Math.PI * 88;
 async function api(path, opts) {
   const r = await fetch(path, opts);
   if (r.status === 401) { showLogin(); throw 401; }
-  if (!r.ok) throw new Error('http ' + r.status);
-  return r.json();
+  let body = null;
+  try { body = await r.json(); } catch { /* no body */ }
+  // surface the server's error text ("can't run on this phone…", bind
+  // failures) instead of a bare "http 503" — the old toast said "armed"
+  // while the stack had refused to start.
+  if (!r.ok) throw new Error((body && body.error) || ('http ' + r.status));
+  return body;
 }
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -540,7 +443,6 @@ function openTab(name) {
   $$('nav button').forEach((b) => b.classList.toggle('act', b.dataset.v === name));
   $$('.view').forEach((v) => v.classList.toggle('show', v.id === 'v-' + name));
   if (name === 'dev') refreshDevices();
-  if (name === 'vch') refreshVouchers();
   if (name === 'ale') refreshAlerts();
   if (name === 'more') renderMore();
   window.scrollTo({ top: 0 });
@@ -782,150 +684,6 @@ $('#devList')?.addEventListener('click', async (e) => {
   }
 });
 
-/* ------------------------------------------------------- vouchers */
-let vGb = 10, vCnt = 5;
-$('#gbSeg').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  vGb = +b.dataset.gb;
-  $$('#gbSeg button').forEach((x) => x.classList.toggle('act', x === b));
-});
-$('#cntSeg').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  vCnt = +b.dataset.c;
-  $$('#cntSeg button').forEach((x) => x.classList.toggle('act', x === b));
-});
-$('#mintBtn').addEventListener('click', async () => {
-  $('#mintBtn').innerHTML = '<span class="spin"></span>';
-  try {
-    const r = await api('/api/vouchers', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ count: vCnt, quota_gb: vGb }) });
-    $('#mintOut').innerHTML = `
-      <div class="vcode" id="codeBlock">${(r.codes || []).map(esc).join('<br>')}</div>
-      <button class="btn ghost" id="copyAll" style="margin-top:10px">COPY CODES</button>`;
-    $('#copyAll').addEventListener('click', copyCodes);
-    toast(vCnt + ' x ' + vGb + ' GB minted');
-  } catch { toast('mint failed'); }
-  $('#mintBtn').textContent = 'MINT VOUCHER CODES';
-});
-function saveText(text) {
-  if (navigator.clipboard) { navigator.clipboard.writeText(text); toast('copied'); return; }
-  const ta = document.createElement('textarea');
-  ta.value = text; document.body.appendChild(ta); ta.select();
-  document.execCommand('copy'); ta.remove(); toast('copied');
-}
-function copyCodes() { saveText($('#codeBlock').innerText); }
-
-/* --------------------------------------------- paid-feature licence */
-let licState = null;
-function applyLicense(d) {
-  licState = d;
-  const locked = !!(d && d.locked);
-  $('#vchLocked').hidden = !locked;
-  $('#vchBody').hidden = locked;
-  if (locked) $('#licDevCode').textContent = (d && d.device_code) || '…';
-  const pz = $('#licPaused');
-  if (pz) { pz.hidden = !(d && d.paused);
-    if (d && d.paused) pz.textContent = '⏸ ' + d.paused; }
-}
-async function refreshLicense() {
-  try { applyLicense(await api('/api/license')); } catch { /* transient */ }
-}
-$('#licCopy').addEventListener('click', () => saveText($('#licDevCode').textContent.trim()));
-$('#licUnlock').addEventListener('click', async () => {
-  const btn = $('#licUnlock'), code = $('#licCode').value.trim();
-  btn.innerHTML = '<span class="spin"></span>';
-  try {
-    const r = await fetch('/api/license/unlock', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { $('#licErr').textContent = d.error || 'invalid code'; return; }
-    $('#licErr').textContent = '';
-    $('#licCode').value = '';
-    applyLicense(d);
-    toast('Vouchers unlocked 🎉');
-  } catch { $('#licErr').textContent = 'network error'; }
-  btn.textContent = 'UNLOCK VOUCHERS';
-});
-
-async function refreshVouchers() {
-  let d;
-  try {
-    const lic = await api('/api/license');
-    applyLicense(lic);
-    if (lic.locked) return;
-    d = await api('/api/vouchers');
-  } catch { return; }
-  const pool = d.pool || {};
-  const tgl = $('#poolTgl');
-  tgl.classList.toggle('on', !!pool.enabled);
-  const rem = pool.remaining_mb, plan = pool.planned_limit_mb;
-  $('#poolBody').innerHTML = `
-    <div class="mini"><span>state</span><b>${pool.enabled ? 'ON' : 'OFF'}</b></div>
-    <div class="mini"><span>remaining</span><b>${rem != null ? gb(rem) + ' GB' : '…'}</b></div>
-    <div class="mini"><span>validity</span><b>${pool.validity_days || '?'} days</b></div>
-    ${rem != null && plan ? '<div class="bar"><i style="width:' +
-      Math.round(Math.max(0, Math.min(1, rem / plan)) * 100) + '%"></i></div>' : ''}`;
-  try {
-    const dns = await api('/api/dnscfg');
-    $('#portalTgl').classList.toggle('on', !!(dns.portal && dns.portal.enforced));
-  } catch { /* keep last */ }
-  const list = d.vouchers || [];
-  $('#vchCount').textContent = list.length;
-  $('#vchList').innerHTML = list.map((v) => {
-    const st = v.status || (v.revoked ? 'revoked' : (v.claim_mac ? 'claimed' : 'free'));
-    const pill = st === 'free' ? ['pill acc', 'FREE']
-      : st === 'claimed' ? ['pill grn', 'CLAIMED']
-      : st === 'revoked' ? ['pill red', 'REVOKED']
-      : ['pill mut', st.toUpperCase()];
-    return `<div class="row">
-      <div class="main"><div class="t" style="font-family:var(--mono);font-size:12.5px;
-        letter-spacing:1px">${esc(v.code)}</div>
-        <div class="s">${gb(v.quota_mb)} GB${v.claim_ip ? ' · ' + esc(v.claim_ip) : ''}
-          · ${ago(v.created_at)}</div></div>
-      <span class="${pill[0]}">${pill[1]}</span>
-      ${st !== 'revoked' ? '<button class="btn ghost" data-rev="' + esc(v.code) +
-        '" style="width:auto;padding:8px 12px;font-size:11px;border-radius:10px">REVOKE</button>' : ''}
-    </div>`;
-  }).join('') || '<div class="empty">no codes yet</div>';
-}
-$('#poolTgl').addEventListener('click', async () => {
-  const tgl = $('#poolTgl');
-  const want = !tgl.classList.contains('on');
-  tgl.classList.toggle('on', want);
-  try {
-    await api('/api/voucher/pool', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: want }) });
-    toast('pool cap ' + (want ? 'on' : 'off'));
-    refreshVouchers();
-  } catch { tgl.classList.toggle('on', !want); toast('failed'); }
-});
-$('#portalTgl').addEventListener('click', async () => {
-  const tgl = $('#portalTgl');
-  const want = !tgl.classList.contains('on');
-  tgl.classList.toggle('on', want);
-  try {
-    await api('/api/portal/enforce', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: want }) });
-    toast('portal ' + (want ? 'armed' : 'disarmed'));
-  } catch { tgl.classList.toggle('on', !want); toast('failed'); }
-});
-$('#vchList').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-rev]');
-  if (!b) return;
-  armed(b, 'TAP AGAIN', async () => {
-    b.innerHTML = '<span class="spin dark"></span>';
-    try {
-      await api('/api/vouchers/' + b.dataset.rev + '/revoke', { method: 'POST' });
-      toast('revoked');
-      refreshVouchers();
-    } catch { toast('failed'); }
-  });
-});
-
 /* ------------------------------------------------------- alerts */
 async function refreshAlerts() {
   let d;
@@ -1037,11 +795,10 @@ $('#resetBtn').addEventListener('click', () => {
   if (!m.authed) { showLogin(); return; }
   hideLogin();
   const want = new URLSearchParams(location.search).get('tab');
-  if (want && $('#v-' + want)) openTab(want);   // deep link, e.g. /mobile?tab=vch
+  if (want && $('#v-' + want)) openTab(want);   // deep link, e.g. /mobile?tab=dev
   refresh();
   loadUsage(true);
   refreshDevices();
-  refreshVouchers();
   refreshAlerts();
   renderMore();
   try { const s = await api('/api/speedtest'); if (s.down_mbps) {

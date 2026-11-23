@@ -603,6 +603,7 @@ def create_app(cfg: Config, poller: Poller):
             "bindError": (dp.error if dp and dp.error else None),
             "hijacked": (dp.hijacked if dp else 0),
             "enforced": bool(cfg.get("portal_enforced")),
+            "android": on_android(),
             "portal": _portal.status(),
             "router_dns_main": dhcp.get("main_dns") or "",
             "router_dns_vice": dhcp.get("vice_dns") or "",
@@ -614,22 +615,51 @@ def create_app(cfg: Config, poller: Poller):
     def portal_enforce():
         """Arm/disarm the captive portal (DNS hijack for unclaimed devices)."""
         enabled = bool((request.json or {}).get("enabled", True))
-        cfg.set("portal_enforced", enabled)
-        if enabled:
-            proxy, my_ip = start_dns_stack()   # brings up DNS + claim page
-            # Close the public-resolver bypass immediately. The poller
-            # self-heal does the same, but only on its next pass.
-            dns_align = _align_portal_dns(my_ip, enforced=True)
-            store.add_alert("warning", "Portal enforcement ON",
-                            "unclaimed and exhausted devices now get the "
-                            "voucher claim page (no public DNS fallback)")
-            return jsonify({"ok": True, "enabled": True,
-                            "dns_error": proxy.error, "myIp": my_ip,
-                            "dns": dns_align, "portal": _portal.status()})
-        dns_align = _align_portal_dns(_my_ip(), enforced=False)
-        store.add_alert("info", "Portal enforcement OFF",
-                        "DNS answers normal again for all devices")
-        return jsonify({"ok": True, "enabled": False, "dns": dns_align})
+        if not enabled:
+            cfg.set("portal_enforced", False)
+            dns_align = _align_portal_dns(_my_ip(), enforced=False)
+            store.add_alert("info", "Portal enforcement OFF",
+                            "DNS answers normal again for all devices")
+            return jsonify({"ok": True, "enabled": False, "dns": dns_align})
+        if on_android():
+            # Android refuses apps the CAP_NET_BIND_SERVICE capability, so
+            # UDP :53 and TCP :80 can never bind here (auto-start is skipped
+            # for the same reason — see the bottom of this module). Arming
+            # anyway used to persist portal_enforced and push the router's
+            # DHCP DNS to this phone, which serves nothing: every LAN device
+            # then lost name resolution AND the claim page (observed as
+            # "portal on, but <phone-ip> unreachable"). Enforcement belongs
+            # on a PC/LAN host running the desktop app; this app is console.
+            return jsonify({
+                "ok": False, "enabled": False, "android": True,
+                "error": ("captive portal can't run on this phone — Android "
+                          "blocks apps from binding DNS :53 / HTTP :80. Run "
+                          "ODU-Tracker desktop on a PC on this LAN; that host "
+                          "enforces the voucher gate, this app is the console."),
+            }), 501
+        proxy, my_ip = start_dns_stack()   # brings up DNS + claim page
+        st = _portal.status()
+        if proxy.error or not st.get("running"):
+            # NEVER hand the LAN's DNS to a resolver that failed to bind:
+            # that black-holes every device with no portal to recover on.
+            cfg.set("portal_enforced", False)
+            err = proxy.error or st.get("error") or "DNS/portal failed to start"
+            store.add_alert("danger", "Portal arm refused",
+                            f"{str(err)[:180]} — router DNS left untouched")
+            return jsonify({"ok": False, "enabled": False,
+                            "error": err, "portal": st}), 503
+        cfg.set("portal_enforced", True)
+        # Close the public-resolver bypass immediately. The poller
+        # self-heal does the same, but only on its next pass.
+        dns_align = _align_portal_dns(my_ip, enforced=True)
+        store.add_alert("warning", "Portal enforcement ON",
+                        "unclaimed and exhausted devices now get the "
+                        "voucher claim page (no public DNS fallback) — "
+                        f"claim page: http://{my_ip}/")
+        return jsonify({"ok": True, "enabled": True,
+                        "dns_error": proxy.error, "myIp": my_ip,
+                        "portal_url": f"http://{my_ip}/",
+                        "dns": dns_align, "portal": _portal.status()})
 
     def _align_portal_dns(my_ip, enforced: bool):
         """While the portal is armed, DHCP must not advertise a public DNS.
@@ -672,6 +702,16 @@ def create_app(cfg: Config, poller: Poller):
         """Point the router's DHCP DNS at this app (per-device site tracking)
         or restore the values the router had before we changed anything."""
         mode = (request.json or {}).get("mode", "app")
+        if mode == "app" and on_android():
+            # Same lockout rule as /api/portal/enforce: the phone cannot bind
+            # :53, so pointing the LAN's DHCP DNS here kills every device's
+            # name resolution with no portal to recover on.
+            return jsonify({
+                "ok": False,
+                "error": ("this phone can't serve DNS (Android blocks "
+                          "binding :53) — point router DNS at the PC running "
+                          "ODU-Tracker desktop instead"),
+            }), 501
         cur = poller.router.cmd(3, "GET")
         import socket as _s
         try:
@@ -933,7 +973,15 @@ def create_app(cfg: Config, poller: Poller):
     if not on_android() and (cfg.get("dns_proxy_enabled") or cfg.get("portal_enforced")):
         cfg.set("dns_proxy_enabled", True, persist=False)  # portal needs DNS
         try:
-            start_dns_stack()
+            proxy, _boot_ip = start_dns_stack()
+            if getattr(proxy, "error", None) or not _portal.status().get("running"):
+                # e.g. :53 already taken by systemd-resolved — say it loudly;
+                # a silently-dead stack while portal_enforced stays true is
+                # exactly how enforcement "looks on" while nobody is held.
+                store.add_alert(
+                    "danger", "DNS/portal failed to start on boot",
+                    str(getattr(proxy, "error", None)
+                        or _portal.status().get("error"))[:200])
         except Exception as exc:
             store.add_alert("warning", "DNS stack auto-start failed",
                             str(exc)[:200])

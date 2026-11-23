@@ -179,6 +179,152 @@ def test_sites_flow():
     print("sites storage        ok")
 
 
+def test_default_deny():
+    """New device on the LAN = NO internet until it claims a voucher.
+
+    The product rule under test: with the portal armed, every resolvable
+    device WITHOUT an active claim is denied (voucher.deny_checker -> the
+    DNS proxy answers every lookup with the claim page), and claiming,
+    revoking and exhaustion all flip the verdict the right way.
+    """
+    from odu_tracker import voucher
+    voucher.init()
+    mac = "DE:AD:BE:EF:00:01"
+    ip = "198.51.100.77"           # TEST-NET-2: never in this box's ARP table
+    portal_host = "192.168.0.168"  # exempt: the host serving the claim page
+    router_ip = "192.168.0.1"      # exempt: infrastructure
+    store.exec("DELETE FROM vouchers")
+    store.exec("DELETE FROM voucher_claims")
+    store.exec("DELETE FROM voucher_usage")
+    store.exec("DELETE FROM devices WHERE mac=?", (mac,))
+    voucher.invalidate_deny_cache()
+    voucher.invalidate_usage_cache()
+    store.exec("INSERT INTO devices(mac, first_seen, last_seen, last_ip) "
+               "VALUES(?,?,?,?)", (mac, store.now(), store.now(), ip))
+    deny = voucher.deny_checker(exempt_ips=(portal_host, router_ip))
+    try:
+        # 1. brand-new device, no claim -> DENIED (the default)
+        assert deny(ip) is True, "unclaimed device must be denied"
+        # 2. portal host / router are never hijacked
+        assert deny(portal_host) is False, "portal host must be exempt"
+        assert deny(router_ip) is False, "router must be exempt"
+        # 3. a device we cannot identify yet fails OPEN (documented: it is
+        #    caught on a later query once ARP/poller resolve its MAC)
+        assert deny("198.51.100.200") is False, "unknown MAC fails open"
+        # 4. claim -> allowed within seconds
+        [code] = voucher.generate(1, quota_mb=1024, note="deny-test")
+        voucher.claim(code, mac=mac, ip=ip, router=None)
+        assert deny(ip) is False, "claimed device must pass"
+        # 5. revoke -> straight back to the portal
+        voucher.revoke(code)
+        voucher.invalidate_deny_cache()
+        assert deny(ip) is True, "revoked claim must lose access"
+        # 6. claimed but quota burnt -> exhausted -> portal again
+        [code2] = voucher.generate(1, quota_mb=1024, note="deny-test")
+        voucher.claim(code2, mac=mac, ip=ip, router=None)
+        assert deny(ip) is False
+        voucher.set_device_used_mb(mac, voucher.device_quota_mb(mac))
+        voucher.invalidate_usage_cache()
+        assert deny(ip) is True, "exhausted device must be denied"
+        print("default-deny policy  ok  (new->portal, claim->pass, "
+              "revoke/exhaust->portal)")
+    finally:
+        store.exec("DELETE FROM vouchers")
+        store.exec("DELETE FROM voucher_claims")
+        store.exec("DELETE FROM voucher_usage")
+        store.exec("DELETE FROM devices WHERE mac=?", (mac,))
+        voucher.invalidate_deny_cache()
+        voucher.invalidate_usage_cache()
+
+
+def test_portal_arm_guards():
+    """Arming must never claim success it can't honor.
+
+    Regression guards for the "APK portal doesn't activate" incident:
+      (a) Android refuses to arm — it cannot bind :53/:80 — instead of
+          persisting portal_enforced and pointing the LAN's DNS at a phone
+          that serves nothing (total lockout, claim page unreachable);
+      (b) a stack that failed to bind refuses to arm and NEVER moves the
+          router's DHCP DNS to a dead resolver;
+      (c) a healthy stack arms, persists the flag and reports the
+          http:// claim-page URL (the portal is HTTP-only — no :443).
+    """
+    import socket as _s
+    from odu_tracker.web import app as webapp
+
+    cfg = Config()
+    cfg.set("portal_enforced", False, persist=False)
+    poller = Poller(cfg)
+    app = webapp.create_app(cfg, poller)
+    c = app.test_client()
+    with mock.patch("odu_tracker.web.app.OduRouter.login", return_value={"ok": 1}):
+        r = c.post("/api/login", json={"password": "x"})
+        assert r.get_json().get("ok"), r.get_json()
+
+    pushed = []
+    poller.push_dhcp_dns = lambda m, v: pushed.append((m, v)) or {"ok": True}
+
+    # (a) the phone may never arm
+    with mock.patch.object(webapp, "on_android", return_value=True):
+        r = c.post("/api/portal/enforce", json={"enabled": True})
+    j = r.get_json()
+    assert r.status_code == 501, (r.status_code, j)
+    assert "phone" in j["error"] and "desktop" in j["error"], j
+    assert cfg.get("portal_enforced") is False, "android must not persist armed"
+    assert pushed == [], "android must not move router DNS"
+
+    # (b) bind failure -> refuse to arm, router DNS untouched
+    blocker_u = _s.socket(_s.AF_INET, _s.SOCK_DGRAM)
+    blocker_t = _s.socket(_s.AF_INET, _s.SOCK_STREAM)
+    blocker_u.bind(("0.0.0.0", 0))
+    blocker_t.bind(("0.0.0.0", 0))
+    blocker_t.listen(1)
+    saved = (cfg.get("dns_proxy_port"), cfg.get("portal_port"))
+    try:
+        cfg.set("dns_proxy_port", blocker_u.getsockname()[1], persist=False)
+        cfg.set("portal_port", blocker_t.getsockname()[1], persist=False)
+        r = c.post("/api/portal/enforce", json={"enabled": True})
+        j = r.get_json()
+        assert r.status_code == 503, (r.status_code, j)
+        assert "bind" in (j.get("error") or ""), j
+        assert cfg.get("portal_enforced") is False, "bind fail must not persist"
+        assert pushed == [], "router DNS must not move to a dead resolver"
+    finally:
+        blocker_u.close()
+        blocker_t.close()
+        cfg.set("dns_proxy_port", saved[0], persist=False)
+        cfg.set("portal_port", saved[1], persist=False)
+
+    # (c) healthy stack on free high ports (tests never touch :53/:80)
+    u = _s.socket(_s.AF_INET, _s.SOCK_DGRAM)
+    t = _s.socket(_s.AF_INET, _s.SOCK_STREAM)
+    u.bind(("0.0.0.0", 0))
+    t.bind(("0.0.0.0", 0))
+    u_port, t_port = u.getsockname()[1], t.getsockname()[1]
+    u.close()
+    t.close()                         # release so the app can bind them
+    try:
+        cfg.set("dns_proxy_port", u_port, persist=False)
+        cfg.set("portal_port", t_port, persist=False)
+        r = c.post("/api/portal/enforce", json={"enabled": True})
+        j = r.get_json()
+        assert r.status_code == 200 and j.get("ok"), (r.status_code, j)
+        assert cfg.get("portal_enforced") is True, "healthy arm must persist"
+        assert str(j.get("portal_url", "")).startswith("http://"), j
+        r = c.post("/api/portal/enforce", json={"enabled": False})
+        j = r.get_json()
+        assert j.get("ok"), j
+        assert cfg.get("portal_enforced") is False, "disarm must clear flag"
+    finally:
+        cfg.set("dns_proxy_port", saved[0], persist=False)
+        cfg.set("portal_port", saved[1], persist=False)
+        from odu_tracker import dns_proxy as _dp
+        if _dp._singleton:
+            _dp._singleton.stop()
+    print("portal arm guards    ok  (android=refused, bind-fail=refused, "
+          "healthy arm reports http:// URL)")
+
+
 if __name__ == "__main__":
     test_extract_devices()
     test_parse_usage()
@@ -187,4 +333,6 @@ if __name__ == "__main__":
     test_dns_parser()
     test_sites_flow()
     test_web_api()
+    test_default_deny()
+    test_portal_arm_guards()
     print("\nALL SYNTHETIC TESTS PASSED")

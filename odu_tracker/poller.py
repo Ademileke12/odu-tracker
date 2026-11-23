@@ -15,7 +15,7 @@ import time
 import traceback
 
 from . import store
-from .config import Config
+from .config import Config, on_android
 from .router import OduRouter, RouterError
 from .security import normalize_mac, risk_score, vendor_for
 from . import voucher
@@ -339,6 +339,12 @@ class Poller:
         rate-limited so a flaky router can't be hammered with cmd-3 posts.
         """
         now = time.time()
+        if on_android():
+            # This phone can never serve UDP :53 (no CAP_NET_BIND_SERVICE),
+            # so repointing DHCP DNS at this machine would black-hole the
+            # whole LAN at a host running no resolver. Enforcement belongs on
+            # a PC/LAN host; never self-heal DNS towards a phone.
+            return
         if now - getattr(self, "_dns_heal_ts", 0) < cooldown_s:
             return
         if self._dns_pointed_at_self():

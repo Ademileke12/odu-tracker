@@ -16,6 +16,7 @@ Claim flow (POST /claim):
       -> cmd 278 gate_allow (clears any grace deny-listing)
 Rate-limited per client IP: unauthenticated claim attempts are all we get.
 """
+import socket
 import threading
 import time
 
@@ -165,10 +166,26 @@ _state = {"running": False, "port": 80, "error": None}
 def start_portal(cfg, poller):
     """Idempotent; runs the portal on its own waitress thread."""
     global _singleton
-    if _singleton and _singleton.is_alive():
+    if _singleton and _singleton.is_alive() and not _state.get("error"):
         return _state
     port = int(cfg.get("portal_port", 80))
     _state.update({"running": False, "port": port, "error": None})
+    # Probe-bind SYNCHRONOUSLY before claiming success. An unprivileged
+    # process (an unrooted Android app, or a desktop user who hasn't run
+    # tools/enable_priv_ports.sh) gets EACCES on :80 — detecting it here
+    # lets the arm endpoint refuse instead of reporting "armed" while the
+    # LAN's DNS is already pointed at a portal that answers nothing (that
+    # combination black-holes every device with no page to recover on).
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        probe.bind(("0.0.0.0", port))
+    except OSError as exc:
+        _state["error"] = (f"cannot bind :{port}: {exc} (privileged port — "
+                           f"run tools/enable_priv_ports.sh once)")
+        return _state
+    finally:
+        probe.close()
 
     def run():
         from waitress import serve

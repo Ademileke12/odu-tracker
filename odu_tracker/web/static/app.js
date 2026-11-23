@@ -986,6 +986,8 @@ function renderPortal(p) {
         ? `<b>portal :${pt.port}</b> <span class="badge green">up</span>`
         : '<span class="tagline">portal down</span>'));
   if (p.myIp) parts.push(`<span class="tagline">this PC ${esc(p.myIp)}</span>`);
+  if (p.enforced && p.myIp)
+    parts.push(`<span class="tagline">claim page <b>http://${esc(p.myIp)}/</b></span>`);
   if (p.hijacked) parts.push(`<span class="tagline">${p.hijacked} hijacked</span>`);
   if (!p.dns_pointed_at_app)
     parts.push('<span class="badge yellow">router DNS not pointing here</span>');

@@ -120,6 +120,7 @@ class DnsProxy(threading.Thread):
         self.deny = deny
         self.portal_ip = portal_ip
         self._stop_evt = threading.Event()
+        self._ready = threading.Event()   # set once the bind outcome is known
         self.sock = None
         self.logged = 0
         self.hijacked = 0
@@ -143,7 +144,9 @@ class DnsProxy(threading.Thread):
             # port 53/80 need privileges (net.ipv4.ip_unprivileged_port_start)
             self.error = (f"cannot bind UDP {self.port}: {exc} "
                           f"(privileged port — run tools/enable_priv_ports.sh once)")
+            self._ready.set()
             return
+        self._ready.set()
         while not self._stop_evt.is_set():
             try:
                 data, addr = self.sock.recvfrom(4096)
@@ -202,10 +205,15 @@ _singleton = None
 
 def start_proxy(cfg, deny=None, portal_ip=None) -> "DnsProxy":
     global _singleton
-    if _singleton and _singleton.is_alive():
+    if _singleton and _singleton.is_alive() and not _singleton.error:
         return _singleton
     _singleton = DnsProxy(port=int(cfg.get("dns_proxy_port", 53)),
                           upstream=cfg.get("dns_upstream", "8.8.8.8"),
                           deny=deny, portal_ip=portal_ip)
     _singleton.start()
+    # Wait for the bind outcome (ms in both success and EACCES cases) so the
+    # caller can decide whether the LAN may safely be pointed at us — arming
+    # enforcement against a DNS listener that failed to bind would cut every
+    # device off with no portal to recover on.
+    _singleton._ready.wait(2.0)
     return _singleton

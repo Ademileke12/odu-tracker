@@ -38,17 +38,17 @@
     <a href="#support">Support</a>
     <a class="gh" href="https://github.com/Ademileke12/odu-tracker" target="_blank" rel="noopener">GitHub ↗</a>
   </nav>
-  <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.4.0</span></span>
+  <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.4.1</span></span>
   <button class="mode-btn" id="modeBtn" title="Toggle light / dark" aria-label="Toggle theme"><span id="modeIco">☾</span></button>
   <a class="topbar-cta" href="#download">Get the app</a>
 </header>
 
 <!-- ================================================ release announcement -->
-<div class="newsbar" id="newsbar" data-rel="v1.4.0">
+<div class="newsbar" id="newsbar" data-rel="v1.4.1">
   <a class="newsbar-in" href="#whatsnew">
     <span class="newsbar-tag">NEW</span>
-    <b>v1.4.0 update</b>
-    <span class="newsbar-txt">Vouchers is now a paid feature: one personal unlock code per device, sold directly by the author</span>
+    <b>v1.4.1 update</b>
+    <span class="newsbar-txt">Default-deny guest Wi-Fi: new devices get no internet until they claim a voucher — plus a slimmer 4-tab phone app</span>
     <span class="newsbar-go">SEE WHAT'S NEW →</span>
   </a>
   <button class="newsbar-x" id="newsbarX" aria-label="Dismiss announcement">✕</button>
@@ -170,54 +170,53 @@
 
   <!-- ================================================== what's new -->
   <section id="whatsnew" class="section wn">
-    <p class="kicker reveal">// RELEASE NOTES · 30 OCT 2026 · UPDATED 13 NOV · v1.4.0</p>
-    <h2 class="reveal">NEW IN <span class="hl">v1.4.0</span></h2>
+    <p class="kicker reveal">// RELEASE NOTES · 30 OCT 2026 · UPDATED 23 NOV · v1.4.1</p>
+    <h2 class="reveal">NEW IN <span class="hl">v1.4.1</span></h2>
     <p class="section-sub reveal">
-      v1.4.0 makes the Vouchers feature a paid add-on. No payment forms, no
-      accounts: you chat with the author, pay directly, and get a personal
-      unlock code that opens the feature on your device. Everything else from
-      v1.3.3 — phone usage charts, the light redesign, the full desktop set —
-      stays exactly as it was.
+      v1.4.1 hardens guest access. A device that just joins your Wi-Fi gets
+      <b>nothing</b> — no DNS, no web — until it claims a voucher code on your
+      captive-portal claim page. Vouchers stay a paid add-on from v1.4.0,
+      and the phone app gets leaner and easier to tap.
     </p>
 
     <div class="cards">
       <article class="card reveal">
         <div class="card-ico">⛁</div>
         <div class="wn-tag">NEW</div>
-        <h3>VOUCHERS, NOW PAID</h3>
-        <p>The Vouchers tab — guest data codes, the shared SIM pool and the
-           claim portal — is now a paid feature. Chat
-           <b>srimpkoyonko@gmail.com</b> or TikTok <b>@leke_abudu</b>, pay,
-           and paste the unlock code straight into the tab.</p>
+        <h3>DEFAULT-DENY GUEST WI-FI</h3>
+        <p>New devices get zero internet until they claim a voucher. Unclaimed
+           phones sit on the portal page, so a leaked or shared code is the only
+           way onto your data.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">»</div>
         <div class="wn-tag">NEW</div>
-        <h3>ONE CODE, ONE DEVICE</h3>
-        <p>Your unlock code is minted for your device alone. It survives
-           reinstalling the app on the same phone or PC, but it can't be
-           shared with a friend or carried over by copying app data.</p>
+        <h3>ARMED FROM THE PC</h3>
+        <p>The DNS + portal stack runs in the desktop app on a machine on your
+           LAN. Phones can't bind those ports, so the app says so plainly instead
+           of silently black-holing your network.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">✓</div>
         <div class="wn-tag">NEW</div>
-        <h3>EARLY USERS KEEP ACCESS</h3>
-        <p>Installed an earlier build and already used vouchers? You keep
-           full access automatically — no code needed, no questions asked.</p>
+        <h3>SAFER ARMING</h3>
+        <p>If the portal can't bind, nothing is saved: router DHCP DNS is never
+           moved, the toggle reverts, and you get a visible alert instead of a
+           half-configured network.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">¢</div>
-        <div class="wn-tag">NEW</div>
-        <h3>GUESTS STILL SELF-SERVE</h3>
-        <p>Once unlocked, everything works as before: mint a pool of codes
-           with GB + validity, guests claim one at the portal on their own,
-           and every code's status stays visible at a glance.</p>
+        <div class="wn-tag">FIXED</div>
+        <h3>PHONE: 4 TABS, FIT BUTTONS</h3>
+        <p>Vouchers moves to the desktop app, leaving Home, Devices, Alerts and
+           More on the phone. The Trust / Soft-cut / Block buttons now sit on
+           their own row instead of stretching the card.</p>
       </article>
     </div>
 
     <div class="wn-cta reveal">
-      <a class="btn btn-black" href="#download">⤓ GET v1.4.0 <small>free app</small></a>
-      <a class="btn btn-white" href="https://github.com/Ademileke12/odu-tracker/releases/tag/v1.4.0" target="_blank" rel="noopener">FULL RELEASE NOTES ↗</a>
+      <a class="btn btn-black" href="#download">⤓ GET v1.4.1 <small>free app</small></a>
+      <a class="btn btn-white" href="https://github.com/Ademileke12/odu-tracker/releases/tag/v1.4.1" target="_blank" rel="noopener">FULL RELEASE NOTES ↗</a>
       <span class="wn-meta">5 files · Windows · Linux · Android, same version everywhere</span>
     </div>
   </section>
@@ -228,7 +227,7 @@
     <h2 class="reveal">ONE ENGINE, <span class="hl">EVERY</span> SCREEN</h2>
     <p class="section-sub reveal">
       The desktop dashboard and the phone app pull from the same engine, so usage,
-      devices and alerts agree everywhere. This is the real v1.4.0 interface,
+      devices and alerts agree everywhere. This is the real v1.4.1 interface,
       captured live, exactly how it pans out on a laptop and a Redmi-class phone.
     </p>
 
@@ -252,51 +251,29 @@
                alt="ODU Tracker phone view: amber ring at 84 of 100 GB this month, today 3.84 GB, live rate 128.4 Mbps, 5G SA signal, data usage card with 24 h bars and bottom tab bar"
                loading="lazy">
         </div>
-        <figcaption><span class="scr-tag">PHONE VIEW</span> inside every APK · 5 tabs, one thumb</figcaption>
+        <figcaption><span class="scr-tag">PHONE VIEW</span> inside every APK · 4 tabs, one thumb</figcaption>
       </figure>
     </div>
   </section>
 
   <!-- ================================================== voucher access -->
   <section id="voucher" class="section">
-    <p class="kicker reveal">// VOUCHER ACCESS · PAID FEATURE · v1.4.0</p>
+    <p class="kicker reveal">// VOUCHER ACCESS · PAID FEATURE · v1.4.0 → v1.4.1</p>
     <h2 class="reveal">ONE CODE, <span class="hl">ONE DEVICE</span></h2>
     <p class="section-sub reveal">
-      From v1.4.0 the <b>Vouchers</b> tab — guest data codes, the shared SIM
+      From v1.4.0 the <b>Vouchers</b> feature — guest data codes, the shared SIM
       pool and the claim portal — is a paid feature. No payment forms, no
       accounts, no subscriptions: you chat with the author, pay directly, and
       get a personal unlock code. Everything else in the app stays free.
+      From v1.4.1 it lives in the <b>desktop app</b> (Windows &amp; Linux) — the
+      phone app keeps the lean 4-tab console and the fleet controls.
     </p>
 
     <ol class="steps">
-      <li class="reveal"><span class="step-n">01</span><div><b>OPEN THE VOUCHERS TAB</b><span>Update to v1.4.0 and open the <code>Vouchers</code> tab. It shows a lock and your <strong>device code</strong>, like <code>ODU-4F2A-91C3-7B60</code> — tap <strong>COPY</strong>. That code identifies your phone or PC only.</span></div></li>
+      <li class="reveal"><span class="step-n">01</span><div><b>OPEN THE VOUCHERS TAB</b><span>Update to the newest build and open the <code>Vouchers</code> tab in the desktop app. It shows a lock and your <strong>device code</strong>, like <code>ODU-4F2A-91C3-7B60</code> — tap <strong>COPY</strong>. That code identifies your PC only.</span></div></li>
       <li class="reveal"><span class="step-n">02</span><div><b>CHAT ME UP &amp; PAY</b><span>Message me on TikTok <code>@leke_abudu</code> or email <code>srimpkoyonko@gmail.com</code>. Pay to my account, then send me the device code — I'll mint your personal <strong>unlock code</strong> and reply.</span></div></li>
       <li class="reveal"><span class="step-n">03</span><div><b>PASTE &amp; UNLOCK</b><span>Type the unlock code into the tab and hit <strong>UNLOCK VOUCHERS</strong>. The full feature opens on that device, permanently — reinstall the app on the same device and it still works.</span></div></li>
     </ol>
-
-    <div class="vflow">
-      <figure class="scr-phone reveal">
-        <div class="phn">
-          <span class="island"></span>
-          <span class="pk long"></span><span class="pk"></span>
-          <img src="assets/voucher-paywall.png" width="520" height="1126"
-               alt="Phone screenshot of the locked Vouchers tab: 'Vouchers is a paid feature', contacts TikTok @leke_abudu and srimpkoyonko@gmail.com, the device code ODU-AA83-CEFC-012E with a Copy button, and an unlock code field with an Unlock Vouchers button"
-               loading="lazy">
-        </div>
-        <figcaption><span class="scr-tag">STEP 1 – 2</span> the locked tab shows your device code</figcaption>
-      </figure>
-
-      <figure class="scr-phone reveal">
-        <div class="phn">
-          <span class="island"></span>
-          <span class="pk long"></span><span class="pk"></span>
-          <img src="assets/voucher-unlocked.png" width="520" height="1126"
-               alt="Phone screenshot of the unlocked Vouchers tab: pool cap and captive portal switches, a quota picker to mint new codes, and issued codes marked active or claimed with revoke buttons"
-               loading="lazy">
-        </div>
-        <figcaption><span class="scr-tag">STEP 3</span> unlocked — the whole feature opens</figcaption>
-      </figure>
-    </div>
 
     <div class="vcenter">
       <figure class="scr-laptop reveal">
@@ -440,7 +417,7 @@
         <circle cx="24" cy="26" r="3" fill="#0a0a0a"/>
       </svg>
       ODU<b>TRACKER</b>
-      <span class="verchip small"><i class="dot"></i><span class="footer-ver">v1.4.0</span></span>
+      <span class="verchip small"><i class="dot"></i><span class="footer-ver">v1.4.1</span></span>
     </div>
     <p>Created by <b>anakincoco</b> · <a href="mailto:srimpkoyonko@gmail.com">srimpkoyonko@gmail.com</a></p>
     <p class="footer-links">
