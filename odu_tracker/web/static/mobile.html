@@ -244,6 +244,61 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   min-height:16px}
 #login .hint{font-size:11px;color:var(--faint);margin-top:24px;max-width:300px;
   text-align:center;line-height:1.6}
+
+/* ---------- paywall (v1.5.0 · ₦1,500 one-time unlock) ---------- */
+#pay{display:none;position:fixed;inset:0;z-index:21;background:var(--paper);
+  background-image:radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+  background-size:22px 22px;flex-direction:column;align-items:center;
+  justify-content:center;padding:26px 20px;overflow-y:auto}
+#pay .logo{width:70px;height:70px;border-radius:20px;background:var(--acc);
+  border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);display:grid;
+  place-items:center;font-size:34px;font-weight:900;color:var(--ink);
+  margin-bottom:14px;transform:rotate(-4deg)}
+#pay h1{font-size:23px;font-weight:900;letter-spacing:.5px;text-align:center}
+#pay h1 i{font-style:normal;color:#b98a00}
+.pdeck{width:100%;max-width:330px;display:grid;margin:16px 0 10px}
+.ps{grid-area:1/1;visibility:hidden;opacity:0;transform:translateY(8px);
+  transition:opacity .4s ease,transform .4s ease;background:var(--panel);
+  border:1.5px solid var(--ink);border-radius:14px;padding:14px 15px;
+  box-shadow:3px 3px 0 var(--ink)}
+.ps.on{visibility:visible;opacity:1;transform:none}
+.ps b{display:block;font-size:15px;margin-bottom:5px}
+.ps span{font-size:12.5px;color:var(--mut);line-height:1.55}
+.pdots{display:flex;gap:7px;margin-bottom:16px}
+.pdots button{width:9px;height:9px;border-radius:50%;padding:0;
+  border:1.5px solid var(--ink);background:transparent}
+.pdots button.on{background:var(--acc)}
+#payStep,#payDone{width:100%;max-width:330px;display:flex;flex-direction:column;
+  align-items:center}
+.pprice{width:100%;display:flex;align-items:baseline;gap:9px;justify-content:center;
+  background:var(--panel);border:1.5px solid var(--ink);border-radius:14px;
+  padding:12px 14px;box-shadow:3px 3px 0 var(--ink);margin-bottom:12px}
+.pprice b{font-size:30px;font-weight:900;line-height:1}
+.pprice span{font-size:10.5px;font-family:var(--mono);text-transform:uppercase;
+  letter-spacing:.8px;color:var(--mut)}
+#pay input{width:100%;max-width:330px;padding:13px;border-radius:12px;
+  border:1.5px solid var(--ink);background:var(--panel);color:var(--ink);
+  font-size:15px;font-family:var(--mono);outline:none;margin-bottom:10px;
+  box-shadow:inset 2px 2px 0 rgba(10,10,10,.06)}
+#pay input:focus{box-shadow:3px 3px 0 var(--acc)}
+#pay .btn{max-width:330px;width:100%}
+#payErr,#actErr{color:var(--red);font-size:12px;font-family:var(--mono);
+  min-height:15px;margin-top:8px;text-align:center}
+.palready{width:100%;max-width:330px;margin-top:14px;border-top:1.5px solid var(--hair);
+  padding-top:12px}
+.palready summary{font-size:12.5px;color:var(--mut);cursor:pointer;font-weight:700}
+.pdev{width:100%;max-width:330px;margin-top:14px;background:var(--panel2);
+  border:1.5px dashed var(--hair);border-radius:12px;padding:10px 12px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.8px;text-align:center;
+  color:var(--mut)}
+.pdev b{display:block;font-size:14px;letter-spacing:1.4px;margin-top:4px;color:var(--ink)}
+#pay .hint{font-size:11px;color:var(--faint);margin-top:14px;max-width:300px;
+  text-align:center;line-height:1.6}
+#payDone h1{font-size:22px;font-weight:900;text-align:center;margin-top:6px}
+.pcode{font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:2px;
+  background:var(--panel);border:1.5px solid var(--ink);border-radius:12px;
+  padding:14px 16px;box-shadow:3px 3px 0 var(--acc);margin:14px 0 12px;
+  width:100%;max-width:330px;text-align:center;word-break:break-all}
 @media (min-width:640px){ main{max-width:560px;margin:0 auto} nav{max-width:none} }
 </style>
 </head>
@@ -259,6 +314,70 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   <div id="loginErr"></div>
   <div class="hint">Join the ODU Wi-Fi first, the tracker talks directly to
     <span id="routerIpHint">192.168.0.1</span> and never sends anything to the cloud.</div>
+</div>
+
+<!-- ================================================ paywall -->
+<div id="pay">
+  <div class="logo">O</div>
+  <h1>ODU <i>TRACKER</i></h1>
+
+  <!-- slide-by-slide feature intro -->
+  <div class="pdeck" id="pDeck">
+    <div class="ps on">
+      <b>Every GB, accounted for</b>
+      <span>Month total, live rate, today and hourly charts — straight from
+        your ODU's own counters, kept on this device.</span>
+    </div>
+    <div class="ps">
+      <b>Every device on the radar</b>
+      <span>Phones, laptops and IoT on your network with name, IP, vendor and
+        risk score. Tap to trust, soft-cut or block.</span>
+    </div>
+    <div class="ps">
+      <b>Danger gets flagged</b>
+      <span>An alert the second a new device joins, risk scoring for random
+        MACs, plus on-demand speed tests.</span>
+    </div>
+    <div class="ps">
+      <b>Guests earn their access</b>
+      <span>Arm the captive portal and new devices get no internet until they
+        claim a voucher code. Mint, cap and revoke from here.</span>
+    </div>
+  </div>
+  <div class="pdots" id="pDots">
+    <button class="on" data-go="0" aria-label="Slide 1"></button>
+    <button data-go="1" aria-label="Slide 2"></button>
+    <button data-go="2" aria-label="Slide 3"></button>
+    <button data-go="3" aria-label="Slide 4"></button>
+  </div>
+
+  <div id="payStep">
+    <div class="pprice"><b>₦1,500</b><span>one-time · for life · one device</span></div>
+    <input id="payEmail" type="email" inputmode="email" autocomplete="email"
+           placeholder="email for your receipt (optional)">
+    <button class="btn" id="payBtn">PAY ₦1,500 — UNLOCK</button>
+    <div id="payErr"></div>
+
+    <details class="palready">
+      <summary>Already paid? Enter your licence code</summary>
+      <input id="payCode" placeholder="XXXX-XXXX-XXXX-XXXX"
+             autocapitalize="characters" autocomplete="off" spellcheck="false">
+      <button class="btn ghost" id="payActivate">ACTIVATE</button>
+      <div id="actErr"></div>
+    </details>
+
+    <div class="pdev">this device's ID<b id="payDevCode">…</b></div>
+    <div class="hint">Save your <b>licence code</b> after paying — it re-unlocks
+      this app after a reinstall on this device, and works on no other device.</div>
+  </div>
+
+  <div id="payDone" style="display:none">
+    <h1>You're in 🎉</h1>
+    <div class="pcode" id="doneDevCode">…</div>
+    <button class="btn ghost" id="doneCopy">COPY LICENCE CODE</button>
+    <div style="height:10px"></div>
+    <button class="btn" id="doneGo">START USING IT →</button>
+  </div>
 </div>
 
 <!-- ================================================ top -->
@@ -393,6 +512,10 @@ async function api(path, opts) {
   if (r.status === 401) { showLogin(); throw 401; }
   let body = null;
   try { body = await r.json(); } catch { /* no body */ }
+  // the ₦1,500 gate refusing a data route flips the UI back to the paywall
+  if (r.status === 403 && body && body.error === 'paid_required') {
+    showPay(); throw new Error('paid_required');
+  }
   // surface the server's error text ("can't run on this phone…", bind
   // failures) instead of a bare "http 503" — the old toast said "armed"
   // while the stack had refused to start.
@@ -450,8 +573,137 @@ function openTab(name) {
 $$('nav button').forEach((b) => b.addEventListener('click', () => openTab(b.dataset.v)));
 
 /* ------------------------------------------------------- login */
-function showLogin() { $('#login').style.display = 'flex'; }
+function showLogin() {
+  if ($('#pay').style.display === 'flex') return;   // paywall owns the screen
+  $('#login').style.display = 'flex';
+}
 function hideLogin() { $('#login').style.display = 'none'; }
+
+/* ------------------------------------------------------- paywall (v1.5.0)
+   ₦1,500 one-time unlock: slide-by-slide intro + Paystack Inline, shown
+   on FIRST load before the router-password login. */
+let payInfo = null, payDeckTmr = null;
+
+function showPay() {
+  $('#pay').style.display = 'flex';
+  $('#login').style.display = 'none';
+  startPayDeck();
+  loadPayInfo();
+}
+function hidePay() { $('#pay').style.display = 'none'; }
+
+async function loadPayInfo() {
+  try {
+    const d = await api('/api/applicense');
+    payInfo = d;
+    $('#payDevCode').textContent = d.device_code || '…';
+    if (d.paid) renderPayDone(d);
+  } catch { $('#payErr').textContent = 'licensing service unreachable — retry shortly'; }
+}
+
+function startPayDeck() {
+  const slides = [...document.querySelectorAll('#pDeck .ps')];
+  const dots = [...document.querySelectorAll('#pDots button')];
+  if (!slides.length) return;
+  let i = 0;
+  const show = (n) => {
+    i = (n + slides.length) % slides.length;
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    dots.forEach((d, k) => d.classList.toggle('on', k === i));
+  };
+  $('#pDots').onclick = (e) => {
+    const b = e.target.closest('[data-go]');
+    if (b) { show(+b.dataset.go); restart(); }
+  };
+  if (payDeckTmr) clearInterval(payDeckTmr);
+  const restart = () => {
+    if (payDeckTmr) clearInterval(payDeckTmr);
+    payDeckTmr = setInterval(() => show(i + 1), 5500);
+  };
+  restart();
+}
+
+function renderPayDone(d) {
+  if (payDeckTmr) { clearInterval(payDeckTmr); payDeckTmr = null; }
+  $('#payStep').style.display = 'none';
+  $('#payDone').style.display = 'flex';
+  $('#doneDevCode').textContent = (d && (d.unlock_code || d.device_code)) || '…';
+}
+
+function loadPaystack(cb) {
+  if (window.PaystackPop) return cb();
+  const s = document.createElement('script');
+  s.src = 'https://js.paystack.co/v1/inline.js';
+  s.onload = cb;
+  s.onerror = () => { $('#payErr').textContent =
+    'cannot load Paystack — check your internet connection'; };
+  document.head.appendChild(s);
+}
+
+async function verifyPay(ref) {
+  const err = $('#payErr'), btn = $('#payBtn');
+  err.textContent = 'confirming your payment with Paystack…';
+  btn.disabled = true;
+  try {
+    const d = await api('/api/applicense/verify', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference: ref }) });
+    renderPayDone(d);
+  } catch (e) {
+    err.textContent = (e && e.message) || 'verification failed — try again';
+  } finally { btn.disabled = false; }
+}
+
+$('#payBtn').addEventListener('click', () => {
+  const err = $('#payErr');
+  err.textContent = '';
+  const pk = payInfo && payInfo.paystack && payInfo.paystack.public_key;
+  if (!pk || pk.indexOf('REPLACE') !== -1) {
+    err.textContent = 'payments are not configured on this build yet';
+    return;
+  }
+  const email = $('#payEmail').value.trim() || 'customer@odutracker.app';
+  loadPaystack(() => {
+    const handler = window.PaystackPop.setup({
+      key: pk,
+      email: email,
+      amount: (payInfo && payInfo.price_kobo) || 150000,
+      currency: 'NGN',
+      ref: 'OT' + Date.now() + Math.floor(Math.random() * 9000 + 1000),
+      label: 'ODU Tracker — lifetime unlock',
+      onSuccess: (r) => verifyPay(r.reference || r.trxref),
+      onClose: () => { err.textContent = ''; },
+    });
+    handler.openIframe();
+  });
+});
+
+$('#payActivate').addEventListener('click', async () => {
+  const err = $('#actErr'), btn = $('#payActivate');
+  err.textContent = '';
+  const code = $('#payCode').value.trim();
+  if (!code) { err.textContent = 'paste your licence code first'; return; }
+  btn.disabled = true; btn.textContent = 'ACTIVATING…';
+  try {
+    const d = await api('/api/applicense/activate', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code }) });
+    renderPayDone(d);
+  } catch (e) {
+    err.textContent = (e && e.message) || 'that code did not work';
+  } finally { btn.disabled = false; btn.textContent = 'ACTIVATE'; }
+});
+
+$('#doneCopy').addEventListener('click', () => {
+  const txt = $('#doneDevCode').textContent;
+  const done = () => { $('#doneCopy').textContent = 'COPIED ✓';
+    setTimeout(() => { $('#doneCopy').textContent = 'COPY LICENCE CODE'; }, 1500); };
+  if (navigator.clipboard) { navigator.clipboard.writeText(txt).then(done); return; }
+  const ta = document.createElement('textarea');
+  ta.value = txt; document.body.appendChild(ta); ta.select();
+  document.execCommand('copy'); ta.remove(); done();
+});
+$('#doneGo').addEventListener('click', () => { hidePay(); location.reload(); });
 $('#loginBtn').addEventListener('click', doLogin);
 $('#pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
 async function doLogin() {
@@ -792,6 +1044,8 @@ $('#resetBtn').addEventListener('click', () => {
   let m = {};
   try { m = await api('/api/meta'); } catch { showLogin(); return; }
   if (m.router_ip) $('#routerIpHint').textContent = m.router_ip;
+  if (!m.paid) { showPay(); return; }        // pay first, always (v1.5.0)
+  hidePay();
   if (!m.authed) { showLogin(); return; }
   hideLogin();
   const want = new URLSearchParams(location.search).get('tab');

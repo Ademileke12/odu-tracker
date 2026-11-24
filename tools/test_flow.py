@@ -139,12 +139,22 @@ def test_web_api():
     poller = Poller(cfg)
     app = create_app(cfg, poller)
     c = app.test_client()
+    cfg.set("app_license", None)              # v1.5.0: start unpaid
     r = c.get("/api/devices")
     assert r.get_json().get("error") == "auth_required"
     # fake a successful router login by patching OduRouter.login
     with mock.patch("odu_tracker.web.app.OduRouter.login", return_value={"ok": 1}):
         r = c.post("/api/login", json={"password": "anything"})
         assert r.get_json().get("ok"), r.get_json()
+    # v1.5.0: signed in, but every data route stays dark until the
+    # ₦1,500 unlock is in place (paid_required, not auth_required)
+    r = c.get("/api/status")
+    assert r.status_code == 403 and r.get_json()["error"] == "paid_required", \
+        (r.status_code, r.get_json())
+    from odu_tracker import app_license
+    r = c.post("/api/applicense/activate",
+               json={"code": app_license.expected_code()})
+    assert r.get_json().get("paid"), r.get_json()
     r = c.get("/api/status")
     j = r.get_json()
     assert "usage" in j and "sys" in j, j.keys()
@@ -325,6 +335,77 @@ def test_portal_arm_guards():
           "healthy arm reports http:// URL)")
 
 
+def test_base_paywall():
+    """v1.5.0 — the ₦1,500 unlock: gate, Paystack verify, reinstall code."""
+    from odu_tracker import app_license, paystack
+    cfg = Config()
+    cfg.set("app_license", None)              # start from a clean slate
+    from odu_tracker.web.app import create_app
+    app = create_app(cfg, Poller(cfg))
+    c = app.test_client()
+
+    m = c.get("/api/meta").get_json()
+    assert m["paid"] is False and m["price_label"] == "₦1,500", m
+
+    st = c.get("/api/applicense").get_json()
+    assert st["paid"] is False and st["unlock_code"] is None, st
+    # pre-payment the device code may show, the unlock code must NOT
+    assert st["device_code"].startswith("ODU-"), st
+    assert st["price_kobo"] == 150000 and st["paystack"]["public_key"], st
+
+    # signed in but unpaid => nothing to read
+    with mock.patch("odu_tracker.web.app.OduRouter.login", return_value={"ok": 1}):
+        c.post("/api/login", json={"password": "x"})
+    r = c.get("/api/devices")
+    assert r.status_code == 403 and r.get_json()["error"] == "paid_required", \
+        (r.status_code, r.get_json())
+
+    # bad reference / failed charge never unlocks
+    assert c.post("/api/applicense/verify",
+                  json={"reference": "not a ref!"}).status_code == 400
+    with mock.patch("odu_tracker.web.app.paystack.verify",
+                    return_value=(False, {}, "payment is failed")):
+        r = c.post("/api/applicense/verify", json={"reference": "OT123"})
+        assert r.status_code == 400, r.get_json()
+    assert app_license.is_paid(cfg) is False
+
+    # a confirmed ₦1,500 charge activates and hands over the code
+    info = {"reference": "OT123", "amount": 150000, "currency": "NGN",
+            "email": "buyer@example.com"}
+    with mock.patch("odu_tracker.web.app.paystack.verify",
+                    return_value=(True, info, "")):
+        r = c.post("/api/applicense/verify", json={"reference": "OT123"})
+    j = r.get_json()
+    assert r.status_code == 200 and j["paid"] is True, j
+    assert j["unlock_code"] == app_license.expected_code(), j
+
+    # amount/currency enforcement lives in paystack.verify itself
+    cfg.set("paystack_secret_key", "sk_test_x", persist=False)
+    with mock.patch("odu_tracker.paystack._get", return_value={
+            "status": True, "data": {"status": "success", "amount": 10000,
+                                     "currency": "NGN",
+                                     "customer": {"email": "a@b.c"}}}):
+        ok, _, err = paystack.verify(cfg, "REF123")
+        assert not ok and "short" in err, (ok, err)
+    with mock.patch("odu_tracker.paystack._get", return_value={
+            "status": True, "data": {"status": "success", "amount": 150000,
+                                     "currency": "NGN",
+                                     "customer": {"email": "a@b.c"}}}):
+        ok, pinfo, err = paystack.verify(cfg, "REF123")
+        assert ok and pinfo["email"] == "a@b.c", (ok, err)
+
+    # reinstall path: another device's code fails, this device's works
+    cfg.set("app_license", None)
+    r = c.post("/api/applicense/activate", json={"code": "0000-0000-0000-0000"})
+    assert r.status_code == 400, r.get_json()
+    r = c.post("/api/applicense/activate",
+               json={"code": app_license.expected_code()})
+    j = r.get_json()
+    assert r.status_code == 200 and j["paid"] is True, j
+    assert app_license.is_paid(cfg) is True
+    print("base paywall         ok  (403 paid_required, verify, reinstall)")
+
+
 if __name__ == "__main__":
     test_extract_devices()
     test_parse_usage()
@@ -332,6 +413,7 @@ if __name__ == "__main__":
     seed_poller_pass()
     test_dns_parser()
     test_sites_flow()
+    test_base_paywall()
     test_web_api()
     test_default_deny()
     test_portal_arm_guards()

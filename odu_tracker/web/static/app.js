@@ -36,7 +36,12 @@ async function api(path, opts) {
   if (r.status === 401) { showAuth(); throw new Error("signed out"); }
   let body = null;
   try { body = await r.json(); } catch { /* no body */ }
-  if (!r.ok) throw Object.assign(new Error((body && body.error) || `HTTP ${r.status}`), {status: r.status, body});
+  if (!r.ok) {
+    // the ₦1,500 gate: any data route refusing with paid_required flips
+    // the UI back to the paywall (e.g. licence lost after a reinstall)
+    if (r.status === 403 && body && body.error === "paid_required") showPaywall();
+    throw Object.assign(new Error((body && body.error) || `HTTP ${r.status}`), {status: r.status, body});
+  }
   return body;
 }
 
@@ -506,11 +511,152 @@ const S = {
 
 /* ---------------------------------------------------------------- auth */
 function showAuth() {
+  if (!$("#payView").hidden) return;   // the paywall owns the screen until paid
   $("#authView").hidden = false;
   $("#mainView").hidden = true;
 }
 
 const SPLASH_MIN_MS = 1500;
+
+/* ------------------------------------------------------------- paywall
+   v1.5.0 — the ₦1,500 one-time unlock. Shown on FIRST load, before the
+   router-password login: slide-by-slide feature intro on the left, pay
+   button on the right (Paystack Inline), plus the reinstall path where a
+   saved licence code is re-entered. */
+let payInfo = null;          // last /api/applicense payload
+let payDeckTmr = null;
+
+function showPaywall() {
+  fadeSplash();
+  $("#noOduView").hidden = true;
+  $("#authView").hidden = true;
+  $("#mainView").hidden = true;
+  $("#payView").hidden = false;
+  startPayDeck();
+  loadPayInfo();
+}
+
+async function loadPayInfo() {
+  try {
+    const d = await api("/api/applicense");
+    payInfo = d;
+    $("#payDevCode").textContent = d.device_code || "…";
+    if (d.paid) renderPayDone(d);          // already unlocked: skip the ask
+  } catch (e) {
+    $("#payErr").textContent = "licensing service unreachable — retry shortly";
+  }
+}
+
+function startPayDeck() {
+  const slides = [...document.querySelectorAll("#payDeck .p-slide")];
+  const dots = [...document.querySelectorAll("#payDots button")];
+  if (!slides.length) return;
+  let i = 0;
+  const show = (n) => {
+    i = (n + slides.length) % slides.length;
+    slides.forEach((s, k) => s.classList.toggle("on", k === i));
+    dots.forEach((d, k) => d.classList.toggle("on", k === i));
+  };
+  document.getElementById("payDots").onclick = (e) => {
+    const b = e.target.closest("[data-go]");
+    if (b) { show(+b.dataset.go); restart(); }
+  };
+  if (payDeckTmr) clearInterval(payDeckTmr);
+  const restart = () => {
+    if (payDeckTmr) clearInterval(payDeckTmr);
+    payDeckTmr = setInterval(() => show(i + 1), 5500);
+  };
+  restart();
+}
+
+function renderPayDone(d) {
+  if (payDeckTmr) { clearInterval(payDeckTmr); payDeckTmr = null; }
+  $("#payStep").hidden = true;
+  $("#payDone").hidden = false;
+  $("#doneDevCode").textContent = (d && (d.unlock_code || d.device_code)) || "…";
+}
+
+function loadPaystack(cb) {
+  if (window.PaystackPop) return cb();
+  const s = document.createElement("script");
+  s.src = "https://js.paystack.co/v1/inline.js";
+  s.onload = cb;
+  s.onerror = () => { $("#payErr").textContent =
+    "cannot load Paystack — check your internet connection"; };
+  document.head.appendChild(s);
+}
+
+async function verifyPay(ref) {
+  const err = $("#payErr");
+  const btn = $("#payBtn");
+  err.textContent = "confirming your payment with Paystack…";
+  btn.disabled = true;
+  try {
+    const d = await api("/api/applicense/verify", {method: "POST",
+      body: JSON.stringify({reference: ref})});
+    toast("payment confirmed — welcome aboard");
+    renderPayDone(d);
+  } catch (e) {
+    err.textContent = (e && e.message) || "verification failed — try again";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$("#payBtn").onclick = () => {
+  const err = $("#payErr");
+  err.textContent = "";
+  const pk = payInfo && payInfo.paystack && payInfo.paystack.public_key;
+  if (!pk || pk.indexOf("REPLACE") !== -1) {
+    err.textContent = "payments are not configured on this build yet";
+    return;
+  }
+  const email = $("#payEmail").value.trim() || "customer@odutracker.app";
+  loadPaystack(() => {
+    const handler = window.PaystackPop.setup({
+      key: pk,
+      email: email,
+      amount: (payInfo && payInfo.price_kobo) || 150000,
+      currency: "NGN",
+      ref: "OT" + Date.now() + Math.floor(Math.random() * 9000 + 1000),
+      label: "ODU Tracker — lifetime unlock",
+      onSuccess: (res) => verifyPay(res.reference || res.trxref),
+      onClose: () => { err.textContent = ""; },
+    });
+    handler.openIframe();
+  });
+};
+
+$("#payActivate").onclick = async () => {
+  const err = $("#actErr");
+  err.textContent = "";
+  const btn = $("#payActivate");
+  const code = $("#payCode").value.trim();
+  if (!code) { err.textContent = "paste your licence code first"; return; }
+  btn.disabled = true; btn.textContent = "ACTIVATING…";
+  try {
+    const d = await api("/api/applicense/activate", {method: "POST",
+      body: JSON.stringify({code: code})});
+    toast("licence restored");
+    renderPayDone(d);
+  } catch (e) {
+    err.textContent = (e && e.message) || "that code did not work";
+  } finally {
+    btn.disabled = false; btn.textContent = "ACTIVATE";
+  }
+};
+
+function copyText(text, btn, label) {
+  const done = () => { const old = btn.textContent; btn.textContent = "COPIED";
+    setTimeout(() => { btn.textContent = old || label; }, 1400); };
+  if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done); return; }
+  const ta = document.createElement("textarea");
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  document.execCommand("copy"); ta.remove(); done();
+}
+$("#payCopy").onclick = () => copyText($("#payDevCode").textContent, $("#payCopy"));
+$("#doneCopy").onclick = () => copyText($("#doneDevCode").textContent, $("#doneCopy"), "COPY");
+$("#doneGo").onclick = () => { $("#payView").hidden = true; boot(); };
 
 async function boot() {
   initTheme();
@@ -570,6 +716,8 @@ $("#noOduRetry").onclick = async () => {
 };
 
 async function route(meta) {
+  if (!meta.paid) { showPaywall(); return; }      // pay first, always
+  $("#payView").hidden = true;
   if (!meta.reachable || !meta.odu) { showNoOdu(); return; }
   fadeSplash();
   if (meta.authed) { enterMain(); return; }

@@ -150,6 +150,13 @@ DEFAULTS = {
     "portal_port": 80,               # captive-portal claim page
     "portal_enforced": False,        # hijack only when the admin arms it
     "nickname": "",                # friendly name for this machine's owner, unused now
+    # v1.5.0 — the ₦1,500 base unlock (Paystack). The PUBLIC key ships in
+    # the app; never ship the secret key — point `paystack_verify_url` at
+    # tools/paystack-worker.js instead (see odu_tracker/paystack.py).
+    "paystack_public_key": "",
+    "paystack_secret_key": "",
+    "paystack_verify_url": "",
+    "paid_amount_kobo": 150000,     # ₦1,500
 }
 
 

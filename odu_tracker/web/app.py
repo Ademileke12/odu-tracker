@@ -21,6 +21,8 @@ from odu_tracker.router import OduRouter, RouterError, LoginLocked
 from odu_tracker.security import normalize_mac
 from odu_tracker import voucher
 from odu_tracker import license as voucher_license
+from odu_tracker import app_license
+from odu_tracker import paystack
 import os
 
 def _resolve_static_dir():
@@ -74,6 +76,13 @@ def create_app(cfg: Config, poller: Poller):
         def wrapper(*args, **kwargs):
             if not session.get("auth"):
                 return jsonify({"error": "auth_required"}), 401
+            if not app_license.is_paid(cfg):
+                # v1.5.0 — the ₦1,500 one-time unlock gates EVERY data
+                # route. Enforced here rather than in the UI so a patched
+                # frontend that skips the paywall still gets nothing.
+                body = app_license.status(cfg)
+                body["error"] = "paid_required"
+                return jsonify(body), 403
             return fn(*args, **kwargs)
         return wrapper
 
@@ -178,6 +187,8 @@ def create_app(cfg: Config, poller: Poller):
             "reachable": reachable,
             "odu": is_odu,
             "version": __import__("odu_tracker").__version__,
+            "paid": app_license.is_paid(cfg),
+            "price_label": app_license.PRICE_LABEL,
             **lock,
         })
 
@@ -811,6 +822,50 @@ def create_app(cfg: Config, poller: Poller):
                    (store.now(), "voucher_license", "info",
                     "voucher feature unlocked (paid code)"))
         return jsonify(voucher_license.status(cfg))
+
+    # ------------------------------------------------------- base licence
+    # v1.5.0 — the ₦1,500 one-time unlock for everything except vouchers.
+    # These three routes are PUBLIC on purpose: the paywall is the app's
+    # first screen, shown before the router-password login. Every other
+    # data route sits behind require_auth, which checks the same licence.
+    def _app_license_event(detail: str) -> None:
+        try:
+            store.exec("INSERT INTO events(ts, kind, level, detail) "
+                       "VALUES(?,?,?,?)",
+                       (store.now(), "app_license", "info", detail))
+        except Exception:
+            pass
+
+    @app.get("/api/applicense")
+    def app_license_status():
+        out = app_license.status(cfg)
+        out["paystack"] = paystack.configured(cfg)
+        return jsonify(out)
+
+    @app.post("/api/applicense/verify")
+    def app_license_verify():
+        """Paystack said 'success' in the popup — confirm it server-side
+        (status/amount/currency) before writing any licence."""
+        ref = str((request.json or {}).get("reference") or "")
+        ok, info, err = paystack.verify(cfg, ref)
+        if not ok:
+            return jsonify({"error": err,
+                            "paid": app_license.is_paid(cfg)}), 400
+        st = app_license.activate_from_payment(
+            cfg, reference=ref, email=str(info.get("email") or ""))
+        _app_license_event("base licence activated via Paystack "
+                           f"({ref}, ₦{int(info.get('amount') or 0) // 100})")
+        return jsonify(st)
+
+    @app.post("/api/applicense/activate")
+    def app_license_activate():
+        """Reinstall path: paste the device code you saved."""
+        code = str((request.json or {}).get("code") or "")
+        ok, err = app_license.activate(cfg, code)
+        if not ok:
+            return jsonify({"error": err}), 400
+        _app_license_event("base licence re-activated with a saved device code")
+        return jsonify(app_license.status(cfg))
 
     @app.get("/api/vouchers")
     @require_auth

@@ -156,11 +156,38 @@ jobs:
           path: out/
           if-no-files-found: error
 
+  # ---------------------------------------------------------------- macos
+  mac:
+    name: macOS .dmg (Apple Silicon)
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # electron 45 requires node >= 22.12
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build engine + .dmg (Apple Silicon, unsigned)
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt pyinstaller
+          ./tools/build_electron_mac.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ODU-Tracker-mac
+          path: dist/electron/*.dmg
+          if-no-files-found: error
+
   # ---------------------------------------------------------------- release
   release:
     name: Publish release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [android, linux, windows]
+    needs: [android, linux, windows, mac]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -177,8 +204,8 @@ jobs:
           # deb/apk (whose artifact names equal the asset names) can never be
           # copied out (cp refuses "cannot overwrite directory").
           mkdir -p rel
-          find in -type f \( -name "*.apk" -o -name "*.deb" -o -name "*.exe" \) \
-            -exec cp {} rel/ \;
+          find in -type f \( -name "*.apk" -o -name "*.deb" -o -name "*.exe" \
+            -o -name "*.dmg" \) -exec cp {} rel/ \;
           ls -la rel/
 
       - name: Create GitHub Release with all installers
@@ -193,7 +220,12 @@ jobs:
             | Windows | `ODU-Tracker-Setup.exe` | one-click installer, engine bundled |
             | Windows | `ODU-Tracker-Portable.exe` | no install needed |
             | Linux | `odu-tracker-amd64.deb` | `sudo dpkg -i odu-tracker-amd64.deb` |
+            | macOS | `ODU-Tracker-arm64.dmg` | Apple Silicon — open the dmg, drag to Applications |
             | Android | `ODU-Tracker.apk` | sideload, connect to ODU Wi-Fi |
+
+            **Licensing:** first launch asks for the one-time **₦1,500**
+            lifetime unlock (Paystack). Chromebooks: sideload the same APK
+            via `adb connect arc && adb install ODU-Tracker.apk`.
 
             Engine-only fallback (auto-used by the Electron shell when missing):
             `odu-tracker-engine-windows-x64.exe`.

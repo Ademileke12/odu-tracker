@@ -197,6 +197,49 @@ h2 {
 .tick-strip li { white-space: nowrap; }
 .tick-strip li::before { content: "✓ "; color: var(--ink); font-weight: 700; }
 
+/* ---------------------------------------------------------- feature deck */
+.slides { display: grid; }
+.slide {
+  grid-area: 1 / 1;
+  visibility: hidden; opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .5s ease, transform .5s ease;
+  pointer-events: none;
+}
+.slide.on {
+  visibility: visible; opacity: 1; transform: none; pointer-events: auto;
+}
+.slide h1 { margin: 0 0 18px; }
+.slide .lede { margin-bottom: 0; }
+.deck-nav {
+  display: flex; align-items: center; gap: 14px;
+  margin: 26px 0 24px;
+}
+.deck-arrow {
+  width: 40px; height: 40px; flex: none;
+  border: 1.5px solid var(--ink); border-radius: 10px;
+  background: var(--panel-2); color: var(--ink);
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform .12s, box-shadow .12s;
+}
+.deck-arrow:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.deck-arrow:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.deck-count {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  letter-spacing: .16em; color: var(--muted); min-width: 62px;
+}
+.deck-dots { display: flex; gap: 7px; }
+.deck-dots button {
+  width: 10px; height: 10px; padding: 0; border-radius: 50%;
+  border: 1.5px solid var(--ink); background: transparent;
+  cursor: pointer; transition: background .15s, transform .15s;
+}
+.deck-dots button.on { background: var(--accent); transform: scale(1.15); }
+@media (prefers-reduced-motion: reduce) {
+  .slide { transition: none; transform: none; }
+}
+
 /* ---------------------------------------------------------- hero visual */
 .hero-visual { position: relative; }
 .shot {
@@ -456,6 +499,11 @@ h2 {
   color: var(--muted); font-size: 14.5px; line-height: 1.75;
 }
 .vnote b { color: var(--ink); }
+.price {
+  display: block; margin-top: 14px;
+  font-family: var(--mono); font-size: 26px; font-weight: 800;
+  letter-spacing: .02em; color: var(--ink);
+}
 .vcta {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
   margin: 30px auto 0;

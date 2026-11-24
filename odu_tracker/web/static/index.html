@@ -96,6 +96,112 @@
   </div>
 </div>
 
+<!-- ======================================================= paywall -->
+<div id="payView" class="auth pay" hidden>
+  <aside class="auth-brand">
+    <div class="logo lg-hero">
+      <svg><use href="#i-logo"/></svg>
+      <div><div class="t">ODU <em>TRACKER</em></div><div class="st">MTN · Data · Devices</div></div>
+    </div>
+
+    <!-- slide-by-slide feature intro -->
+    <div class="pay-deck" id="payDeck">
+      <div class="p-slide on">
+        <h2>Every GB,<br><em>accounted for.</em></h2>
+        <p class="lede">Month total, down/up split, today's usage and hourly
+           charts — straight from your ODU's own counters. Nothing leaves
+           your machine.</p>
+      </div>
+      <div class="p-slide">
+        <h2>Every device<br><em>on the radar.</em></h2>
+        <p class="lede">Every phone, laptop and IoT gadget on your network with
+           name, IP, vendor and risk score. One tap to trust, soft-cut or
+           block it — pushed to the router.</p>
+      </div>
+      <div class="p-slide">
+        <h2>Danger gets<br><em>flagged.</em></h2>
+        <p class="lede">Alerts the second a new device joins, risk scoring for
+           randomised MACs and suspicious hostnames, plus on-demand speed
+           tests and per-device website timelines.</p>
+      </div>
+      <div class="p-slide">
+        <h2>Guests earn<br><em>their access.</em></h2>
+        <p class="lede">Arm the captive portal and new devices get no internet
+           until they claim a voucher — mint codes, cap the shared pool,
+           cut anyone off mid-stream.</p>
+      </div>
+    </div>
+    <div class="pay-dots" id="payDots">
+      <button class="on" data-go="0" aria-label="Slide 1"></button>
+      <button data-go="1" aria-label="Slide 2"></button>
+      <button data-go="2" aria-label="Slide 3"></button>
+      <button data-go="3" aria-label="Slide 4"></button>
+    </div>
+
+    <div class="tagline">One payment · one device · for life · local only</div>
+    <div class="credit" style="margin-top:18px">Created by <a href="mailto:srimpkoyonko@gmail.com"><b>anakincoco</b></a> · MTN ZLT X17U / W154R compatible</div>
+  </aside>
+
+  <div class="auth-form">
+    <div class="auth-card pay-card">
+      <!-- step 1: pay -->
+      <div id="payStep">
+        <svg style="width:26px;height:26px"><use href="#i-logo"/></svg>
+        <h1>Unlock ODU Tracker</h1>
+        <p class="sub">Everything except the Voucher add-on, forever, on this
+           device. No subscription, no renewals.</p>
+
+        <div class="pay-price">
+          <b>₦1,500</b><span>one-time</span>
+        </div>
+
+        <div class="field">
+          <label for="payEmail">Email for your Paystack receipt</label>
+          <input type="email" id="payEmail" placeholder="you@example.com"
+                 autocomplete="email">
+        </div>
+
+        <button class="btn primary block" id="payBtn">PAY ₦1,500 — UNLOCK FOR LIFE</button>
+        <div class="err" id="payErr"></div>
+
+        <details class="pay-already">
+          <summary>Already paid? Enter your saved licence code</summary>
+          <div class="field">
+            <label for="payCode">Licence code</label>
+            <input type="text" id="payCode" placeholder="XXXX-XXXX-XXXX-XXXX"
+                   autocapitalize="characters" autocomplete="off" spellcheck="false">
+          </div>
+          <button class="btn block" id="payActivate" type="button">ACTIVATE</button>
+          <div class="err" id="actErr"></div>
+        </details>
+
+        <div class="pay-device">
+          <span>This device's ID</span>
+          <b id="payDevCode">…</b>
+          <button type="button" id="payCopy" class="mini-btn">COPY</button>
+        </div>
+        <p class="pay-note">Save your <b>licence code</b> after paying — it
+           re-unlocks this app after a reinstall on this device, and it is
+           useless on any other device.</p>
+      </div>
+
+      <!-- step 2: confirmed -->
+      <div id="payDone" hidden>
+        <svg style="width:26px;height:26px"><use href="#i-logo"/></svg>
+        <h1>You're in 🎉</h1>
+        <p class="sub">Payment confirmed. Your licence is active on this
+           device — copy the code below and keep it safe.</p>
+        <div class="pay-device big">
+          <span>Device code</span>
+          <b id="doneDevCode">…</b>
+          <button type="button" id="doneCopy" class="mini-btn">COPY</button>
+        </div>
+        <button class="btn primary block" id="doneGo">START USING IT →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ============================================================ main -->
 <div id="mainView" hidden>
   <aside class="sidebar">

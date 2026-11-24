@@ -81,6 +81,53 @@ const io = new IntersectionObserver((entries) => {
 }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
 
+/* ------------------------------------------------ feature deck (hero) */
+(function deck() {
+  const root = document.getElementById('slides');
+  if (!root) return;
+  const slides = [...root.querySelectorAll('.slide')];
+  const dots = [...document.querySelectorAll('#deckDots button')];
+  const count = document.getElementById('deckCount');
+  const nav = document.querySelector('.deck-nav');
+  const copy = document.querySelector('.hero-copy');
+  const pad = (n) => String(n).padStart(2, '0');
+  let i = 0;
+  let timer = null;
+
+  function show(n, manual) {
+    i = (n + slides.length) % slides.length;
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    dots.forEach((d, k) => d.classList.toggle('on', k === i));
+    if (count) count.textContent = pad(i + 1) + ' / ' + pad(slides.length);
+    if (manual) restart();
+  }
+
+  function restart() {
+    if (timer) clearInterval(timer);
+    if (reduceMotion) return;          // no autoplay for reduced-motion users
+    timer = setInterval(() => show(i + 1), 6000);
+  }
+
+  nav?.addEventListener('click', (e) => {
+    const arrow = e.target.closest('.deck-arrow');
+    if (arrow) { show(i + (+arrow.dataset.dir), true); return; }
+    const dot = e.target.closest('[data-go]');
+    if (dot) show(+dot.dataset.go, true);
+  });
+  // pause while the reader is hovering or tabbing through the deck
+  copy?.addEventListener('mouseenter', () => timer && clearInterval(timer));
+  copy?.addEventListener('mouseleave', restart);
+  copy?.addEventListener('focusin', () => timer && clearInterval(timer));
+  copy?.addEventListener('focusout', restart);
+  nav?.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { show(i - 1, true); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { show(i + 1, true); e.preventDefault(); }
+  });
+
+  show(0);
+  restart();
+})();
+
 /* ------------------------------------------------ release data */
 const API = `https://api.github.com/repos/${REPO}/releases/latest`;
 const SIZES = new Map();

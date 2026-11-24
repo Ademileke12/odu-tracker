@@ -67,3 +67,24 @@ nsis:
 
 portable:
   artifactName: ODU-Tracker-Portable.exe
+
+# ---------------------------------------------------------------- macos
+# Apple Silicon (.dmg) — built on the macos-14 CI runner. Unsigned for
+# now (no Apple Developer account): macOS shows Gatekeeper's "cannot be
+# opened" on first launch — right-click → Open, or
+#   xattr -com.apple.quarantine -d ODU-Tracker.app
+# identity: null tells electron-builder to skip codesigning entirely
+# instead of failing when no certificate is available.
+mac:
+  icon: ../../assets/icon.png     # 1024px source, converted to .icns
+  category: public.app-category.utilities
+  identity: null
+  gatekeeperAssess: false
+  target:
+    - target: dmg
+      arch:
+        - arm64
+
+dmg:
+  # fixed name → stable .../releases/latest/download/ODU-Tracker-arm64.dmg
+  artifactName: ODU-Tracker-arm64.dmg

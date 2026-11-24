@@ -33,22 +33,23 @@
   <nav class="topnav">
     <a href="#features">Features</a>
     <a class="nw" href="#whatsnew">What's new <i class="nw-dot"></i></a>
+    <a href="#pricing">Pricing</a>
     <a href="#download">Download</a>
     <a href="#how">How it works</a>
     <a href="#support">Support</a>
     <a class="gh" href="https://github.com/Ademileke12/odu-tracker" target="_blank" rel="noopener">GitHub ↗</a>
   </nav>
-  <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.4.1</span></span>
+  <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.5.0</span></span>
   <button class="mode-btn" id="modeBtn" title="Toggle light / dark" aria-label="Toggle theme"><span id="modeIco">☾</span></button>
   <a class="topbar-cta" href="#download">Get the app</a>
 </header>
 
 <!-- ================================================ release announcement -->
-<div class="newsbar" id="newsbar" data-rel="v1.4.1">
+<div class="newsbar" id="newsbar" data-rel="v1.5.0">
   <a class="newsbar-in" href="#whatsnew">
     <span class="newsbar-tag">NEW</span>
-    <b>v1.4.1 update</b>
-    <span class="newsbar-txt">Default-deny guest Wi-Fi: new devices get no internet until they claim a voucher — plus a slimmer 4-tab phone app</span>
+    <b>v1.5.0 update</b>
+    <span class="newsbar-txt">₦1,500 one-time lifetime unlock with Paystack on first launch — plus a macOS Apple Silicon .dmg</span>
     <span class="newsbar-go">SEE WHAT'S NEW →</span>
   </a>
   <button class="newsbar-x" id="newsbarX" aria-label="Dismiss announcement">✕</button>
@@ -56,25 +57,85 @@
 
 <main id="top">
 
-  <!-- ================================================== hero -->
+  <!-- ================================================== hero: feature deck -->
   <section class="hero">
     <div class="hero-copy">
-      <p class="badge reveal"><i class="dot"></i>LOCAL-ONLY ODU MONITOR</p>
-      <h1 class="reveal">EVERY GB,<br><span class="hl">ACCOUNTED FOR.</span></h1>
-      <p class="lede reveal">
-        One installer for your <b>MTN Broadband 5G ODU</b>, month usage,
-        live speed, device radar, threat alerts and on-demand speed tests.
-        <b>Everything runs on your machine.</b>
-      </p>
+      <div class="slides reveal" id="slides" role="region" aria-label="What ODU Tracker does">
+        <article class="slide on">
+          <p class="badge"><i class="dot"></i>LOCAL-ONLY ODU MONITOR</p>
+          <h1>EVERY GB,<br><span class="hl">ACCOUNTED FOR.</span></h1>
+          <p class="lede">
+            One installer for your <b>MTN Broadband 5G ODU</b>, month usage,
+            live speed, device radar, threat alerts and on-demand speed tests.
+            <b>Everything runs on your machine.</b>
+          </p>
+        </article>
+
+        <article class="slide">
+          <p class="badge"><i class="dot"></i>DEVICE RADAR</p>
+          <h1>EVERY DEVICE,<br><span class="hl">ON THE RADAR.</span></h1>
+          <p class="lede">
+            Every phone, laptop and IoT gadget on your network — name, IP,
+            MAC, vendor and online state, live. Tap one to <b>trust it,
+            soft-cut it or block it</b>, pushed straight to the router.
+            From the phone in your hand.
+          </p>
+        </article>
+
+        <article class="slide">
+          <p class="badge"><i class="dot"></i>THREAT ENGINE</p>
+          <h1>DANGER GETS<br><span class="hl">FLAGGED.</span></h1>
+          <p class="lede">
+            New-device alerts the second someone joins, plus risk scoring for
+            <b>randomized MACs, unknown vendors and suspicious hostnames</b> —
+            low, medium or high, straight from the router's own tables.
+          </p>
+        </article>
+
+        <article class="slide">
+          <p class="badge"><i class="dot"></i>GUEST WI-FI GATE</p>
+          <h1>GUESTS EARN<br><span class="hl">THEIR ACCESS.</span></h1>
+          <p class="lede">
+            A device that just joins your Wi-Fi gets <b>nothing</b> — no DNS,
+            no web — until it claims a voucher on your captive-portal page.
+            Mint codes, cap the shared pool, cut a device off mid-stream.
+          </p>
+        </article>
+
+        <article class="slide">
+          <p class="badge"><i class="dot"></i>ONE-TIME · LIFETIME</p>
+          <h1>₦1,500.<br><span class="hl">THAT'S IT.</span></h1>
+          <p class="lede">
+            One payment unlocks the whole tracker on <b>one device, for life</b> —
+            usage, device radar, alerts, speed tests and the guest gate.
+            No subscription, no renewals. Your device code survives reinstalls.
+            <b>Vouchers stay a separate optional add-on.</b>
+          </p>
+        </article>
+      </div>
+
+      <div class="deck-nav reveal" aria-label="Feature slides">
+        <button class="deck-arrow" data-dir="-1" aria-label="Previous feature">←</button>
+        <span class="deck-count" id="deckCount">01 / 05</span>
+        <span class="deck-dots" id="deckDots">
+          <button class="on" data-go="0" aria-label="Slide 1"></button>
+          <button data-go="1" aria-label="Slide 2"></button>
+          <button data-go="2" aria-label="Slide 3"></button>
+          <button data-go="3" aria-label="Slide 4"></button>
+          <button data-go="4" aria-label="Slide 5"></button>
+        </span>
+        <button class="deck-arrow" data-dir="1" aria-label="Next feature">→</button>
+      </div>
+
       <div class="cta-row reveal">
-        <a class="btn btn-black" href="#download">⤓ GET ODU TRACKER <small>free</small></a>
+        <a class="btn btn-black" href="#download">⤓ GET THE APP <small>₦1,500 one-time</small></a>
         <a class="btn btn-white" href="#features">SEE THE FEATURES</a>
       </div>
       <ul class="tick-strip reveal">
-        <li>✓ 0 bytes to the cloud</li>
-        <li>✓ history in local SQLite</li>
-        <li>✓ password never leaves</li>
-        <li>✓ Windows · Linux · Android</li>
+        <li>one payment, yours for life</li>
+        <li>Windows · Linux · macOS · Android</li>
+        <li>0 bytes to the cloud</li>
+        <li>password never leaves</li>
       </ul>
     </div>
 
@@ -114,7 +175,7 @@
           </div>
         </div>
       </div>
-      <span class="sticker s1">FREE FOREVER</span>
+      <span class="sticker s1">₦1,500 FOR LIFE</span>
       <span class="sticker s2">NO CLOUD</span>
       <span class="sticker s3">60+ ROUTER CMDS</span>
     </div>
@@ -170,54 +231,56 @@
 
   <!-- ================================================== what's new -->
   <section id="whatsnew" class="section wn">
-    <p class="kicker reveal">// RELEASE NOTES · 30 OCT 2026 · UPDATED 23 NOV · v1.4.1</p>
-    <h2 class="reveal">NEW IN <span class="hl">v1.4.1</span></h2>
+    <p class="kicker reveal">// RELEASE NOTES · 24 NOV 2026 · v1.5.0</p>
+    <h2 class="reveal">NEW IN <span class="hl">v1.5.0</span></h2>
     <p class="section-sub reveal">
-      v1.4.1 hardens guest access. A device that just joins your Wi-Fi gets
-      <b>nothing</b> — no DNS, no web — until it claims a voucher code on your
-      captive-portal claim page. Vouchers stay a paid add-on from v1.4.0,
-      and the phone app gets leaner and easier to tap.
+      v1.5.0 is the paid release. First launch now opens with a slide-by-slide
+      intro of what the tracker does, then one <b>₦1,500 one-time</b> Paystack
+      payment unlocks the whole app for life on that device — usage, devices,
+      alerts, speed tests and enforcement. Vouchers stay a separate add-on, and
+      Mac owners finally get a native Apple Silicon build.
     </p>
 
     <div class="cards">
       <article class="card reveal">
-        <div class="card-ico">⛁</div>
+        <div class="card-ico">₦</div>
         <div class="wn-tag">NEW</div>
-        <h3>DEFAULT-DENY GUEST WI-FI</h3>
-        <p>New devices get zero internet until they claim a voucher. Unclaimed
-           phones sit on the portal page, so a leaked or shared code is the only
-           way onto your data.</p>
+        <h3>₦1,500 LIFETIME UNLOCK</h3>
+        <p>The first screen walks you through the features, then one Paystack
+           payment (card, transfer, USSD) unlocks everything except the voucher
+           add-on — forever, no subscription. Keep your licence code: it
+           re-unlocks the app after a reinstall on the same device.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">»</div>
+        <div class="card-ico">⌘</div>
         <div class="wn-tag">NEW</div>
-        <h3>ARMED FROM THE PC</h3>
-        <p>The DNS + portal stack runs in the desktop app on a machine on your
-           LAN. Phones can't bind those ports, so the app says so plainly instead
-           of silently black-holing your network.</p>
+        <h3>macOS .dmg (APPLE SILICON)</h3>
+        <p>A native Apple Silicon disk image joins the release row — same
+           bundled engine, no Python or Node needed. It's unsigned for now, so
+           right-click → Open on first launch (or clear the quarantine flag).</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">✓</div>
         <div class="wn-tag">NEW</div>
-        <h3>SAFER ARMING</h3>
-        <p>If the portal can't bind, nothing is saved: router DHCP DNS is never
-           moved, the toggle reverts, and you get a visible alert instead of a
-           half-configured network.</p>
+        <h3>CHROMEBOOK SUPPORT</h3>
+        <p>The same APK runs on ChromeOS through Linux + ADB debugging —
+           <code>adb connect arc</code>, then <code>adb install</code>. No
+           developer mode, nothing gets wiped; console stays phone-class.</p>
       </article>
       <article class="card reveal">
-        <div class="card-ico">¢</div>
-        <div class="wn-tag">FIXED</div>
-        <h3>PHONE: 4 TABS, FIT BUTTONS</h3>
-        <p>Vouchers moves to the desktop app, leaving Home, Devices, Alerts and
-           More on the phone. The Trust / Soft-cut / Block buttons now sit on
-           their own row instead of stretching the card.</p>
+        <div class="card-ico">»</div>
+        <div class="wn-tag">UPDATED</div>
+        <h3>NEW LANDING PAGE</h3>
+        <p>The homepage now opens with a slide-by-slide feature deck instead of
+           a static hero, adds a pricing section, and the download row links the
+           new Mac build next to Windows, Linux and Android.</p>
       </article>
     </div>
 
     <div class="wn-cta reveal">
-      <a class="btn btn-black" href="#download">⤓ GET v1.4.1 <small>free app</small></a>
-      <a class="btn btn-white" href="https://github.com/Ademileke12/odu-tracker/releases/tag/v1.4.1" target="_blank" rel="noopener">FULL RELEASE NOTES ↗</a>
-      <span class="wn-meta">5 files · Windows · Linux · Android, same version everywhere</span>
+      <a class="btn btn-black" href="#download">⤓ GET v1.5.0 <small>₦1,500 one-time</small></a>
+      <a class="btn btn-white" href="https://github.com/Ademileke12/odu-tracker/releases/tag/v1.5.0" target="_blank" rel="noopener">FULL RELEASE NOTES ↗</a>
+      <span class="wn-meta">6 files · Windows · Linux · macOS · Android, same version everywhere</span>
     </div>
   </section>
 
@@ -227,7 +290,7 @@
     <h2 class="reveal">ONE ENGINE, <span class="hl">EVERY</span> SCREEN</h2>
     <p class="section-sub reveal">
       The desktop dashboard and the phone app pull from the same engine, so usage,
-      devices and alerts agree everywhere. This is the real v1.4.1 interface,
+      devices and alerts agree everywhere. This is the real v1.5.0 interface,
       captured live, exactly how it pans out on a laptop and a Redmi-class phone.
     </p>
 
@@ -264,7 +327,8 @@
       From v1.4.0 the <b>Vouchers</b> feature — guest data codes, the shared SIM
       pool and the claim portal — is a paid feature. No payment forms, no
       accounts, no subscriptions: you chat with the author, pay directly, and
-      get a personal unlock code. Everything else in the app stays free.
+      get a personal unlock code. Everything else comes with the one-time
+      ₦1,500 lifetime unlock.
       From v1.4.1 it lives in the <b>desktop app</b> (Windows &amp; Linux) — the
       phone app keeps the lean 4-tab console and the fleet controls.
     </p>
@@ -301,6 +365,44 @@
     </div>
   </section>
 
+  <!-- ================================================== pricing -->
+  <section id="pricing" class="section">
+    <p class="kicker reveal">// PRICING · PAY ONCE, INSIDE THE APP</p>
+    <h2 class="reveal">ONE PRICE, <span class="hl">FOR LIFE</span></h2>
+    <p class="section-sub reveal">
+      <b>₦1,500 once</b> — no subscription, no renewals, no monthly charge.
+      Pay right on the app's first screen with Paystack (card, bank transfer,
+      USSD), get a device code, keep it forever.
+    </p>
+
+    <div class="cards">
+      <article class="card reveal">
+        <div class="card-ico">₦</div>
+        <div class="wn-tag">ONE-TIME</div>
+        <h3>THE WHOLE TRACKER</h3>
+        <p>Usage charts, device radar with block / soft-cut / trust, threat
+           alerts, on-demand speed tests, the guest Wi-Fi gate — Windows,
+           Linux, macOS, Android and Chromebook. Bound to <b>one device</b>;
+           your code re-activates it after a reinstall.</p>
+        <b class="price">₦1,500</b>
+      </article>
+      <article class="card reveal">
+        <div class="card-ico">🎟</div>
+        <div class="wn-tag">OPTIONAL</div>
+        <h3>VOUCHERS ADD-ON</h3>
+        <p>Guest data codes, the shared SIM pool, per-code quotas and the
+           claim portal stay a <b>separate</b> paid unlock, sold directly by
+           the author. Buy it only if you hand Wi-Fi to guests.</p>
+        <b class="price">extra</b>
+      </article>
+    </div>
+
+    <p class="section-sub reveal" style="text-align:center">
+      Paid already on this device? Your saved device code unlocks the app
+      again after a reinstall — same device, same code, no second payment.
+    </p>
+  </section>
+
   <!-- ================================================== download -->
   <section id="download" class="section">
     <p class="kicker reveal">// DIRECT FROM GITHUB</p>
@@ -329,6 +431,19 @@
         <code class="dl-cmd">sudo dpkg -i odu-tracker-amd64.deb</code>
       </article>
 
+      <article class="dl-card reveal" data-os="mac">
+        <header><span class="dl-ico">MAC</span><div><h3>macOS</h3><small>Apple Silicon (M1–M4)</small></div></header>
+        <p class="dl-file">YOU GET <b>ODU-Tracker-arm64.dmg</b></p>
+        <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker-arm64.dmg"
+           href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-arm64.dmg">
+          ⤓ DOWNLOAD .DMG <span class="dl-size" data-asset="ODU-Tracker-arm64.dmg"></span>
+        </a>
+        <p class="dl-alt">open the dmg, drag <b>ODU Tracker</b> to Applications.
+           Unsigned build: <b>right-click → Open</b> the first time (or run
+           <code>xattr -com.apple.quarantine -d "/Applications/ODU Tracker.app"</code>).
+           Intel Macs: no build yet.</p>
+      </article>
+
       <article class="dl-card reveal" data-os="android">
         <header><span class="dl-ico">AND</span><div><h3>Android</h3><small>7.0+ · phone &amp; tablet</small></div></header>
         <p class="dl-file">YOU GET <b>ODU-Tracker.apk</b></p>
@@ -337,6 +452,11 @@
           ⤓ DOWNLOAD APK <span class="dl-size" data-asset="ODU-Tracker.apk"></span>
         </a>
         <p class="dl-alt">sideload it, allow your browser to “install unknown apps”</p>
+        <p class="dl-alt"><b>Chromebook?</b> the same APK runs on ChromeOS — turn
+           on <b>Settings → Developers → Linux + ADB debugging</b>, then
+           <code>adb connect arc</code> and <code>adb install ODU-Tracker.apk</code>
+           (no developer mode, nothing gets wiped). Console only; enforcement
+           stays on a PC.</p>
         <details class="dl-help">
           <summary>REDMI / MIUI WON'T INSTALL? OPEN THIS</summary>
           <ol>
@@ -359,12 +479,13 @@
       Directed at GitHub anyway? Open <a href="https://github.com/Ademileke12/odu-tracker/releases" target="_blank" rel="noopener">Releases</a>
       → <b>Assets</b> and grab exactly
       <b>ODU-Tracker-Setup.exe</b> (Windows) · <b>odu-tracker-amd64.deb</b> (Linux) ·
-      <b>ODU-Tracker.apk</b> (Android).
+      <b>ODU-Tracker-arm64.dmg</b> (macOS) · <b>ODU-Tracker.apk</b> (Android).
       <b>Never the “Source code (zip)” files</b>, those are just the source, not the app.
     </p>
     <p class="dl-note dl-fallback" id="dlFallback" hidden>
       ⚠ <b>No release is live yet.</b> The buttons above now lead to the
-      <a href="https://github.com/Ademileke12/odu-tracker/releases" target="_blank" rel="noopener">Releases page</a>       download <b>ODU-Tracker-Setup.exe</b> (Windows), <b>odu-tracker-amd64.deb</b> (Linux) or
+      <a href="https://github.com/Ademileke12/odu-tracker/releases" target="_blank" rel="noopener">Releases page</a>       download <b>ODU-Tracker-Setup.exe</b> (Windows), <b>odu-tracker-amd64.deb</b> (Linux),
+      <b>ODU-Tracker-arm64.dmg</b> (macOS) or
       <b>ODU-Tracker.apk</b> (Android) from there.
     </p>
   </section>
@@ -395,7 +516,7 @@
   <section id="support" class="section support">
     <p class="kicker reveal">// OPTIONAL</p>
     <h2 class="reveal">WANT TO SUPPORT THE DEVELOPER?</h2>
-    <p class="section-sub reveal">The app stays free. If it helped, send a donation.</p>
+    <p class="section-sub reveal">₦1,500 once unlocks the app for life — if it helped you anyway, a tip is welcome.</p>
     <div class="support-card reveal">
       <span class="support-badge">SEND DONATIONS TO</span>
       <p class="support-acct" id="supportAcct">9018873250</p>
@@ -417,7 +538,7 @@
         <circle cx="24" cy="26" r="3" fill="#0a0a0a"/>
       </svg>
       ODU<b>TRACKER</b>
-      <span class="verchip small"><i class="dot"></i><span class="footer-ver">v1.4.1</span></span>
+      <span class="verchip small"><i class="dot"></i><span class="footer-ver">v1.5.0</span></span>
     </div>
     <p>Created by <b>anakincoco</b> · <a href="mailto:srimpkoyonko@gmail.com">srimpkoyonko@gmail.com</a></p>
     <p class="footer-links">

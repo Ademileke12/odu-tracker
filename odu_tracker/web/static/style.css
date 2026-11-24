@@ -139,6 +139,54 @@ body{
   border:1px solid var(--line);padding:7px 12px;border-radius:99px;
 }
 .attempt-chip.warn{color:var(--warn);border-color:rgba(255,176,32,.4)}
+
+/* ---------- paywall (v1.5.0 · ₦1,500 one-time unlock) ---------- */
+.pay-deck{display:grid;margin-top:34px}
+.p-slide{
+  grid-area:1/1;visibility:hidden;opacity:0;transform:translateY(10px);
+  transition:opacity .5s ease,transform .5s ease;
+}
+.p-slide.on{visibility:visible;opacity:1;transform:none}
+.p-slide h2{font-family:var(--font-d);font-size:2rem;font-weight:700;line-height:1.2;margin:0 0 12px;max-width:430px}
+.p-slide h2 em{color:var(--accent);font-style:normal}
+.p-slide .lede{color:var(--muted);font-size:.98rem;max-width:440px;margin:0}
+.pay-dots{display:flex;gap:8px;margin-top:20px}
+.pay-dots button{
+  width:10px;height:10px;padding:0;border-radius:50%;cursor:pointer;
+  border:1px solid var(--line2);background:var(--panel3);transition:.15s;
+}
+.pay-dots button.on{background:var(--accent);border-color:var(--accent);transform:scale(1.15)}
+.pay-price{
+  display:flex;align-items:baseline;gap:10px;margin:6px 0 18px;
+  padding:14px 16px;border:1px solid var(--line);border-radius:14px;
+  background:var(--panel2);
+}
+.pay-price b{font-family:var(--font-d);font-size:2.1rem;font-weight:700;line-height:1}
+.pay-price span{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:1.4px;font-weight:700}
+.pay-already{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.pay-already summary{cursor:pointer;color:var(--muted);font-size:.85rem;user-select:none}
+.pay-already .field{margin-top:12px}
+.pay-device{
+  display:flex;align-items:center;gap:10px;margin-top:16px;padding:11px 13px;
+  background:var(--panel3);border:1px solid var(--line);border-radius:12px;
+  font-family:var(--mono);font-size:.92rem;letter-spacing:.5px;
+}
+.pay-device span{color:var(--faint);font-size:.68rem;text-transform:uppercase;letter-spacing:1px;font-family:var(--font-d);font-weight:700}
+.pay-device b{flex:1;letter-spacing:1.5px}
+.pay-device.big{flex-direction:column;align-items:flex-start;gap:7px;padding:16px;margin:18px 0}
+.pay-device.big b{font-size:1.15rem}
+.mini-btn{
+  background:var(--panel);border:1px solid var(--line2);color:var(--text);
+  border-radius:8px;padding:6px 11px;font-size:.7rem;font-weight:700;
+  letter-spacing:1px;cursor:pointer;
+}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pay-note{color:var(--faint);font-size:.76rem;margin-top:10px;line-height:1.65}
+@media(max-width:900px){
+  .auth.pay{grid-template-columns:1fr}
+  .auth.pay .auth-brand{display:flex;min-height:auto;border-right:none;border-bottom:1px solid var(--line);padding:34px 24px 28px}
+  .auth.pay .pay-deck{margin-top:24px}
+}
 @media(max-width:900px){
   .auth{grid-template-columns:1fr}
   .auth-brand{display:none}
