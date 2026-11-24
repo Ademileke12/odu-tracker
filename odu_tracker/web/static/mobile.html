@@ -376,6 +376,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
            placeholder="email for your receipt (optional)">
     <button class="btn" id="payBtn">PAY ₦1,500 — UNLOCK</button>
     <div id="payErr"></div>
+    <button class="btn" id="payVerify" hidden>I'VE PAID — VERIFY MY PAYMENT</button>
 
     <details class="palready">
       <summary>Already paid? Enter your licence code</summary>
@@ -646,6 +647,8 @@ $('#updRetry').addEventListener('click', async () => {
    ₦1,500 one-time unlock: slide-by-slide intro + Paystack Inline, shown
    on FIRST load before the router-password login. */
 let payInfo = null, payDeckTmr = null;
+let payPendingRef = null;   // reference of the checkout we opened
+let payDone = false;        // a verify already succeeded for it
 
 function showPay() {
   if ($('#upd').style.display === 'flex') return;   // update gate outranks
@@ -704,7 +707,11 @@ function loadPaystack(cb) {
   document.head.appendChild(s);
 }
 
-async function verifyPay(ref) {
+async function verifyPay(ref, quiet) {
+  if (!ref) {
+    $('#payErr').textContent = 'missing payment reference — tap “I\'VE PAID” to retry';
+    return;
+  }
   const err = $('#payErr'), btn = $('#payBtn');
   err.textContent = 'confirming your payment with Paystack…';
   btn.disabled = true;
@@ -712,9 +719,16 @@ async function verifyPay(ref) {
     const d = await api('/api/applicense/verify', { method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reference: ref }) });
+    payDone = true;
     renderPayDone(d);
   } catch (e) {
-    err.textContent = (e && e.message) || 'verification failed — try again';
+    const msg = (e && e.message) || 'verification failed — try again';
+    // a bank transfer may still be settling when the popup closed: the
+    // quiet path (auto-retry from onClose) gets a gentle hint instead of
+    // a scary error — the charge might just need a few more seconds
+    err.textContent = (quiet && /ongoing|not confirmed|failed|not found/i.test(msg))
+      ? 'not confirmed yet — if your transfer went through, wait a few seconds and tap “I\'VE PAID”'
+      : msg;
   } finally { btn.disabled = false; }
 }
 
@@ -728,18 +742,32 @@ $('#payBtn').addEventListener('click', () => {
   }
   const email = $('#payEmail').value.trim() || 'customer@odutracker.app';
   loadPaystack(() => {
+    // one reference generated HERE, before the popup opens: whatever the
+    // popup reports (or fails to report) we can always verify this one
+    const ref = 'OT' + Date.now() + Math.floor(Math.random() * 9000 + 1000);
+    payPendingRef = ref;
+    payDone = false;
+    $('#payVerify').hidden = false;
     const handler = window.PaystackPop.setup({
       key: pk,
       email: email,
       amount: (payInfo && payInfo.price_kobo) || 150000,
       currency: 'NGN',
-      ref: 'OT' + Date.now() + Math.floor(Math.random() * 9000 + 1000),
+      ref: ref,
       label: 'ODU Tracker — lifetime unlock',
-      onSuccess: (r) => verifyPay(r.reference || r.trxref),
-      onClose: () => { err.textContent = ''; },
+      onSuccess: (r) => verifyPay((r && (r.reference || r.trxref)) || ref),
+      // bank transfers often settle exactly as the popup closes — check
+      // our pending reference anyway; harmless if the charge never happened
+      onClose: () => { if (!payDone && payPendingRef) verifyPay(payPendingRef, true); },
     });
     handler.openIframe();
   });
+});
+
+// manual escape hatch: "I've paid, why no code?" — re-verify the last ref
+$('#payVerify').addEventListener('click', () => {
+  if (payPendingRef) verifyPay(payPendingRef);
+  else $('#payErr').textContent = 'no payment found yet — tap PAY first';
 });
 
 $('#payActivate').addEventListener('click', async () => {
