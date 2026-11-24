@@ -15,7 +15,7 @@ name: build
 
 on:
   push:
-    branches: [main, master]
+    branches: [master]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -238,3 +238,22 @@ jobs:
           fail_on_unmatched_files: true
           draft: false
           prerelease: false
+
+  # ------------------------------------------------- legacy switch branch
+  # Pre-v1.5.0 installs (the whole v1.4.x era) baked in a switch URL that
+  # points at the `main` branch — which didn't exist, so their fetch 404'd
+  # and remote policy (voucher kill-switch, min_version) never reached any
+  # install in the field. Keep `main` fast-forwarded to master so that
+  # legacy channel actually works. `main` was removed from the `on.push`
+  # branch list above so this sync never triggers a full build run.
+  sync-main:
+    name: Sync legacy main branch
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fast-forward main to master
+        run: git push origin master:main
