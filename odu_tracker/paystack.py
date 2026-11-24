@@ -39,6 +39,12 @@ DIRECT_BASE = "https://api.paystack.co"
 # popup on test cards). Swap for the pk_live_... key before selling for
 # real, or override at runtime with the `paystack_public_key` config key.
 DEFAULT_PUBLIC_KEY = "pk_test_632321e234398026f1e8b4ace852c17fde34b9fc"
+# Paystack TEST secret key — shipped ONLY in this pre-sale test release so
+# verification runs end-to-end on test cards (a test secret cannot move
+# real money). Before the live release: DELETE this default and point
+# `paystack_verify_url` at tools/paystack-worker.js instead — a live
+# secret must never ship inside a download everyone gets.
+DEFAULT_TEST_SECRET_KEY = "sk_test_6df7a6a248c187c355f2bf5a66e3d7175becfc26"
 USER_AGENT = "odu-tracker-pay/1.0"
 
 _REF_RE = re.compile(r"^[A-Za-z0-9._-]{3,64}$")
@@ -57,8 +63,9 @@ def verify_url(cfg) -> str:
 
 
 def secret_key(cfg) -> str:
-    return str(cfg.get("paystack_secret_key")
-               or os.environ.get("PAYSTACK_SECRET_KEY") or "").strip()
+    return (str(cfg.get("paystack_secret_key")
+                or os.environ.get("PAYSTACK_SECRET_KEY")
+                or DEFAULT_TEST_SECRET_KEY).strip())
 
 
 def configured(cfg) -> dict:
