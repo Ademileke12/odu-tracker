@@ -35,9 +35,10 @@ import urllib.request
 from odu_tracker.app_license import PRICE_KOBO
 
 DIRECT_BASE = "https://api.paystack.co"
-# Placeholder — replace with your live public key (Dashboard → Settings →
-# API Keys & Webhooks) before you ship, or set `paystack_public_key`.
-DEFAULT_PUBLIC_KEY = "pk_live_REPLACE_WITH_YOUR_KEY"
+# Paystack TEST public key — safe to ship (it can only open the checkout
+# popup on test cards). Swap for the pk_live_... key before selling for
+# real, or override at runtime with the `paystack_public_key` config key.
+DEFAULT_PUBLIC_KEY = "pk_test_632321e234398026f1e8b4ace852c17fde34b9fc"
 USER_AGENT = "odu-tracker-pay/1.0"
 
 _REF_RE = re.compile(r"^[A-Za-z0-9._-]{3,64}$")
