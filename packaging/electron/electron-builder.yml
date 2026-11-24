@@ -69,7 +69,8 @@ portable:
   artifactName: ODU-Tracker-Portable.exe
 
 # ---------------------------------------------------------------- macos
-# Apple Silicon (.dmg) — built on the macos-14 CI runner. Unsigned for
+# Apple Silicon (.dmg) — built on the macos-15 CI runner (macos-14 was
+# retired by GitHub on 2026-11-02). Unsigned for
 # now (no Apple Developer account): macOS shows Gatekeeper's "cannot be
 # opened" on first launch — right-click → Open, or
 #   xattr -com.apple.quarantine -d ODU-Tracker.app

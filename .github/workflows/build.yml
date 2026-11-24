@@ -159,7 +159,10 @@ jobs:
   # ---------------------------------------------------------------- macos
   mac:
     name: macOS .dmg (Apple Silicon)
-    runs-on: macos-14
+    # macos-14 images were retired by GitHub on 2026-11-02 (jobs using
+    # that label are killed ~1s in, which cancelled every run today);
+    # macos-15 is the current Apple Silicon label.
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

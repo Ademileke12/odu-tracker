@@ -7,7 +7,7 @@
 # Output:  dist/electron/ODU-Tracker-arm64.dmg
 #
 # MUST run on macOS (arm64): PyInstaller cannot cross-compile, so this is
-# what CI's macos-14 runner executes. The .app is NOT code-signed (no
+# what CI's macos-15 runner executes. The .app is NOT code-signed (no
 # Apple Developer certificate yet) — users right-click → Open on first
 # launch, or run:
 #   xattr -com.apple.quarantine -d "/Applications/ODU Tracker.app"
