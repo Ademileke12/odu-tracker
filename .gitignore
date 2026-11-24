@@ -22,3 +22,6 @@ spa_raw/
 
 # editor-local
 .vscode/
+
+# local notes - never commit
+UNLOCK-VOUCHERS-HOW-TO.txt
