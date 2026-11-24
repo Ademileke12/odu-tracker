@@ -33,6 +33,7 @@
   <nav class="topnav">
     <a href="#features">Features</a>
     <a class="nw" href="#whatsnew">What's new <i class="nw-dot"></i></a>
+    <a href="updates.html">Updates</a>
     <a href="#pricing">Pricing</a>
     <a href="#download">Download</a>
     <a href="#how">How it works</a>
@@ -41,7 +42,7 @@
   </nav>
   <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.5.0</span></span>
   <button class="mode-btn" id="modeBtn" title="Toggle light / dark" aria-label="Toggle theme"><span id="modeIco">☾</span></button>
-  <a class="topbar-cta" href="#download">Get the app</a>
+  <a class="topbar-cta" href="updates.html">Updates</a>
 </header>
 
 <!-- ================================================ release announcement -->
@@ -129,7 +130,7 @@
       </div>
 
       <div class="cta-row reveal">
-        <a class="btn btn-black" href="#download">⤓ GET THE APP <small>₦1,500 one-time</small></a>
+        <a class="btn btn-black" href="updates.html">UPDATES · WHAT'S NEW →</a>
         <a class="btn btn-white" href="#features">SEE THE FEATURES</a>
       </div>
       <ul class="tick-strip reveal">
@@ -280,8 +281,7 @@
     </div>
 
     <div class="wn-cta reveal">
-      <a class="btn btn-black" href="#download">⤓ GET v1.5.0 <small>₦1,500 one-time</small></a>
-      <a class="btn btn-white" href="https://github.com/Ademileke12/odu-tracker/releases/tag/v1.5.0" target="_blank" rel="noopener">FULL RELEASE NOTES ↗</a>
+      <a class="btn btn-black" href="updates.html">SEE ALL UPDATES →</a>
       <span class="wn-meta">6 files · Windows · Linux · macOS · Android, same version everywhere</span>
     </div>
   </section>
@@ -391,54 +391,50 @@
     </p>
   </section>
 
-  <!-- ================================================== download -->
+  <!-- ================================================== download (paused) -->
   <section id="download" class="section">
-    <p class="kicker reveal">// DIRECT FROM GITHUB</p>
-    <h2 class="reveal">PICK YOUR PLATFORM</h2>
-    <p class="section-sub reveal">Every button serves the newest CI-built file from GitHub Releases, no mirrors, no trackers.</p>
+    <p class="kicker reveal">// DOWNLOADS · PAUSED UNTIL LAUNCH</p>
+    <h2 class="reveal">PAYMENTS FIRST, <span class="hl">THEN DOWNLOADS</span></h2>
+    <p class="section-sub reveal">The installers are switched off on this page while
+      the in-app <b>₦1,500 unlock</b> goes live. Nothing to grab yet — follow the
+      rollout on the <a href="updates.html"><b>Updates page</b></a> instead.</p>
+
+    <div class="upd-pause reveal">
+      <b>⏸ DOWNLOADS ARE PAUSED</b>
+      <span>Every build is signed off and CI-green (v1.5.0 · Windows · Linux ·
+        macOS · Android), but the buttons stay dark until payments open.
+        When they flip on, this section comes back with direct installers —
+        one <b>₦1,500</b> payment inside the app unlocks everything.</span>
+      <a class="btn btn-black" href="updates.html">TRACK THE ROLLOUT →</a>
+    </div>
 
     <div class="dl-grid">
       <article class="dl-card reveal" data-os="windows">
         <header><span class="dl-ico">WIN</span><div><h3>Windows</h3><small>10 / 11 · 64-bit</small></div></header>
         <p class="dl-file">YOU GET <b>ODU-Tracker-Setup.exe</b></p>
-        <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker-Setup.exe"
-           href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-Setup.exe">
-          ⤓ INSTALLER <span class="dl-size" data-asset="ODU-Tracker-Setup.exe"></span>
-        </a>
-        <a class="dl-alt" data-asset="ODU-Tracker-Portable.exe"
-           href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-Portable.exe">or the portable exe, no install ↗</a>
+        <span class="btn btn-block dl-off" aria-disabled="true">⏸ DOWNLOADS PAUSED</span>
+        <p class="dl-alt">installer + portable exe, engine bundled — no Python needed</p>
       </article>
 
       <article class="dl-card reveal" data-os="linux">
         <header><span class="dl-ico">LNX</span><div><h3>Linux</h3><small>Debian / Ubuntu / Mint</small></div></header>
         <p class="dl-file">YOU GET <b>odu-tracker-amd64.deb</b></p>
-        <a class="btn btn-black btn-block dl-link" data-asset="odu-tracker-amd64.deb"
-           href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/odu-tracker-amd64.deb">
-          ⤓ .DEB PACKAGE <span class="dl-size" data-asset="odu-tracker-amd64.deb"></span>
-        </a>
-        <code class="dl-cmd">sudo dpkg -i odu-tracker-amd64.deb</code>
+        <span class="btn btn-block dl-off" aria-disabled="true">⏸ DOWNLOADS PAUSED</span>
+        <p class="dl-alt"><code>sudo dpkg -i odu-tracker-amd64.deb</code></p>
       </article>
 
       <article class="dl-card reveal" data-os="mac">
         <header><span class="dl-ico">MAC</span><div><h3>macOS</h3><small>Apple Silicon (M1–M4)</small></div></header>
         <p class="dl-file">YOU GET <b>ODU-Tracker-arm64.dmg</b></p>
-        <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker-arm64.dmg"
-           href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-arm64.dmg">
-          ⤓ DOWNLOAD .DMG <span class="dl-size" data-asset="ODU-Tracker-arm64.dmg"></span>
-        </a>
-        <p class="dl-alt">open the dmg, drag <b>ODU Tracker</b> to Applications.
-           Unsigned build: <b>right-click → Open</b> the first time (or run
-           <code>xattr -com.apple.quarantine -d "/Applications/ODU Tracker.app"</code>).
-           Intel Macs: no build yet.</p>
+        <span class="btn btn-block dl-off" aria-disabled="true">⏸ DOWNLOADS PAUSED</span>
+        <p class="dl-alt">drag <b>ODU Tracker</b> to Applications; unsigned builds need
+           <b>right-click → Open</b> the first time. Intel Macs: no build yet.</p>
       </article>
 
       <article class="dl-card reveal" data-os="android">
         <header><span class="dl-ico">AND</span><div><h3>Android</h3><small>7.0+ · phone &amp; tablet</small></div></header>
         <p class="dl-file">YOU GET <b>ODU-Tracker.apk</b></p>
-        <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker.apk"
-           href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker.apk">
-          ⤓ DOWNLOAD APK <span class="dl-size" data-asset="ODU-Tracker.apk"></span>
-        </a>
+        <span class="btn btn-block dl-off" aria-disabled="true">⏸ DOWNLOADS PAUSED</span>
         <p class="dl-alt">sideload it, allow your browser to “install unknown apps”</p>
         <p class="dl-alt"><b>Chromebook?</b> the same APK runs on ChromeOS — turn
            on <b>Settings → Developers → Linux + ADB debugging</b>, then
@@ -449,8 +445,8 @@
           <summary>REDMI / MIUI WON'T INSTALL? OPEN THIS</summary>
           <ol>
             <li><b>"Error while parsing package"</b> almost always means the download was cut
-                short, not a bad file. The real APK is the size shown on the button, so if
-                your file is smaller, delete it and redownload.</li>
+                short, not a bad file. If your file is smaller than the size shown when
+                downloads reopen, delete it and redownload.</li>
             <li>After downloading, open the APK from the <b>Files app</b> on the phone;
                 the browser's own install prompt can leave a half file behind.</li>
             <li>Allow <b>Settings → Apps → Manage apps → Files → Install unknown apps</b>
@@ -462,19 +458,10 @@
       </article>
     </div>
     <p class="dl-note reveal">
-      <b>⤓ Every button here is a direct download</b>, your browser saves the installer
-      straight from GitHub's servers, no landing page in between.
-      Directed at GitHub anyway? Open <a href="https://github.com/Ademileke12/odu-tracker/releases" target="_blank" rel="noopener">Releases</a>
-      → <b>Assets</b> and grab exactly
-      <b>ODU-Tracker-Setup.exe</b> (Windows) · <b>odu-tracker-amd64.deb</b> (Linux) ·
-      <b>ODU-Tracker-arm64.dmg</b> (macOS) · <b>ODU-Tracker.apk</b> (Android).
-      <b>Never the “Source code (zip)” files</b>, those are just the source, not the app.
-    </p>
-    <p class="dl-note dl-fallback" id="dlFallback" hidden>
-      ⚠ <b>No release is live yet.</b> The buttons above now lead to the
-      <a href="https://github.com/Ademileke12/odu-tracker/releases" target="_blank" rel="noopener">Releases page</a>       download <b>ODU-Tracker-Setup.exe</b> (Windows), <b>odu-tracker-amd64.deb</b> (Linux),
-      <b>ODU-Tracker-arm64.dmg</b> (macOS) or
-      <b>ODU-Tracker.apk</b> (Android) from there.
+      When downloads reopen, <b>every button here is a direct download</b> — the
+      browser saves the installer straight from GitHub's servers, no mirrors, no
+      trackers. <b>Never the “Source code (zip)” files</b>, those are just the
+      source, not the app.
     </p>
   </section>
 
@@ -530,6 +517,7 @@
     </div>
     <p>Created by <b>anakincoco</b> · <a href="mailto:srimpkoyonko@gmail.com">srimpkoyonko@gmail.com</a></p>
     <p class="footer-links">
+      <a href="updates.html">Updates</a> ·
       <a href="https://github.com/Ademileke12/odu-tracker" target="_blank" rel="noopener">Source &amp; releases</a> ·
       <a href="https://github.com/Ademileke12/odu-tracker/issues" target="_blank" rel="noopener">Report an issue</a>
     </p>
