@@ -44,7 +44,7 @@ echo "== checking buildozer/cython"
 "$PY" -c "import Cython" 2>/dev/null || "$PY" -m pip install cython
 
 if ! command -v keytool >/dev/null 2>&1; then
-  echo "ERROR: keytool not found — install a JDK (17+) first." >&2
+  echo "ERROR: keytool not found - install a JDK (17+) first." >&2
   exit 1
 fi
 

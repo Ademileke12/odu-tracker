@@ -9,23 +9,23 @@ Vue SPA) and turns it into a real monitoring tool:
 
 | Feature | Source |
 |---|---|
-| 📊 **Data-usage stats** — month total/↓/↑, today, hourly charts, plan meter | `cmd 337` flow counters (MB → GB) |
-| 📶 **Live throughput** — current + 10 min + 1 h **average speed** derived from router counters (zero data cost) | counter deltas per poll |
-| 🚀 **Speed test** — on-demand internet speed test (down/up/ping) with history + averages, size-selectable to protect your data plan | Cloudflare speed endpoints |
-| 📱 **Connected devices** — name, IP, MAC, vendor, WiFi/LAN, online state | `cmd 223` DHCP list (+ `208`/`3`) |
-| 🆕 **New-device detection** — first-seen alerting with history | SQLite presence tracking |
-| 🚨 **Dangerous devices** — live risk scoring (unknown vendor, random MAC, flagged hostname, previously blocked…) | heuristic engine |
-| 🔒 **Block/unblock a device** — pushes to the router MAC filter | `cmd 23` + `cmd 20` |
-| 🌐 **Websites** — optional local DNS logging proxy (per-device browsing timeline) + router URL block list | `cmd 26` + local DNS proxy |
+| 📊 **Data-usage stats** - month total/↓/↑, today, hourly charts, plan meter | `cmd 337` flow counters (MB → GB) |
+| 📶 **Live throughput** - current + 10 min + 1 h **average speed** derived from router counters (zero data cost) | counter deltas per poll |
+| 🚀 **Speed test** - on-demand internet speed test (down/up/ping) with history + averages, size-selectable to protect your data plan | Cloudflare speed endpoints |
+| 📱 **Connected devices** - name, IP, MAC, vendor, WiFi/LAN, online state | `cmd 223` DHCP list (+ `208`/`3`) |
+| 🆕 **New-device detection** - first-seen alerting with history | SQLite presence tracking |
+| 🚨 **Dangerous devices** - live risk scoring (unknown vendor, random MAC, flagged hostname, previously blocked…) | heuristic engine |
+| 🔒 **Block/unblock a device** - pushes to the router MAC filter | `cmd 23` + `cmd 20` |
+| 🌐 **Websites** - optional local DNS logging proxy (per-device browsing timeline) + router URL block list | `cmd 26` + local DNS proxy |
 | 🔋 **Battery / signal / network status** (the ODU has an internal battery) | `cmd 113`/`cmd 1005`/`cmd 218` |
-| 🕓 **Event + alert history** — joins, leaves, IP changes, block actions | full local timeline |
+| 🕓 **Event + alert history** - joins, leaves, IP changes, block actions | full local timeline |
 
 Everything is stored **locally** (SQLite). The admin password never leaves your device.
 
 ## 🌍 Website & downloads
 
 `site/` is a game-style landing page (neon racing HUD, live release data,
-direct download buttons). Deploy on Vercel with **Root Directory = `site`** —
+direct download buttons). Deploy on Vercel with **Root Directory = `site`** -
 see `site/README.md`. The buttons point at stable
 `releases/latest/download/…` URLs, and `.github/workflows/build.yml` fills
 those assets automatically (Windows installer + portable, Linux .deb,
@@ -35,11 +35,11 @@ Everything is stored **locally** (SQLite). The admin password never leaves your 
 
 ---
 
-## ⚠️ Read first — login attempts
+## ⚠️ Read first - login attempts
 
 The firmware only allows **3 wrong login attempts** before locking the
 web login for ~26 hours. `run.py` and the dashboard always use *one* clean
-attempt with the password you type — do **not** repeatedly test wrong passwords.
+attempt with the password you type - do **not** repeatedly test wrong passwords.
 
 ---
 
@@ -107,21 +107,21 @@ start "" http://localhost:8770
 
 Tabs:
 
-* **Dashboard** — usage totals + today + plan meter, signal (`5G(NSA)`,
+* **Dashboard** - usage totals + today + plan meter, signal (`5G(NSA)`,
   RSRP, operator), live link throughput, ODU health (uptime/CPU/firmware),
   WAN/SSID info, online-device cards, recent activity feed.
-* **Devices** — every device ever seen: status dot, name, IP, MAC, vendor,
+* **Devices** - every device ever seen: status dot, name, IP, MAC, vendor,
   interface, age, **risk badge with reasons**, trust/block buttons.
-* **Traffic** — hourly bar chart (24 h), live throughput + **average speeds**
+* **Traffic** - hourly bar chart (24 h), live throughput + **average speeds**
   (from router counters, costs no data), **speed test runner** with
   down/up/ping results, history and averages, usage breakdown.
-* **Websites** — per-device browsing timeline via the DNS proxy, URL block
+* **Websites** - per-device browsing timeline via the DNS proxy, URL block
   list from the router, top browsing clients.
-* **Alerts** — security + activity alerts (new/join/leave/IP change/danger).
-* **Settings** — change stored password, run the DNS proxy, inspect raw
+* **Alerts** - security + activity alerts (new/join/leave/IP change/danger).
+* **Settings** - change stored password, run the DNS proxy, inspect raw
   router JSON (`fast` / `slow` / `url_filter`).
 
-## "Visited websites" — how it works
+## "Visited websites" - how it works
 
 Router firmware does **not** expose a browsing history; that is normal for
 this hardware class. Two sources instead:
@@ -177,14 +177,14 @@ odu-tracker/
 
 ## Troubleshooting
 
-* *Dashboard login says wrong password* — the password is what you use at
+* *Dashboard login says wrong password* - the password is what you use at
   `http://192.168.0.1`. Remember: 1 failed try = 1 of 3 attempts consumed.
-* *Login locked* — wait the lockout (~26 h) or reboot the ODU (often clears it).
-* *No devices appear* — Settings → ensure `router_ip` matches your gateway;
+* *Login locked* - wait the lockout (~26 h) or reboot the ODU (often clears it).
+* *No devices appear* - Settings → ensure `router_ip` matches your gateway;
   some builds expose the device list only under `home_info` (auto-handled).
-* *Usage chart empty* — flows need a few minutes of sampling to build deltas.
+* *Usage chart empty* - flows need a few minutes of sampling to build deltas.
 
-## What's new — UI v3
+## What's new - UI v3
 
 - **Persistent sign-in**: the dashboard session survives refreshes and reboots
   (30-day cookie, "Keep me signed in" on the login screen).
@@ -194,9 +194,9 @@ odu-tracker/
 - **Charts your way**: usage and throughput cards have Bar / Line / Area /
   Donut switchers (each choice is remembered per browser).
 - **Per-device data ranking**: ranked by DNS lookups through the app
-  (this firmware exposes no per-device byte counters — a router-provided
+  (this firmware exposes no per-device byte counters - a router-provided
   byte field appears automatically if the ODU starts filling it).
-- **Real "visited websites"**: Settings → Website log — one click
+- **Real "visited websites"**: Settings → Website log - one click
   *Connect router DNS → this PC* re-programs the ODU's DHCP-DNS (cmd 3 POST)
   to hand out this app's IP. While the captive portal is armed, both DNS
   servers are this PC (a public secondary such as 8.8.8.8 lets a cut device
@@ -210,10 +210,10 @@ odu-tracker/
 - DNS proxy hardened: per-query worker threads, all record types forwarded
   (only A/AAAA logged), reverse/local zones filtered.
 
-## Dedicated desktop apps (Electron — Linux .deb & Windows installer)
+## Dedicated desktop apps (Electron - Linux .deb & Windows installer)
 
 A true install-and-use desktop app: the .deb / .exe bundles the Electron
-window shell **and** the frozen Python engine — no Python or Node needed on
+window shell **and** the frozen Python engine - no Python or Node needed on
 the target machine.
 
 ```bash
@@ -246,7 +246,7 @@ Packaged builds:
 The frozen app opens its own window (pywebview → Edge/Chrome "--app" profile →
 browser fallback), logs to ~/.local/share/odu-tracker/odu-tracker.log, and
 auto-bumps the port if 8770 is busy. Run EITHER the packaged app OR the
-console server (`run.py serve`) — not both at once, so the router isn't
+console server (`run.py serve`) - not both at once, so the router isn't
 polled twice.
 
 ## Co-existence with the router admin page (http://192.168.0.1)
@@ -254,15 +254,15 @@ polled twice.
 - The tracker talks to the same login API the vendor UI uses, with its own
   session; it never changes the admin password unless you explicitly ask.
 - The dashboard Website-log feature points the router's **DHCP-DNS** at this
-  PC — that only re-routes client DNS, not the admin panel, which is opened
+  PC - that only re-routes client DNS, not the admin panel, which is opened
   by IP and stays fully reachable while this app runs. With the portal
   disarmed, DNS falls back to 8.8.8.8 when this PC is offline, so the LAN
-  never goes blind. With the portal armed there is no public fallback —
+  never goes blind. With the portal armed there is no public fallback -
   that fallback was a hole in the soft cut.
 - Usage tracking is read-only (cmd 337 counters); a full statistics-reset
   only happens when you press Reset in this app or clear it in the admin UI.
 - The router's wrong-attempt counter is precious: the app stores your
-  password locally and silently re-logs in as needed — never type a wrong
+  password locally and silently re-logs in as needed - never type a wrong
   password anywhere.
 
 ## Installers (packaged app)
@@ -274,7 +274,7 @@ polled twice.
     odu-tracker                              # or the "ODU Tracker" menu icon
 
 **Any distro (portable)**: `dist/odu-tracker-1.1.0-linux-portable.tar.gz`
-— unpack anywhere, run `START`.
+- unpack anywhere, run `START`.
 
 **Windows**: two paths, both on the Windows PC:
 
@@ -288,16 +288,16 @@ polled twice.
    desktop shortcut + optional start-on-login).
 
 **Android APK** (dedicated full-screen phone app, same engine embedded):
-see `android_app/README.md` — `tools/build_android.sh` locally, or
+see `android_app/README.md` - `tools/build_android.sh` locally, or
 `.github/workflows/android-apk.yml` to build a signed APK in CI on every
 push. Sideload onto any Android 7+ phone, connect to the ODU Wi-Fi, done.
 
 ## 🔓 One-time unlock (₦1,500 · Paystack)
 
-From **v1.5.0** the whole app — usage, devices, alerts, speed tests,
-enforcement **and the Vouchers tab** — is behind **one ₦1,500 lifetime
+From **v1.5.0** the whole app - usage, devices, alerts, speed tests,
+enforcement **and the Vouchers tab** - is behind **one ₦1,500 lifetime
 payment**, collected on the app's first screen with **Paystack Inline**
-— card, bank transfer or USSD. There is no grandfathering: installs from
+- card, bank transfer or USSD. There is no grandfathering: installs from
 before v1.5.0 hit the same paywall on their next start.
 
 * First load shows the feature slide deck, a pay button, and this device's
@@ -307,17 +307,17 @@ before v1.5.0 hit the same paywall on their next start.
   the customer copies it after paying and re-enters it to re-unlock after a
   reinstall on the same device. It validates on no other machine, and the
   unlock code is never exposed before payment.
-* Every data route answers `403 paid_required` until then — enforced in
+* Every data route answers `403 paid_required` until then - enforced in
   `require_auth`, not just in the UI. **The Vouchers tab is included**:
   `require_license` passes as soon as the base licence is active (codes
   sold before v1.5.0 keep working too).
 * Force-update gate: `site/voucher-switch.json` carries an optional
-  `min_version` — when it's above the running version, `/api/meta`
+  `min_version` - when it's above the running version, `/api/meta`
   reports `update.required` and both UIs show a full-screen
   **UPDATE REQUIRED** screen (download + check-again) *before* the
   paywall. Set it to push field installs onto a newer build; leave it
   `""` to never force. Note: installs older than v1.5.0 predate this
-  field — the only lever on those is the voucher `disabled` switch (and
+  field - the only lever on those is the voucher `disabled` switch (and
   their baked URL pointed at a dead `main` branch until v1.5.0, so even
   that never reached them).
 * Keys: ship only the **public** key (`paystack_public_key`). For
@@ -329,7 +329,7 @@ before v1.5.0 hit the same paywall on their next start.
 ## 🔐 Paid Voucher feature (access codes)
 
 The **Vouchers tab** (data codes, shared SIM pool, captive-portal gating)
-is **included in the ₦1,500 base unlock from v1.5.0** — one payment opens
+is **included in the ₦1,500 base unlock from v1.5.0** - one payment opens
 every tab. The historical flow below still applies to **unlock codes sold
 before v1.5.0** (they keep working on their device); new buyers just pay
 in-app.
@@ -341,13 +341,13 @@ in-app.
       python3 tools/make_unlock_code.py ODU-4F2A-91C3-7B60
 
 * The code is verified **offline** (HMAC, no server) and unlocks **that
-  one device only** — it can't be shared, reused on another phone/PC, or
+  one device only** - it can't be shared, reused on another phone/PC, or
   carried over by copying the app's data files. It does survive
   reinstalling the app on the same device.
 * Installs that already used vouchers keep access automatically
   (grandfathered, bound to their device).
 * **Remote kill-switch**: `site/voucher-switch.json` (deployed with the
-  site) can pause the feature everywhere or ban specific device codes —
+  site) can pause the feature everywhere or ban specific device codes -
   even on installs already in the field. Flip it by editing the file and
   pushing; apps re-check at boot + every 30 min and remember the last
   known policy while offline:
@@ -364,4 +364,4 @@ speaks the ZLT handshake. Not connected → "Connect to ODU WiFi / Ethernet"
 screen (auto-rechecks every 4 s, plus a manual retry). Only when the ODU is
 found do you get the sign-in / dashboard. Splash and page footer credit:
 
-> Created by **anakincoco** — contact: srimpkoyonko@gmail.com
+> Created by **anakincoco** - contact: srimpkoyonko@gmail.com

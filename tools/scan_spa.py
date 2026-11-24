@@ -189,7 +189,7 @@ def main() -> int:
             for f in sorted(dev):
                 print(f"   -> {f}")
         else:
-            print("   (none found — supports 'no per-device counter' hypothesis)")
+            print("   (none found - supports 'no per-device counter' hypothesis)")
     else:
         print("USAGE/ACCOUNTING FIELDS: none referenced in SPA")
 
@@ -199,7 +199,7 @@ def main() -> int:
         for f in sorted(features):
             print(f"   {f}")
     else:
-        print("FEATURE KEYWORDS: none — no voucher/portal/quota UI in this firmware")
+        print("FEATURE KEYWORDS: none - no voucher/portal/quota UI in this firmware")
 
     print("\n" + "=" * 66)
     print("INTERPRETATION")

@@ -7,7 +7,7 @@
 # portal all run as your normal user, so without this the proxy reports
 # "cannot bind UDP 53" in the Enforcement card instead of serving.
 #
-# Two options — run ONE of them:
+# Two options - run ONE of them:
 #
 #   A) Recommended: raise the unprivileged port floor to 53 (covers :53 and
 #      :80 for every process, survives venv/python rebuilds):

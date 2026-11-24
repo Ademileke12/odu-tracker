@@ -1,6 +1,6 @@
 /* Public beacon: page views + download clicks. Called by script.js.
  * Body: { e: 'view' } or { e: 'click', a: '<asset name>' }
- * Counters only — no cookies, no raw IPs (only a salted hash bucket),
+ * Counters only - no cookies, no raw IPs (only a salted hash bucket),
  * so this stays lightweight and privacy-sane.
  */
 'use strict';

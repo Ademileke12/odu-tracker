@@ -69,7 +69,7 @@ def parse_usage(resp: dict):
     cmd 337 gives monthly counters in MB:
         mon_download_flow  (total DL this month, MB)
         dl_mon_flow / ul_mon_flow
-        limitSize + flow_limit_unit (unit: '1'=GB) — plan quota
+        limitSize + flow_limit_unit (unit: '1'=GB) - plan quota
     """
     data = resp.get("data") if isinstance(resp, dict) and isinstance(resp.get("data"), dict) else resp
     if not isinstance(data, dict):
@@ -90,7 +90,7 @@ def parse_usage(resp: dict):
     except (TypeError, ValueError):
         total = None
     return {
-        # NB: `used` is ALWAYS GB (MB/1024 above) — never label it with the
+        # NB: `used` is ALWAYS GB (MB/1024 above) - never label it with the
         # plan's unit. The plan keeps its own unit for the meter display.
         "used": used,
         "unit": "GB",
@@ -246,7 +246,7 @@ class Poller:
         product decision 2026-10-29): it keeps its Wi-Fi association and every
         lookup lands on the voucher claim page, so the holder can redeem a new
         code by themselves within seconds. The router kick (cmd 278) was
-        retired from this path — verified live it DEAUTHENTICATES the client
+        retired from this path - verified live it DEAUTHENTICATES the client
         completely (the phone could not even rejoin the SSID), which destroyed
         the self-service recovery loop. cmd 278 remains available for the
         manual Devices-tab block only.
@@ -269,7 +269,7 @@ class Poller:
                 # No enforcement possible without the hijack path: say so
                 # loudly instead of silently letting the device keep browsing.
                 store.add_alert("danger", "Device used its data",
-                                f"{mac} reached its voucher quota — captive "
+                                f"{mac} reached its voucher quota - captive "
                                 "portal not armed, so it still has internet. "
                                 "Arm it in the Vouchers tab to hold it at the "
                                 "claim page.")
@@ -286,7 +286,7 @@ class Poller:
           * portal_enforced armed by the admin,
           * claim page running,
           * DNS proxy running without error,
-          * router DHCP DNS handing out this machine — otherwise the hijack
+          * router DHCP DNS handing out this machine - otherwise the hijack
             reaches nobody and the device would roam free.
         """
         try:
@@ -332,7 +332,7 @@ class Poller:
 
         Verified live incident 2026-10-30: the ODU reverts its cmd-3 DNS
         fields to the defaults on reboot, so the hijack silently reached
-        zero devices while `portal_enforced` stayed true — every exhausted
+        zero devices while `portal_enforced` stayed true - every exhausted
         device roamed free. The admin only ever clicks "point DNS at this
         app" once; a router reboot must not undo enforcement forever after.
         So while the portal is armed, drift is repaired automatically,
@@ -359,7 +359,7 @@ class Poller:
         """Set DHCP DNS (cmd 3), keeping every other field the router reported.
 
         No-op when the router already has this pair. While the portal is
-        armed both servers must be this machine — a public vice DNS is an
+        armed both servers must be this machine - a public vice DNS is an
         open bypass of the soft cut.
         """
         if self.router is None:
@@ -403,12 +403,12 @@ class Poller:
                 "info" if ok else "danger",
                 "Router DNS self-healed" if ok else "Router DNS self-heal FAILED",
                 f"router DNS had drifted or still advertised a public "
-                f"resolver — both servers now {me} (ok={ok})")
+                f"resolver - both servers now {me} (ok={ok})")
         except Exception:
             traceback.print_exc()
 
     def _my_lan_ip(self) -> str:
-        """This machine's LAN IP towards the router (UDP connect — no packets)."""
+        """This machine's LAN IP towards the router (UDP connect - no packets)."""
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
@@ -422,8 +422,8 @@ class Poller:
     def _lift_soft_denies(self):
         """Portal just armed -> self-service recovery must work NOW: lift the
         cmd 278 deny of every device that isn't manually blocked (Devices
-        tab). gate_deny has only two callers — the exhaustion path and the
-        manual block — so "denied minus manual" is exactly ours to lift; entries
+        tab). gate_deny has only two callers - the exhaustion path and the
+        manual block - so "denied minus manual" is exactly ours to lift; entries
         written from the vendor UI are left untouched when they match a manual
         block, otherwise they are re-admitted too (the admin just armed the
         portal: holding MACs off the SSID has no recovery path left).
@@ -474,7 +474,7 @@ class Poller:
     def _track_rate(self, ts, usage):
         """Derive average link Mbps from cumulative counter deltas.
 
-        usage['used'] is GB (see parse_usage) — convert to MB, delta/dt * 8
+        usage['used'] is GB (see parse_usage) - convert to MB, delta/dt * 8
         gives Mbps averaged over the poll interval. Zero extra data cost.
         """
         mb_now = (usage["used"] or 0) * 1024.0

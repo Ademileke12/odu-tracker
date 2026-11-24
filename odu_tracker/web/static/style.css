@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ODU TRACKER — design v3
+   ODU TRACKER - design v3
    Fonts: Plus Jakarta Sans (UI) · Space Grotesk (display) · JetBrains Mono
    Themes: full light + dark, switchable
    ========================================================================== */
@@ -300,7 +300,7 @@ chart-switch{display:flex;gap:4px;background:var(--panel2);border:1px solid var(
 .seg button.active{background:var(--panel3);color:var(--accent);box-shadow:0 1px 0 var(--line) inset}
 .chartbox{position:relative;min-height:180px}
 .chartbox svg{width:100%;display:block;overflow:visible}
-/* hover readout card — pinned next to the cursor (position:fixed) */
+/* hover readout card - pinned next to the cursor (position:fixed) */
 .chart-tip{
   position:fixed;pointer-events:none;background:var(--panel3);color:var(--text);
   border:1px solid var(--line2);border-left:3px solid var(--accent);

@@ -33,7 +33,7 @@ def build(onefile=False):
     try:
         import PyInstaller  # noqa: F401
     except ImportError:
-        print("pyinstaller missing — run:  pip install pyinstaller")
+        print("pyinstaller missing - run:  pip install pyinstaller")
         return False
     args = [
         sys.executable, "-m", "PyInstaller",
@@ -64,7 +64,7 @@ def build(onefile=False):
 def make_deb(deb_dir):
     """Assemble a Debian package containing the onedir bundle."""
     if not (os.path.isdir(BINSRC) and os.path.isfile(BUNDLE)):
-        print("bundle missing — build first")
+        print("bundle missing - build first")
         return None
     pkg = f"{APP_NAME}_{APP_VER}_all"
     root = os.path.join(deb_dir, pkg)

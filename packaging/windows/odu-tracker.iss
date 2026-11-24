@@ -1,4 +1,4 @@
-; ODU Tracker — Inno Setup script (Windows installer)
+; ODU Tracker - Inno Setup script (Windows installer)
 ; Build: ISCC.exe packaging\windows\odu-tracker.iss  (or build_windows.bat)
 
 #define MyAppName "ODU Tracker"

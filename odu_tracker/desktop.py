@@ -1,4 +1,4 @@
-"""Desktop window for the dashboard — Linux & Windows.
+"""Desktop window for the dashboard - Linux & Windows.
 
 Preference order:
   1. pywebview (if installed)   -> true native web view window
@@ -57,7 +57,7 @@ def open_window(url, title="ODU Tracker"):
     """Blocking when a native webview is available; non-blocking app window
     otherwise. Returns the mode used: 'webview' | 'chromium' | 'browser'."""
     try:
-        import webview                      # pywebview — best experience
+        import webview                      # pywebview - best experience
     except ImportError:
         webview = None
     if webview is not None:

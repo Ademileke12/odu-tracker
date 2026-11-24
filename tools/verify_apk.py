@@ -19,7 +19,7 @@ Verifies, with only unzip-grade tooling (zipfile + readelf):
          p_align 0x1000 are informational, not failures.
   3. Signing:
        - v2 APK signing block present (magic "APK Sig Block 42")
-       - v1 JAR signature files present (META-INF/CERT.SF + *.RSA) —
+       - v1 JAR signature files present (META-INF/CERT.SF + *.RSA) -
          some OEM "install unknown apps" impls silently refuse v2-only APKs
          with a bare "App not installed"
   4. App payload (assets/private.tar):
@@ -62,7 +62,7 @@ def elf_segments(path):
         if t[0] == "LOAD" and len(t) >= 8:
             loads.append((int(t[1], 16), int(t[2], 16), int(t[5], 16), int(t[-1], 16)))
         elif t[0] == "GNU_RELRO" and len(t) >= 7:
-            # GNU_RELRO off vaddr paddr filesz memsz flags align… — memsz is t[5]
+            # GNU_RELRO off vaddr paddr filesz memsz flags align… - memsz is t[5]
             relros.append((int(t[1], 16), int(t[2], 16), int(t[5], 16)))
     return loads, relros
 
@@ -73,7 +73,7 @@ def audit_elf(libpath, relname, problems):
         if fh.read(4) != b"\x7fELF":
             # p4a's libpybundle.so is a gzip data blob (python code bundle),
             # never mapped as ELF; the loader ignores it. Informational only.
-            print(f"    {relname}: not an ELF (data blob, e.g. p4a pybundle) — informational")
+            print(f"    {relname}: not an ELF (data blob, e.g. p4a pybundle) - informational")
             return False, "not-ELF(data-blob)"
 
     loads, relros = elf_segments(libpath)
@@ -89,12 +89,12 @@ def audit_elf(libpath, relname, problems):
                 # Google's 16 KB requirement governs 64-bit ABIs only;
                 # 32-bit libs (armeabi-v7a/x86) at 0x1000 are compliant.
                 print(
-                    f"    {relname}: LOAD p_align {al:#x} — 32-bit ABI, "
+                    f"    {relname}: LOAD p_align {al:#x} - 32-bit ABI, "
                     "exempt from 16 KB rule (informational)"
                 )
         if va % al != off % al:
             print(
-                f"    {relname}: LOAD incongruent — va {va:#x} vs off {off:#x} (align {al:#x})"
+                f"    {relname}: LOAD incongruent - va {va:#x} vs off {off:#x} (align {al:#x})"
             )
             problems.append(f"{relname}: PT_LOAD incongruent (va {va:#x} off {off:#x})")
             bad = True
@@ -105,13 +105,13 @@ def audit_elf(libpath, relname, problems):
             (ld for ld in loads if ld[1] <= rva and end <= ld[1] + ld[2]), None
         )
         if container is None:
-            continue  # RELRO not inside any LOAD — exotic; leave to loader validity
+            continue  # RELRO not inside any LOAD - exotic; leave to loader validity
         end_of_load = container[1] + container[2]
         shares = end < end_of_load
         if shares and end % PAGE != 0:
             if not is_64:
                 print(
-                    f"    {relname}: RELRO end {end:#x} (32-bit ABI exempt) — informational"
+                    f"    {relname}: RELRO end {end:#x} (32-bit ABI exempt) - informational"
                 )
                 continue
             print(
@@ -189,7 +189,7 @@ def main() -> int:
         if signed_v2:
             print("signing: v2 APK signing block present ✔")
         else:
-            problems.append("v2 APK signing block MISSING — installs are refused on Android 7+")
+            problems.append("v2 APK signing block MISSING - installs are refused on Android 7+")
         v1_files = [
             n
             for n in names
@@ -199,7 +199,7 @@ def main() -> int:
             print(f"signing: v1 JAR signature present ({', '.join(sorted(v1_files))}) ✔")
         else:
             problems.append(
-                "v1 JAR signature MISSING (no META-INF/CERT.*) — "
+                "v1 JAR signature MISSING (no META-INF/CERT.*) - "
                 "some OEM installers silently refuse v2-only APKs with 'App not installed'"
             )
 
@@ -210,7 +210,7 @@ def main() -> int:
         try:
             priv = z.read("assets/private.tar")
         except KeyError:
-            problems.append("assets/private.tar missing — no app code packaged")
+            problems.append("assets/private.tar missing - no app code packaged")
         else:
             with tarfile.open(fileobj=io.BytesIO(priv)) as tf:
                 members = set(tf.getnames())
@@ -241,7 +241,7 @@ def main() -> int:
                     return struct.unpack(">II", data[16:24])
 
                 # Brand assets: the old 256px presplash was upscaled to the
-                # whole display ("large logo, not scaled") — keep it big.
+                # whole display ("large logo, not scaled") - keep it big.
                 for member, need in (
                     ("android_app/assets/presplash.png", 1000),
                     ("android_app/assets/icon.png", 1000),
@@ -252,7 +252,7 @@ def main() -> int:
                     size = png_size(member)
                     if size is None or size[0] < need or size[1] < need:
                         problems.append(
-                            f"{member} is {size} — must be >= {need}px "
+                            f"{member} is {size} - must be >= {need}px "
                             "(blurry upscaled launch screen otherwise)"
                         )
                     else:
@@ -260,11 +260,11 @@ def main() -> int:
 
     print()
     if problems:
-        print(f"verify_apk: FAIL — {len(problems)} problem(s):")
+        print(f"verify_apk: FAIL - {len(problems)} problem(s):")
         for p in problems:
             print(f"   ✗ {p}")
         return 1
-    print("verify_apk: PASS — APK passes all structural, ELF-alignment and signature checks")
+    print("verify_apk: PASS - APK passes all structural, ELF-alignment and signature checks")
     return 0
 
 

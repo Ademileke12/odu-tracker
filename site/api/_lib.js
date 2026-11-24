@@ -1,9 +1,9 @@
 /* Shared helpers for the ODU Tracker stats API (Vercel serverless).
  *
- * Data store : Upstash Redis (free tier) via its REST API — plain fetch,
+ * Data store : Upstash Redis (free tier) via its REST API - plain fetch,
  *              zero npm dependencies, works on any Vercel Node runtime.
  * Auth       : PBKDF2-SHA256 (100k iters) over an ADMIN_PASSWORD_HASH env
- *              var — the plaintext password never exists in code or config.
+ *              var - the plaintext password never exists in code or config.
  *              Sessions are HMAC-signed expiring tokens in an HttpOnly,
  *              SameSite=Strict cookie; every comparison is constant-time.
  * Abuse      : login attempts are rate-limited per client IP in Redis.

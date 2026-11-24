@@ -1,11 +1,11 @@
-# ODU Tracker — dedicated Electron desktop app
+# ODU Tracker - dedicated Electron desktop app
 
 A real desktop app users install once and just use. The `.deb` (Linux) and
 `.exe` installers (Windows) bundle **both** pieces:
 
-* the **Electron shell** (this folder) — window, icon, taskbar, single
+* the **Electron shell** (this folder) - window, icon, taskbar, single
   instance, cookie-persistent sign-in
-* the **frozen Python engine** (`odu_tracker.headless` via PyInstaller) —
+* the **frozen Python engine** (`odu_tracker.headless` via PyInstaller) -
   the actual tracker: poller, SQLite, Flask dashboard, waitressing on
   `127.0.0.1:<port>`
 
@@ -17,7 +17,7 @@ Electron window ──▶ loadURL http://127.0.0.1:<port>/
         └──▶ resources/odu-tracker-server/  (PyInstaller engine, bundled)
 ```
 
-## Build — Linux (.deb), done for you in this repo
+## Build - Linux (.deb), done for you in this repo
 
 ```bash
 ./tools/build_electron.sh
@@ -29,7 +29,7 @@ Outputs land in `dist/electron/`. `.github/workflows/linux-deb.yml` builds
 the same artifact automatically on every push (attach .deb to GitHub
 releases).
 
-## Build — Windows (NSIS installer + portable exe)
+## Build - Windows (NSIS installer + portable exe)
 
 Run on the **Windows machine** (PyInstaller can't cross-compile from Linux):
 
@@ -48,7 +48,7 @@ packaging\windows\build-electron.bat
 * engine logs: `%TMP%/odu-tracker-electron.log` (stdout/stderr captured)
 * single-instance: launching a second copy focuses the running window
 * same per-user data dir as every other ODU Tracker build (Linux
-  `~/.local/share/odu-tracker`, Windows `%APPDATA%\OduTracker`) — settings
+  `~/.local/share/odu-tracker`, Windows `%APPDATA%\OduTracker`) - settings
   and history are shared with the Python-only builds
 * links out (e.g. the router admin page) open in the system browser
 * engine crash → up to 3 automatic restarts, then an error dialog
@@ -61,4 +61,4 @@ packaging\windows\build-electron.bat
 | `loading.html` | pre-connect start screen |
 | `electron-builder.yml` | deb / NSIS / portable packaging config |
 | `build/icon.png` `build/icon.ico` | app icons (from `assets/`) |
-| `resources/odu-tracker-server/` | staged engine (created by the build scripts, git-ignored — do **not** edit) |
+| `resources/odu-tracker-server/` | staged engine (created by the build scripts, git-ignored - do **not** edit) |

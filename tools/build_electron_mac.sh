@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the ODU Tracker desktop app for macOS — Apple Silicon (.dmg).
+# Build the ODU Tracker desktop app for macOS - Apple Silicon (.dmg).
 #
 #   ./tools/build_electron_mac.sh              # python engine -> stage -> .dmg
 #   ./tools/build_electron_mac.sh --skip-server # reuse the staged engine
@@ -8,7 +8,7 @@
 #
 # MUST run on macOS (arm64): PyInstaller cannot cross-compile, so this is
 # what CI's macos-15 runner executes. The .app is NOT code-signed (no
-# Apple Developer certificate yet) — users right-click → Open on first
+# Apple Developer certificate yet) - users right-click → Open on first
 # launch, or run:
 #   xattr -com.apple.quarantine -d "/Applications/ODU Tracker.app"
 set -euo pipefail

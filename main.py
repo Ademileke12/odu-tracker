@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""ODU Tracker — Android APK entry point.
+"""ODU Tracker - Android APK entry point.
 
 buildozer's source.dir is the repo root, so main.py must live HERE and only
 delegates to the real Android shell in android_app/. Desktop users don't run
-this file — use `python run.py serve` / `python run.py app` instead.
+this file - use `python run.py serve` / `python run.py app` instead.
 
 See android_app/main.py for the actual app (Kivy splash + native WebView).
 
@@ -11,7 +11,7 @@ Self-diagnosing entry: python-for-android's start.c answers any unhandled
 exception with PyErr_Print() (logcat only) + exit(), which on a device looks
 like "large logo appears, app closes" with nothing to read. So EVERYTHING is
 wrapped: failures are caught here, persisted to odu-crash.txt and PAINTED on
-screen by android_app/diagnostics.py (pure pyjnius — works even when Kivy
+screen by android_app/diagnostics.py (pure pyjnius - works even when Kivy
 itself is what broke), and the process is kept alive until dismissed.
 """
 import os

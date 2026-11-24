@@ -63,7 +63,7 @@ def main() -> int:
     text = target.read_text()
 
     if "max-page-size=16384" in text and "common-page-size=16384" in text:
-        print("patch_p4a_16kb: already patched — nothing to do")
+        print("patch_p4a_16kb: already patched - nothing to do")
         return 0
 
     changed = 0
@@ -77,7 +77,7 @@ def main() -> int:
     # both blocks must be present in one pass, or upstream changed layout
     if changed < 2:
         print(
-            f"patch_p4a_16kb: FATAL — only {changed}/2 patterns matched; "
+            f"patch_p4a_16kb: FATAL - only {changed}/2 patterns matched; "
             "python-for-android changed its layout. Update the patch patterns.",
             file=sys.stderr,
         )
@@ -85,14 +85,14 @@ def main() -> int:
 
     if text.count("max-page-size=16384") < 2 or text.count("common-page-size=16384") < 2:
         print(
-            "patch_p4a_16kb: FATAL — expected 2 flag sites per flag not produced.",
+            "patch_p4a_16kb: FATAL - expected 2 flag sites per flag not produced.",
             file=sys.stderr,
         )
         return 1
 
     target.write_text(text)
     print(
-        "patch_p4a_16kb: OK — archs.py now links every library with 16 KB "
+        "patch_p4a_16kb: OK - archs.py now links every library with 16 KB "
         "ELF alignment (max-page-size + common-page-size)"
     )
     return 0

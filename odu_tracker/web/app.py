@@ -64,7 +64,7 @@ def create_app(cfg: Config, poller: Poller):
 
     @app.route("/mobile")
     def mobile():
-        """Phone-first dashboard — what the Android app's WebView loads.
+        """Phone-first dashboard - what the Android app's WebView loads.
         Same APIs, thumb-sized UI (the desktop dashboard is unusable on a
         phone screen)."""
         return send_from_directory(os.path.join(STATIC_DIR), "mobile.html")
@@ -77,7 +77,7 @@ def create_app(cfg: Config, poller: Poller):
             if not session.get("auth"):
                 return jsonify({"error": "auth_required"}), 401
             if not app_license.is_paid(cfg):
-                # v1.5.0 — the ₦1,500 one-time unlock gates EVERY data
+                # v1.5.0 - the ₦1,500 one-time unlock gates EVERY data
                 # route. Enforced here rather than in the UI so a patched
                 # frontend that skips the paywall still gets nothing.
                 body = app_license.status(cfg)
@@ -89,7 +89,7 @@ def create_app(cfg: Config, poller: Poller):
     def require_license(fn):
         """Paid-feature gate: the Voucher endpoints answer 403 with the
         device code + contacts until a valid unlock code was entered.
-        v1.5.0: the ₦1,500 base unlock INCLUDES vouchers — one payment
+        v1.5.0: the ₦1,500 base unlock INCLUDES vouchers - one payment
         opens everything; a separately-sold voucher code still counts
         (codes sold before v1.5.0 keep working)."""
         from functools import wraps
@@ -141,7 +141,7 @@ def create_app(cfg: Config, poller: Poller):
 
     # ------------------------------------------------ ODU presence probe
     def _odu_probe(ip=None, timeout=2.5):
-        """(tcp_ok, is_odu) — is 192.168.0.1 up *and* does it speak ZLT?"""
+        """(tcp_ok, is_odu) - is 192.168.0.1 up *and* does it speak ZLT?"""
         ip = ip or cfg.get("router_ip")
         import socket as _s
         try:
@@ -168,7 +168,7 @@ def create_app(cfg: Config, poller: Poller):
     def update_check():
         """The UPDATE REQUIRED screen's 'check again' button: force a
         fresh fetch of the remote policy and report the gate state.
-        Public on purpose — it runs before login/paywall."""
+        Public on purpose - it runs before login/paywall."""
         try:
             voucher_license.refresh_switch(cfg)
         except Exception:
@@ -385,7 +385,7 @@ def create_app(cfg: Config, poller: Poller):
         """Push the MAC exclusion into the router's Wi-Fi gate (cmd 278).
 
         Replaces the old cmd-23 path, which used wrong response shapes
-        (`data.datas` instead of top-level `datas`) and sent no CSRF token —
+        (`data.datas` instead of top-level `datas`) and sent no CSRF token -
         it could never succeed on this firmware. cmd 278 was proven live
         2026-10-27 (write -> read-back -> restore). Note: cmd 278 covers Wi-Fi
         only; wired clients bypass it.
@@ -548,7 +548,7 @@ def create_app(cfg: Config, poller: Poller):
             store.setting_set("usage_baseline",
                               {"ts": time.time(), "total_mb": 0.0})
         # explicit new billing period: forgive consumed data on every
-        # device (a router reboot must NOT do this — see voucher.py)
+        # device (a router reboot must NOT do this - see voucher.py)
         voucher.reset_all_usage()
         store.add_alert("info", "Usage counter reset",
                         "Counting started from now "
@@ -597,7 +597,7 @@ def create_app(cfg: Config, poller: Poller):
 
         def deny(ip):
             # Fail open: never hijack unless the claim page is actually
-            # reachable — a blocked device pointed at a dead portal would
+            # reachable - a blocked device pointed at a dead portal would
             # have NO way to recover (see voucher.deny_checker fail-open).
             if not enforced():
                 return False
@@ -651,7 +651,7 @@ def create_app(cfg: Config, poller: Poller):
         if on_android():
             # Android refuses apps the CAP_NET_BIND_SERVICE capability, so
             # UDP :53 and TCP :80 can never bind here (auto-start is skipped
-            # for the same reason — see the bottom of this module). Arming
+            # for the same reason - see the bottom of this module). Arming
             # anyway used to persist portal_enforced and push the router's
             # DHCP DNS to this phone, which serves nothing: every LAN device
             # then lost name resolution AND the claim page (observed as
@@ -659,7 +659,7 @@ def create_app(cfg: Config, poller: Poller):
             # on a PC/LAN host running the desktop app; this app is console.
             return jsonify({
                 "ok": False, "enabled": False, "android": True,
-                "error": ("captive portal can't run on this phone — Android "
+                "error": ("captive portal can't run on this phone - Android "
                           "blocks apps from binding DNS :53 / HTTP :80. Run "
                           "ODU-Tracker desktop on a PC on this LAN; that host "
                           "enforces the voucher gate, this app is the console."),
@@ -672,7 +672,7 @@ def create_app(cfg: Config, poller: Poller):
             cfg.set("portal_enforced", False)
             err = proxy.error or st.get("error") or "DNS/portal failed to start"
             store.add_alert("danger", "Portal arm refused",
-                            f"{str(err)[:180]} — router DNS left untouched")
+                            f"{str(err)[:180]} - router DNS left untouched")
             return jsonify({"ok": False, "enabled": False,
                             "error": err, "portal": st}), 503
         cfg.set("portal_enforced", True)
@@ -681,7 +681,7 @@ def create_app(cfg: Config, poller: Poller):
         dns_align = _align_portal_dns(my_ip, enforced=True)
         store.add_alert("warning", "Portal enforcement ON",
                         "unclaimed and exhausted devices now get the "
-                        "voucher claim page (no public DNS fallback) — "
+                        "voucher claim page (no public DNS fallback) - "
                         f"claim page: http://{my_ip}/")
         return jsonify({"ok": True, "enabled": True,
                         "dns_error": proxy.error, "myIp": my_ip,
@@ -691,7 +691,7 @@ def create_app(cfg: Config, poller: Poller):
     def _align_portal_dns(my_ip, enforced: bool):
         """While the portal is armed, DHCP must not advertise a public DNS.
         When it is disarmed, put 8.8.8.8 back as the fallback so the LAN
-        still resolves if this PC is off — but only if we already own DNS.
+        still resolves if this PC is off - but only if we already own DNS.
         """
         router = getattr(poller, "router", None)
         if router is None or not getattr(router, "logged_in", False) or not my_ip:
@@ -736,7 +736,7 @@ def create_app(cfg: Config, poller: Poller):
             return jsonify({
                 "ok": False,
                 "error": ("this phone can't serve DNS (Android blocks "
-                          "binding :53) — point router DNS at the PC running "
+                          "binding :53) - point router DNS at the PC running "
                           "ODU-Tracker desktop instead"),
             }), 501
         cur = poller.router.cmd(3, "GET")
@@ -750,7 +750,7 @@ def create_app(cfg: Config, poller: Poller):
             return jsonify({"ok": False, "error": "cannot determine this PC's IP"}), 500
         if mode == "app":
             # Armed portal: both servers are this PC. A public secondary
-            # (8.8.8.8) is exactly how a cut device kept its internet —
+            # (8.8.8.8) is exactly how a cut device kept its internet -
             # phones query every DNS the lease lists. Fallback stays for
             # logging-only mode, so the LAN still resolves if this PC is off.
             enforced = bool(cfg.get("portal_enforced"))
@@ -826,7 +826,7 @@ def create_app(cfg: Config, poller: Poller):
         """Paywall state: locked?, device code, contacts (for both UIs).
         v1.5.0: paying the base unlock also opens the Vouchers tab, so
         report unlocked (kind=included) as soon as the base licence is
-        active — no second code, no add-on purchase."""
+        active - no second code, no add-on purchase."""
         st = voucher_license.status(cfg)
         if app_license.is_paid(cfg) and st.get("locked"):
             st = dict(st, locked=False, kind="included")
@@ -846,7 +846,7 @@ def create_app(cfg: Config, poller: Poller):
         return jsonify(voucher_license.status(cfg))
 
     # ------------------------------------------------------- base licence
-    # v1.5.0 — the ₦1,500 one-time unlock for everything except vouchers.
+    # v1.5.0 - the ₦1,500 one-time unlock for everything except vouchers.
     # These three routes are PUBLIC on purpose: the paywall is the app's
     # first screen, shown before the router-password login. Every other
     # data route sits behind require_auth, which checks the same licence.
@@ -866,7 +866,7 @@ def create_app(cfg: Config, poller: Poller):
 
     @app.post("/api/applicense/verify")
     def app_license_verify():
-        """Paystack said 'success' in the popup — confirm it server-side
+        """Paystack said 'success' in the popup - confirm it server-side
         (status/amount/currency) before writing any licence."""
         ref = str((request.json or {}).get("reference") or "")
         ok, info, err = paystack.verify(cfg, ref)
@@ -946,7 +946,7 @@ def create_app(cfg: Config, poller: Poller):
     @require_auth
     @require_license
     def voucher_usage():
-        """Per-device estimated usage vs quota (time-share split — see
+        """Per-device estimated usage vs quota (time-share split - see
         voucher.attribute_usage). Shows who is close to / past their data."""
         out = []
         for mac in voucher.active_claim_macs():
@@ -1032,7 +1032,7 @@ def create_app(cfg: Config, poller: Poller):
     @require_auth
     @require_license
     def voucher_wps_off():
-        """Turn WPS off on both bands (cmd 132) — required for the cmd 278
+        """Turn WPS off on both bands (cmd 132) - required for the cmd 278
         gate to be enforced by the firmware."""
         if not getattr(poller, "router", None):
             return jsonify({"error": "router not logged in"}), 503
@@ -1045,14 +1045,14 @@ def create_app(cfg: Config, poller: Poller):
     # ------------------------------------ auto-start the DNS/portal stack
     # Restarting the app must not silently leave the LAN un-monitored (or,
     # with enforcement armed, un-enforced): restore whatever was running.
-    # Never on Android — binding UDP :53 / TCP :80 needs root there, and
+    # Never on Android - binding UDP :53 / TCP :80 needs root there, and
     # enforcement belongs on the machine wired into the ODU, not the phone.
     if not on_android() and (cfg.get("dns_proxy_enabled") or cfg.get("portal_enforced")):
         cfg.set("dns_proxy_enabled", True, persist=False)  # portal needs DNS
         try:
             proxy, _boot_ip = start_dns_stack()
             if getattr(proxy, "error", None) or not _portal.status().get("running"):
-                # e.g. :53 already taken by systemd-resolved — say it loudly;
+                # e.g. :53 already taken by systemd-resolved - say it loudly;
                 # a silently-dead stack while portal_enforced stays true is
                 # exactly how enforcement "looks on" while nobody is held.
                 store.add_alert(

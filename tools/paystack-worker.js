@@ -1,4 +1,4 @@
-// Cloudflare Worker — server-side Paystack verification for ODU Tracker.
+// Cloudflare Worker - server-side Paystack verification for ODU Tracker.
 //
 // WHY: the app verifies a payment before unlocking, but the SECRET key
 // (sk_...) must never ship inside a download everyone gets. Deploy this
@@ -19,7 +19,7 @@
 // the secret key here, so a forged reference never unlocks anything.
 
 const PAYSTACK = "https://api.paystack.co";
-const EXPECTED_KOBO = 150000; // ₦1,500 — keep in sync with paid_amount_kobo
+const EXPECTED_KOBO = 150000; // ₦1,500 - keep in sync with paid_amount_kobo
 
 export default {
   async fetch(request) {

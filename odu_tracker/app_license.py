@@ -1,8 +1,8 @@
-r"""Base app licence — the ₦1,500 one-time unlock (v1.5.0).
+r"""Base app licence - the ₦1,500 one-time unlock (v1.5.0).
 
 The WHOLE app sits behind ONE payment: usage, device radar, threat
 alerts, speed tests, the guest Wi-Fi gate AND the Vouchers tab (v1.5.0
-folded the voucher add-on in — one price opens everything), on every
+folded the voucher add-on in - one price opens everything), on every
 platform we ship (Windows / Linux / macOS / Android / Chromebook).
 
 Flow
@@ -12,7 +12,7 @@ Flow
      against Paystack (see paystack.py) and, once the transaction is
      confirmed `success` / `NGN` / ≥ 150,000 kobo, activates locally.
   3. Activation stores an unlock code derived from THIS device's
-     fingerprint — the same code the customer copies down. Reinstalling
+     fingerprint - the same code the customer copies down. Reinstalling
      the app on the same device re-enters that code and unlocks again;
      the code is useless on any other device because verification always
      RECOMPUTES the expected value from the local fingerprint.
@@ -30,14 +30,14 @@ import time
 from odu_tracker.license import _format, _secret, device_code
 
 CFG_KEY = "app_license"
-PRICE_KOBO = 150000          # ₦1,500 in kobo — Paystack's smallest unit
+PRICE_KOBO = 150000          # ₦1,500 in kobo - Paystack's smallest unit
 PRICE_LABEL = "₦1,500"
 
 
 # --------------------------------------------------------------- code minting
 def expected_code() -> str:
     """The unlock code that opens THIS device: XXXX-XXXX-XXXX-XXXX
-    (64 bits — and only ever handed out after a confirmed payment)."""
+    (64 bits - and only ever handed out after a confirmed payment)."""
     digest = hmac.new(_secret(), b"odu-tracker/app-unlock-v1" +
                       device_code().encode("utf-8"),
                       hashlib.sha256).digest()
@@ -55,7 +55,7 @@ def _record(cfg) -> dict:
 
 
 def is_paid(cfg) -> bool:
-    """Recomputed from the device fingerprint on every check — a licence
+    """Recomputed from the device fingerprint on every check - a licence
     copied from another machine, or a stale config file, never validates."""
     code = normalize(_record(cfg).get("code"))
     return bool(code) and hmac.compare_digest(code, normalize(expected_code()))
@@ -67,7 +67,7 @@ def status(cfg) -> dict:
     return {
         "paid": paid,
         "device_code": device_code(),
-        # the unlock code is a secret until they've actually paid — never
+        # the unlock code is a secret until they've actually paid - never
         # leak it pre-payment or the paywall is a formality
         "unlock_code": expected_code() if paid else None,
         "kind": rec.get("kind") or None,
@@ -95,10 +95,10 @@ def _rate_ok(limit: int = 10, window_s: int = 300) -> bool:
 
 
 def activate(cfg, code: str):
-    """Manual activation — the reinstall path: they paste the device code
+    """Manual activation - the reinstall path: they paste the device code
     they saved, and the local record is rebuilt. Returns (ok, error)."""
     if not _rate_ok():
-        return False, "too many attempts — wait a few minutes"
+        return False, "too many attempts - wait a few minutes"
     entered = normalize(code)
     if len(entered) != 16:
         return False, "unlock code must be 16 characters (XXXX-XXXX-XXXX-XXXX)"

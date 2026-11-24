@@ -1,14 +1,14 @@
 r"""Offline access licence for the paid Voucher feature.
 
 The Voucher tab (data codes, shared SIM pool, captive-portal gating) is a
-paid feature. There is no payment system — the buyer chats with the author
+paid feature. There is no payment system - the buyer chats with the author
 (email / TikTok), pays directly, and receives an UNLOCK CODE that opens the
 feature on their device:
 
   1. The app derives a DEVICE CODE from a stable per-device identity
      (Android ANDROID_ID / Windows MachineGuid / Linux machine-id).
      It survives reinstalls on the same device, and it changes on any
-     other device — so a code is useless outside the one device.
+     other device - so a code is useless outside the one device.
   2. The buyer sends the device code to the author, who runs
      `tools/make_unlock_code.py` to mint the matching unlock code.
   3. The unlock code is verified OFFLINE (HMAC-SHA256 with a secret
@@ -18,14 +18,14 @@ feature on their device:
 Anti-copy guarantees:
   * one code works on exactly one device (bound to its fingerprint);
   * copying the app or its data files to another device does NOT carry
-    the unlock — the code is re-verified against the device fingerprint
+    the unlock - the code is re-verified against the device fingerprint
     on every check, never trusted from storage;
   * entering a *different* device's code fails, verification always
     recomputes the expected code for the local device.
 
 Trade-off (honest): the verification secret ships inside the app, so a
 determined reverse-engineer could extract it and mint codes. Casual
-sharing/copying — the realistic threat for direct sales — is fully
+sharing/copying - the realistic threat for direct sales - is fully
 blocked. Rotate the secret for future releases if it ever leaks.
 """
 import hashlib
@@ -50,7 +50,7 @@ CFG_KEY = "voucher_license"
 # pause the voucher feature or ban leaked device codes even on installs
 # that are already out there. The app re-checks it at boot + every 30 min
 # and keeps the LAST KNOWN policy when offline (sticky by design).
-# v1.5.0: the file also carries `min_version` — when set above the running
+# v1.5.0: the file also carries `min_version` - when set above the running
 # version, the app shows a full-screen UPDATE REQUIRED gate (see
 # update_gate() below). NOTE: must track the DEFAULT branch name; `main`
 # 404'd here for the whole v1.4.x era, so the switch never actually reach
@@ -60,11 +60,11 @@ SWITCH_URL = ("https://raw.githubusercontent.com/Ademileke12/odu-tracker/"
 SWITCH_CFG_KEY = "voucher_switch"
 UPDATE_URL_DEFAULT = ("https://github.com/Ademileke12/odu-tracker/"
                       "releases/latest")
-UPDATE_MSG_DEFAULT = ("A newer version of ODU Tracker is required — "
+UPDATE_MSG_DEFAULT = ("A newer version of ODU Tracker is required - "
                       "update to keep using the app.")
 
 # Obfuscated HMAC secret (blob ^ mask). Rotate for a future release only
-# if it leaks — rotating invalidates every unlock code issued before it.
+# if it leaks - rotating invalidates every unlock code issued before it.
 _SECRET_BLOB = bytes.fromhex(
     "a268f4d9d01d54d37ab4c8362dfaabb296801d763d57662a643486bc0ef86199")
 _SECRET_MASK = bytes.fromhex(
@@ -89,7 +89,7 @@ def _device_identity() -> str:
     """A stable per-device string. Same device => same string, even after
     an app reinstall (that is the support-friendly half of the trade-off:
     a customer may reinstall, but not copy to another device)."""
-    # 1) Android: ANDROID_ID — per device + app signing key, survives
+    # 1) Android: ANDROID_ID - per device + app signing key, survives
     #    reinstalls, changes on factory reset.
     if on_android():
         try:
@@ -145,7 +145,7 @@ def device_code() -> str:
 
 def expected_unlock_code() -> str:
     """The unlock code that opens this device: XXXX-XXXX-XXXX-XXXX
-    (64 bits — brute-forcing it offline is not practical)."""
+    (64 bits - brute-forcing it offline is not practical)."""
     digest = hmac.new(_secret(), b"odu-tracker/unlock-v1" +
                       device_code().encode("utf-8"),
                       hashlib.sha256).digest()
@@ -153,7 +153,7 @@ def expected_unlock_code() -> str:
 
 
 def normalize(code: str) -> str:
-    """Uppercase, dashes/spaces removed — paste-friendly."""
+    """Uppercase, dashes/spaces removed - paste-friendly."""
     return re.sub(r"[^A-Z0-9]", "", str(code or "").upper())
 
 
@@ -172,7 +172,7 @@ def switch_blocks(cfg):
     banned = p.get("banned") or []
     if p.get("disabled") or normalize(device_code()) in [normalize(b) for b in banned]:
         return (str(p.get("message") or "").strip()
-                or "access is paused — contact the author")
+                or "access is paused - contact the author")
     return None
 
 
@@ -192,7 +192,7 @@ def update_gate(cfg) -> dict:
 
     When `min_version` in site/voucher-switch.json is set ABOVE the
     running version, both UIs show a full-screen UPDATE REQUIRED screen
-    (before the paywall — updating is what brings the new paywall).
+    (before the paywall - updating is what brings the new paywall).
     Empty/absent => never forces. Installs older than v1.5.0 don't know
     about this field; the only lever on those is the voucher switch.
     """
@@ -217,7 +217,7 @@ def update_gate(cfg) -> dict:
 def refresh_switch(cfg, url=None, timeout=6.0):
     """Fetch the remote policy. Returns True when the applied policy
     CHANGED, False when unchanged, None when unreachable (last known
-    policy stays in effect — sticky)."""
+    policy stays in effect - sticky)."""
     url = url or cfg.get("license_switch_url") or SWITCH_URL
     try:
         req = urllib.request.Request(
@@ -251,7 +251,7 @@ def _record(cfg) -> dict:
 
 
 def is_unlocked(cfg) -> bool:
-    """Recomputed from the DEVICE FINGERPRINT every time — a licence
+    """Recomputed from the DEVICE FINGERPRINT every time - a licence
     copied from another device or from an old data dir never validates.
     The remote kill-switch can pause even a valid local licence."""
     if switch_blocks(cfg) is not None:
@@ -301,7 +301,7 @@ def unlock(cfg, code: str):
     if len(entered) != 16:
         return False, "unlock code must be 16 characters"
     if not _rate_ok():
-        return False, "too many attempts — wait a few minutes"
+        return False, "too many attempts - wait a few minutes"
     if not hmac.compare_digest(entered, normalize(expected_unlock_code())):
         return False, "invalid code for this device"
     cfg.set(CFG_KEY, {"code": entered, "kind": "paid",

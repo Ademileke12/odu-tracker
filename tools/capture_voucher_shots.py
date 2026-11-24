@@ -29,7 +29,7 @@ CHROME = shutil.which("google-chrome") or shutil.which("chromium")
 
 SHOTS = [
     # label, unlocked, url path, w, h, output name
-    # (the phone Vouchers tab was removed in v1.4.1 — the feature is
+    # (the phone Vouchers tab was removed in v1.4.1 - the feature is
     #  desktop-only now, so only the desktop shot is captured)
     ("desktop locked", False, "/?tab=vouchers",  1600, 1000,
      "voucher-paywall-desktop.png"),

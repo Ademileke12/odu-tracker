@@ -1,8 +1,8 @@
 /* GET (auth required) -> the admin stats payload.
  *
  * Two sources merged:
- *  1. KV counters  — page views / download clicks, live from beacons.
- *  2. GitHub API   — the REAL per-asset download counts of every release
+ *  1. KV counters  - page views / download clicks, live from beacons.
+ *  2. GitHub API   - the REAL per-asset download counts of every release
  *                    (retroactive: covers downloads long before this page
  *                    existed). Cached 10 min in KV to respect rate limits.
  */

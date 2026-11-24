@@ -74,7 +74,7 @@ GRACE_DEFAULT_MB = 20480          # 20 GB
 VALIDITY_DEFAULT_DAYS = 30
 
 # Minimum gap between background cap re-write attempts when the previous
-# attempt failed (router down / write refused) — stops a stale pool from
+# attempt failed (router down / write refused) - stops a stale pool from
 # hammering an unreachable router every dashboard poll.
 REFRESH_BACKOFF_S = 60.0
 
@@ -225,7 +225,7 @@ def claim(code: str, mac: str = None, ip: str = None, router=None) -> dict:
     """Redeem a code: binds it to a device MAC and credits the pool.
 
     `router` (optional) enables the background cap re-write so the redeemed
-    quota is actually usable at the router immediately — see the pool model
+    quota is actually usable at the router immediately - see the pool model
     note at the end of this function.
     """
     code = (code or "").strip()
@@ -252,7 +252,7 @@ def claim(code: str, mac: str = None, ip: str = None, router=None) -> dict:
     # Invalidate caches immediately so DNS queries pass within seconds
     invalidate_deny_cache()        # device now has active claim
     invalidate_usage_cache()       # quota grew, may lift exhaustion
-    # The claim credits our books, but cmd 337 still enforces the OLD cap —
+    # The claim credits our books, but cmd 337 still enforces the OLD cap -
     # redeemed data is unusable until limitSize is rewritten. Do it now in the
     # background (pool_refresh_async is a no-op while the cap is disabled).
     pool_refresh_async(router, reason="claim")
@@ -492,7 +492,7 @@ def pool_set(router, enable: bool, router_state: dict = None) -> dict:
                     (baseline + purchased + grace; see module doc).
     enable=False -> limitSwitch "0", limitSize untouched.
 
-    limitSize is in GB when flow_limit_unit is "1" (MB="0", TB="2") — the
+    limitSize is in GB when flow_limit_unit is "1" (MB="0", TB="2") - the
     firmware computes remaining = limitSize * 1024^unit − mon_download_flow(MB).
     """
     st = _pool()
@@ -551,7 +551,7 @@ def cap_stale() -> bool:
     """DB-only: does the stored cap no longer match the planned pool?
 
     True when the cap is enabled and planned (baseline + purchased + grace)
-    moved away from cap_limit_mb — i.e. a claim, expiry or revocation
+    moved away from cap_limit_mb - i.e. a claim, expiry or revocation
     happened since the last cmd 337 write. Never touches the router.
     """
     st = _pool()
@@ -650,12 +650,12 @@ def _refresh_worker(router, reason: str):
 # that MAC's active-claim quota; at/over quota the device is exhausted ->
 # denied (cmd 278 + DNS hijack to the portal) until it claims more.
 #
-# This is an ESTIMATE, not a firmware reading — it is the closest a shared
+# This is an ESTIMATE, not a firmware reading - it is the closest a shared
 # counter allows. The cmd 337 pool cap remains the hard, exact backstop.
 # Per-poll floor before a batch of accumulated growth is billed to devices.
 # Readings are quantized (~0.01 GB = 10.24 MB steps), so this must stay above
 # the quantization step; growth BELOW the floor is CARRIED in pool state
-# (usage_pending_mb), never dropped — a hard cutoff here previously discarded
+# (usage_pending_mb), never dropped - a hard cutoff here previously discarded
 # ~71% of all counter growth (measured live) because steady household traffic
 # rarely moves >64 MB inside one 15 s poll.
 USAGE_TOLERANCE_MB = 64.0
@@ -738,7 +738,7 @@ def attribute_usage(counter_mb: float, online_macs) -> list:
     prev = st.get("usage_counter_mb")
     st["usage_counter_mb"] = float(counter_mb)
     # counter went backwards (ODU reboot / firmware clear): re-anchor the
-    # delta and drop any pending carry — but do NOT refund device usage.
+    # delta and drop any pending carry - but do NOT refund device usage.
     # The data was really consumed; zeroing here let every exhausted device
     # roam free the moment the router rebooted (live incident 2026-10-30).
     # A fresh billing period is an explicit admin action: reset_all_usage().
@@ -799,7 +799,7 @@ def _distribute(macs, total_mb: float) -> set:
 
 
 def reset_all_usage():
-    """Explicit admin 'new billing period' — zero every device's usage.
+    """Explicit admin 'new billing period' - zero every device's usage.
 
     The ONLY path that forgives consumed data. A router reboot / counter
     clear is NOT this: attribute_usage just re-anchors its delta there and
@@ -848,8 +848,8 @@ def wps_status(router) -> dict:
 def wps_off(router) -> dict:
     """Turn WPS off on both bands (cmd 132). Success shape: message "0".
 
-    A POST timeout is not failure here — seen live, applying the change can
-    drop the HTTP response — so the result is always decided by read-back.
+    A POST timeout is not failure here - seen live, applying the change can
+    drop the HTTP response - so the result is always decided by read-back.
     """
     out = {}
     for band, (sub, key) in WPS_BANDS.items():
@@ -876,7 +876,7 @@ def wps_off(router) -> dict:
 # ------------------------------------------------------- device resolution
 # ---------------------------------------------- portal deny policy (DNS path)
 # The DNS proxy calls this on EVERY query, so it must be purely local:
-# no router HTTP (1.3 s pacing) — devices.last_ip (poller, ~15 s fresh) plus
+# no router HTTP (1.3 s pacing) - devices.last_ip (poller, ~15 s fresh) plus
 # the kernel ARP table. Fail-open on unresolvable MACs: a device we cannot
 # identify yet simply is not hijacked (it gets caught on a later query once
 # the poller or ARP has its MAC), so an unresolvable state can never black-
@@ -948,7 +948,7 @@ def deny_checker(exempt_ips=()):
     """Build the predicate the DNS proxy uses: True = hijack this client.
 
     Denied = resolvable device with NO active voucher claim, OR one whose
-    estimated usage has reached its quota (exhausted — see attribute_usage),
+    estimated usage has reached its quota (exhausted - see attribute_usage),
     OR one manually marked for soft cut by admin.
     Exempt: the portal host itself and the router (never hijack infra).
     """

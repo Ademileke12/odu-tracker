@@ -13,13 +13,13 @@ never unlock the app.
 
 Where the keys live
 -------------------
-  * PUBLIC key (pk_...) is safe to ship — it only opens the checkout
+  * PUBLIC key (pk_...) is safe to ship - it only opens the checkout
     popup. Override with the `paystack_public_key` config key.
   * SECRET key (sk_...) must never ship in an app everyone downloads:
     it can list every customer's transactions. Two supported setups:
       1. RECOMMENDED: deploy `tools/paystack-worker.js` (a ~40-line
          Cloudflare Worker, free tier) and set `paystack_verify_url`
-         to it — the app then asks the worker to verify, and the
+         to it - the app then asks the worker to verify, and the
          secret key stays on the worker.
       2. Direct: set `paystack_secret_key` (config) or the
          PAYSTACK_SECRET_KEY env var in a build only you distribute
@@ -35,14 +35,14 @@ import urllib.request
 from odu_tracker.app_license import PRICE_KOBO
 
 DIRECT_BASE = "https://api.paystack.co"
-# Paystack TEST public key — safe to ship (it can only open the checkout
+# Paystack TEST public key - safe to ship (it can only open the checkout
 # popup on test cards). Swap for the pk_live_... key before selling for
 # real, or override at runtime with the `paystack_public_key` config key.
 DEFAULT_PUBLIC_KEY = "pk_test_632321e234398026f1e8b4ace852c17fde34b9fc"
-# Paystack TEST secret key — shipped ONLY in this pre-sale test release so
+# Paystack TEST secret key - shipped ONLY in this pre-sale test release so
 # verification runs end-to-end on test cards (a test secret cannot move
 # real money). Before the live release: DELETE this default and point
-# `paystack_verify_url` at tools/paystack-worker.js instead — a live
+# `paystack_verify_url` at tools/paystack-worker.js instead - a live
 # secret must never ship inside a download everyone gets.
 DEFAULT_TEST_SECRET_KEY = "sk_test_6df7a6a248c187c355f2bf5a66e3d7175becfc26"
 USER_AGENT = "odu-tracker-pay/1.0"
@@ -123,7 +123,7 @@ def verify(cfg, reference: str):
             data = payload.get("data") or {}
             if str(data.get("status") or "") != "success":
                 return False, {}, (f"payment is {data.get('status') or 'unsettled'}"
-                                   " — try again in a moment")
+                                   " - try again in a moment")
             amount = int(data.get("amount") or 0)
             currency = str(data.get("currency") or "")
             email = str((data.get("customer") or {}).get("email") or "")
@@ -136,13 +136,13 @@ def verify(cfg, reference: str):
             detail = ""
         return False, {}, (f"Paystack error {exc.code}"
                            + (f": {detail}" if detail else ""))
-    except Exception as exc:                      # noqa: BLE001 — offline, DNS…
+    except Exception as exc:                      # noqa: BLE001 - offline, DNS…
         return False, {}, f"cannot reach Paystack ({type(exc).__name__})"
 
     if currency != "NGN":
         return False, {}, f"unexpected currency {currency or '?'}"
     if amount < price:
-        return False, {}, ("payment amount is short — "
+        return False, {}, ("payment amount is short - "
                            f"expected ₦{price // 100:,}")
     return True, {"reference": reference, "amount": amount,
                   "currency": currency, "email": email,

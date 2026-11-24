@@ -5,23 +5,23 @@ Why this exists
 python-for-android's ``start.c`` runs the entry script with
 ``PyRun_SimpleFile`` and, on any unhandled exception, only does
 ``PyErr_Print()`` (→ logcat) + ``exit()``. On the device that looks like:
-native presplash ("large logo") appears, then the app closes — with no
+native presplash ("large logo") appears, then the app closes - with no
 visible error at all. This module makes every failure visible *on the
 device itself*:
 
 * ``stage()`` records breadcrumb steps so a report says how far boot got.
 * Reports are persisted to ``odu-crash.txt`` (app-private dir + the
   externally visible files dir) so they survive the process dying.
-* The report embeds the last lines of the app's own logcat — no adb needed.
+* The report embeds the last lines of the app's own logcat - no adb needed.
 * ``fatal()`` paints a full-screen **native** error screen (pure pyjnius,
-  no Kivy involved — Kivy may be exactly what broke) with a CLOSE button,
+  no Kivy involved - Kivy may be exactly what broke) with a CLOSE button,
   and keeps the process alive until the user has read/screenshot it,
   defeating start.c's immediate ``exit()``.
 * If the native screen cannot be drawn, a Kivy error screen is tried
   (only when the Kivy loop is not already running), else the report is
   printed (→ logcat) and persisted.
 * ``show_pending_report()`` replays the previous crash once at the next
-  launch — covering crashes that happened before any screen was drawn.
+  launch - covering crashes that happened before any screen was drawn.
 
 Import-safe by design: stdlib only at module import time. jnius, Kivy and
 the p4a android package are imported lazily inside the functions that
@@ -52,7 +52,7 @@ _fatal_seen = False            # a fatal() call happened (heading suffix only)
 _fatal_screen_up = False       # an error screen is ACTUALLY displayed
 
 # Engine-thread failures are mirrored here so the Kivy splash loop (main
-# thread) can stop spinning and surface the error itself — a native overlay
+# thread) can stop spinning and surface the error itself - a native overlay
 # posted from a background thread can fail to draw, and until now nothing
 # retried it: the splash just spun forever under "Booting the local engine".
 ENGINE_ERROR = {"exc": None, "detail": None}
@@ -87,7 +87,7 @@ def is_android():
 # persistence
 # --------------------------------------------------------------------------
 def _external_files_dir():
-    """App-specific external dir (Android/data/<pkg>/files) — best effort."""
+    """App-specific external dir (Android/data/<pkg>/files) - best effort."""
     try:
         from jnius import autoclass
 
@@ -159,7 +159,7 @@ def device_info():
 
         Build = autoclass("android.os.Build")
         Version = autoclass("android.os.Build$VERSION")
-        return (f"{Build.MANUFACTURER} {Build.MODEL} — Android "
+        return (f"{Build.MANUFACTURER} {Build.MODEL} - Android "
                 f"{Version.RELEASE} (API {Version.SDK_INT})")
     except Exception:
         return ""
@@ -224,7 +224,7 @@ def compose(title, detail="", exc_text=""):
 
 
 # --------------------------------------------------------------------------
-# pyjnius building blocks (created lazily — jnius may be what broke)
+# pyjnius building blocks (created lazily - jnius may be what broke)
 # --------------------------------------------------------------------------
 def _get_ui_runnable_cls():
     """A java/lang/Runnable proxy class posting Python callables to the UI."""
@@ -301,7 +301,7 @@ def native_overlay(text, title, button_label, on_pressed=None,
 
     ``dismissed`` is a ``threading.Event`` set when the button is pressed
     (before ``on_pressed`` runs).  Drawing is posted to the Android UI
-    thread — unless we are *already* on it (never block that thread: the
+    thread - unless we are *already* on it (never block that thread: the
     overlay's own button would deadlock).
     """
     if not is_android():
@@ -429,7 +429,7 @@ def _kivy_overlay(text, title):
 # reporting
 # --------------------------------------------------------------------------
 def fatal(detail="", exc_text=None, on_ui_thread=False,
-          allow_kivy_fallback=True, title="ODU TRACKER — STARTUP ERROR"):
+          allow_kivy_fallback=True, title="ODU TRACKER - STARTUP ERROR"):
     """Show a blocking on-device error screen and persist the report.
 
     Returns True when an error screen is up (process stays alive until the
@@ -439,8 +439,8 @@ def fatal(detail="", exc_text=None, on_ui_thread=False,
     De-duplication is keyed on an error screen ACTUALLY being displayed
     (``_fatal_screen_up``), not on "fatal() was called once". The engine
     thread may call this first and fail to draw the native overlay (pyjnius
-    view construction is safest on the UI thread); when the splash loop —
-    main thread — then retries, it must NOT be turned away, or the user
+    view construction is safest on the UI thread); when the splash loop -
+    main thread - then retries, it must NOT be turned away, or the user
     stares at the booting spinner forever. The report is written on every
     call (overwriting the same file), so no content is lost either way.
     """
@@ -495,13 +495,13 @@ def fatal_exc(detail="", **kw):
 
 
 def report_premature_exit():
-    """App.run() returned without an exception — boot did not complete."""
+    """App.run() returned without an exception - boot did not complete."""
     if not is_android() or _fatal_seen:
         return
     if _reached_dashboard:
         return                                # normal close after a live boot
     return fatal(detail=("The app's UI loop ended before the dashboard came up "
-                         "(no exception — the Kivy window closed or never "
+                         "(no exception - the Kivy window closed or never "
                          "opened)."),
                  exc_text="no Python exception: App.run() returned cleanly")
 
@@ -513,7 +513,7 @@ def show_pending_report():
     text = _take_pending()
     if not text:
         return False
-    title = "PREVIOUS RUN CRASHED — last report"
+    title = "PREVIOUS RUN CRASHED - last report"
     drawn, dismissed = native_overlay(
         text, title, "CONTINUE",
         on_pressed=None,

@@ -1,4 +1,4 @@
-"""Headless ODU Tracker server — no window, no browser tab.
+"""Headless ODU Tracker server - no window, no browser tab.
 
 Used as the payload of the dedicated Electron desktop shell
 (packaging/electron/) but works standalone too:
@@ -8,7 +8,7 @@ Used as the payload of the dedicated Electron desktop shell
 Behaviour:
   * binds 127.0.0.1 only (the dashboard is a local surface; the app itself
     reaches the router over the LAN)
-  * the port must be free exactly as requested — if not, exits with code 3
+  * the port must be free exactly as requested - if not, exits with code 3
     so a shell (Electron) can retry with the next port itself
   * logs to the usual rotating file in the data dir (frozen builds have
     no console to print to)
@@ -46,7 +46,7 @@ def main(argv=None):
 
     if not _port_free(args.port):
         print(f"PORT_BUSY:{args.port}", flush=True)
-        log.error("port %s busy — refusing to double-poll the router", args.port)
+        log.error("port %s busy - refusing to double-poll the router", args.port)
         return 3
 
     from odu_tracker.config import Config

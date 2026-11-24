@@ -4,13 +4,13 @@
 Outputs
 -------
 assets/icon.png            1024x1024 launcher/source icon (desktop + electron)
-android_app/assets/icon.png  same — buildozer's `icon.filename` resolves here
+android_app/assets/icon.png  same - buildozer's `icon.filename` resolves here
                             (cwd is android_app/ during CI) and p4a derives
                             every launcher mipmap density from it; 1024px was
                             needed because the old 256px source made Android
                             upscale a blurry logo ("not scaled").
 android_app/assets/presplash.png  1080x1920 full-screen launch image
-                            (buildozer's `presplash.filename`) — solid dark
+                            (buildozer's `presplash.filename`) - solid dark
                             background matching the app theme, logo centred,
                             wordmark underneath. The activity shows it with
                             ImageView FIT_CENTER, so same-colour letterbox
@@ -26,7 +26,7 @@ ANDROID_OUT = os.path.join(ROOT, "android_app", "assets")
 try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
-    print("Pillow not installed — run: pip install pillow")
+    print("Pillow not installed - run: pip install pillow")
     raise SystemExit(1)
 
 GOLD = (255, 179, 50, 255)
@@ -34,7 +34,7 @@ GOLD2 = (255, 157, 46, 255)
 DARK = (34, 23, 1, 255)
 CLEAR = (0, 0, 0, 0)
 
-APP_BG = (5, 7, 11, 255)              # #05070b — android.presplash_color
+APP_BG = (5, 7, 11, 255)              # #05070b - android.presplash_color
 ICON_PX = 1024                        # launcher/source icon resolution
 PRESPLASH_W, PRESPLASH_H = 1080, 1920
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
@@ -107,7 +107,7 @@ def main():
     imgs[-1].save(ico, format="ICO", sizes=[(s, s) for s in sizes],
                   append_images=imgs[:-1])
 
-    # launcher/source icon at 1024px — written to BOTH locations:
+    # launcher/source icon at 1024px - written to BOTH locations:
     # repo root (desktop/electron) and android_app/ (buildozer cwd).
     big = draw(ICON_PX)
     root_png = os.path.join(OUT, "icon.png")

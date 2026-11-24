@@ -1,4 +1,4 @@
-"""ODU Tracker — dedicated Android screen app.
+"""ODU Tracker - dedicated Android screen app.
 
 Architecture (all off-line, all local):
     [Python engine]  odu_tracker (Flask + waitress + poller + SQLite)
@@ -47,7 +47,7 @@ diag.stage("imports: app module ready")
 
 SERVER_PORT = 8770
 # Phone-first dashboard (/mobile). The desktop UI squeezed into a phone
-# WebView was the "badly designed" half of the complaint — the engine
+# WebView was the "badly designed" half of the complaint - the engine
 # serves a thumb-sized layout at /mobile with the same APIs.
 MOBILE_PATH = "/mobile"
 BG = (0.02, 0.027, 0.043)          # #05070b
@@ -88,11 +88,11 @@ def _serve(port):
                 app.run(host="127.0.0.1", port=port, debug=False,
                         use_reloader=False, threaded=True)
         except BaseException:
-            # The app is useless without the engine — surface it on screen.
+            # The app is useless without the engine - surface it on screen.
             # Record the failure FIRST: the splash loop polls ENGINE_ERROR and
             # will retry the error screen from the main thread if this
             # thread's native overlay draw fails (pyjnius view construction
-            # is unreliable off the UI thread — that once meant an eternal
+            # is unreliable off the UI thread - that once meant an eternal
             # "Booting the local engine…" spinner with the crash only shown
             # on the NEXT launch).
             diag.ENGINE_ERROR["exc"] = "".join(
@@ -128,9 +128,9 @@ def _server_up(port=SERVER_PORT, timeout=0.6):
 
 
 # --------------------------------------------------------------------------
-# Android bridge (pyjnius) — native full-screen WebView
+# Android bridge (pyjnius) - native full-screen WebView
 # --------------------------------------------------------------------------
-# Post to the Android UI thread via android_app.diagnostics.post_to_ui —
+# Post to the Android UI thread via android_app.diagnostics.post_to_ui -
 # a hand-rolled pyjnius Runnable with the default ('system') javacontext.
 # (An earlier __javacontext__ = "thread" was invalid: pyjnius 1.7.0 accepts
 # only 'app' or 'system' and raised on proxy creation.)
@@ -145,7 +145,7 @@ def _android_activity():
 # so back-navigation can drive it). A WebView that never gets onPause()/
 # onResume() misbehaves badly once the app is backgrounded: timers keep
 # burning battery, the render surface goes stale, and on many phones the
-# whole activity is killed soon after — the "doesn't stay long enough"
+# whole activity is killed soon after - the "doesn't stay long enough"
 # symptom. See OduTrackerAndroidApp.on_pause/on_resume.
 _WEBVIEW = {"wv": None, "lp": None}
 
@@ -163,7 +163,7 @@ def build_webview(url):
     MATCH_PARENT = -1      # ViewGroup.LayoutParams.MATCH_PARENT
 
     wv = WebView(_android_activity())
-    wv.setBackgroundColor(Color.rgb(13, 18, 28))   # #0d121c — matches UI dark
+    wv.setBackgroundColor(Color.rgb(13, 18, 28))   # #0d121c - matches UI dark
     wv.setKeepScreenOn(True)                       # dedicated-screen behaviour
 
     s = wv.getSettings()
@@ -177,7 +177,7 @@ def build_webview(url):
     s.setUseWideViewPort(True)
 
     wv.setWebViewClient(WebViewClient())
-    # NOTE: no custom WebChromeClient — pyjnius can only proxy *interfaces*
+    # NOTE: no custom WebChromeClient - pyjnius can only proxy *interfaces*
     # and android.webkit.WebChromeClient is a class, so the old proxy raised
     # on construction. Default client keeps the WebView alive; the mobile
     # page uses no confirm()/alert(), so nothing needs bridging.
@@ -221,7 +221,7 @@ def _centered(text, size, height, color, **kw):
 
 class OduTrackerAndroidApp(App):
     def build(self):
-        diag.stage("kivy: build() entered — drawing the splash")
+        diag.stage("kivy: build() entered - drawing the splash")
         Window.softinput_mode = "below_target"
         self.root = BoxLayout(orientation="vertical", padding=(dp(36), dp(48)))
         with self.root.canvas.before:
@@ -230,9 +230,9 @@ class OduTrackerAndroidApp(App):
         self.root.bind(size=self._resize_bg, pos=self._resize_bg)
 
         self.logo = _centered("ODU", "44sp", dp(80), ACCENT, bold=True)
-        # NB: NOT self.title — App.title is Kivy's window-title StringProperty;
+        # NB: NOT self.title - App.title is Kivy's window-title StringProperty;
         # assigning a Label raised ValueError inside build() on every device
-        # ("big logo, app closes" — died before this splash ever drew).
+        # ("big logo, app closes" - died before this splash ever drew).
         self.heading = _centered("TRACKER", "30sp", dp(40), FG, bold=True)
         self.subtitle = _centered("Booting the local engine…", "16sp",
                                   dp(60), MUTED)
@@ -247,7 +247,7 @@ class OduTrackerAndroidApp(App):
                        self.progress, self.tip):
             self.root.add_widget(widget)
 
-        diag.stage("kivy: splash built — launching the engine thread")
+        diag.stage("kivy: splash built - launching the engine thread")
         start_backend()
 
         self._ready = False
@@ -255,7 +255,7 @@ class OduTrackerAndroidApp(App):
         self._elapsed = 0
         self._error_shown = False
         Clock.schedule_interval(self._tick, 0.25)
-        diag.stage("kivy: splash live — waiting for the engine")
+        diag.stage("kivy: splash live - waiting for the engine")
         return self.root
 
     def _resize_bg(self, _w, _v):
@@ -266,7 +266,7 @@ class OduTrackerAndroidApp(App):
         try:
             return self._tick_inner(dt)
         except BaseException:
-            # Kivy's event loop swallows callback errors silently — surface
+            # Kivy's event loop swallows callback errors silently - surface
             # them on screen instead. Loop is running → native screen only.
             diag.fatal_exc(detail="crash inside the splash/progress loop",
                            allow_kivy_fallback=False)
@@ -298,7 +298,7 @@ class OduTrackerAndroidApp(App):
         self._pct = min(int(self._pct + 4), 96)
         self.progress.value = self._pct
         if self._elapsed > 90:
-            self.subtitle.text = "Engine still booting — it can take a minute on first start."
+            self.subtitle.text = "Engine still booting - it can take a minute on first start."
             self.tip.text = "If this never finishes, close the app and open it again."
         return True
 
@@ -311,11 +311,11 @@ class OduTrackerAndroidApp(App):
             diag.stage("dashboard: handing off to the native WebView")
 
             def _do():
-                # runs on the Android UI thread — never block it; fatal()
+                # runs on the Android UI thread - never block it; fatal()
                 # knows this (on_ui_thread=True) and only paints.
                 try:
                     build_webview(url)
-                    diag.stage("dashboard: webview installed — live")
+                    diag.stage("dashboard: webview installed - live")
                 except BaseException:
                     diag.fatal_exc(detail="creating the native WebView failed",
                                    on_ui_thread=True,
@@ -337,7 +337,7 @@ class OduTrackerAndroidApp(App):
     # ------------------------------------------------- Android lifecycle
     # Kivy's App pauses the *Kivy* side only. The native WebView we added
     # on top must be paused/resumed explicitly, and on resume it may sit
-    # UNDER the re-attached Kivy surface — hence the re-attach. Without
+    # UNDER the re-attached Kivy surface - hence the re-attach. Without
     # this trio the app "doesn't stay": backgrounding it once was enough
     # for the dashboard to freeze or vanish on many phones.
     def on_pause(self):
@@ -352,7 +352,7 @@ class OduTrackerAndroidApp(App):
         def _do(wv):
             try:
                 wv.onResume()
-                # p4a re-adds the SDL/GL surface on top after resume —
+                # p4a re-adds the SDL/GL surface on top after resume -
                 # pull the WebView back to the front of the same window.
                 parent = wv.getParent()
                 if parent is not None:
@@ -374,12 +374,12 @@ def run():
     try:
         OduTrackerAndroidApp().run()
     except BaseException:
-        # any exception that escaped the app loop — paint it, don't exit
+        # any exception that escaped the app loop - paint it, don't exit
         # silently (start.c would just logcat + exit(1))
         diag.fatal_exc(detail="the app loop crashed")
         raise
     # App.run() returned: either the user closed it (normal) or the window
-    # died before the dashboard ever came up (premature exit — diagnostics
+    # died before the dashboard ever came up (premature exit - diagnostics
     # decides which and reports the latter on screen).
     diag.report_premature_exit()
 

@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  ODU Tracker — one-click Windows build (creates installers)
+REM  ODU Tracker - one-click Windows build (creates installers)
 REM  Output: dist\ODU-Tracker.exe (portable) and, when Inno Setup
 REM  is installed, dist\installer\ODU-Tracker-setup.exe
 REM ============================================================
@@ -26,7 +26,7 @@ if exist %ISCC% (
   if not exist dist\installer mkdir dist\installer
   %ISCC% packaging\windows\odu-tracker.iss && echo [ok] installer: dist\installer\ODU-Tracker-setup.exe
 ) else (
-  echo [i] Inno Setup 6 not found — portable exe: dist\ODU-Tracker.exe
+  echo [i] Inno Setup 6 not found - portable exe: dist\ODU-Tracker.exe
   echo     Get Inno Setup free from https://jrsoftware.org/isdl.php to build
   echo     a real setup.exe (it reads packaging\windows\odu-tracker.iss)
 )
@@ -34,5 +34,5 @@ echo.
 echo DONE. Copy dist\ to your PC and run the app.
 exit /b 0
 :fail
-echo [x] build failed — check messages above.
+echo [x] build failed - check messages above.
 exit /b 1

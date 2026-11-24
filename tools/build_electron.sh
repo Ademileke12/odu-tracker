@@ -8,7 +8,7 @@
 #
 # The .deb bundles BOTH the Electron shell and the frozen Python engine
 # (waitress + poller + SQLite), so `sudo dpkg -i` gives users a complete,
-# self-contained app — no Python/Node required on the target machine.
+# self-contained app - no Python/Node required on the target machine.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

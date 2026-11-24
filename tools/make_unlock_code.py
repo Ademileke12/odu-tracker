@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mint an unlock code for the paid Voucher feature — developer tool.
+"""Mint an unlock code for the paid Voucher feature - developer tool.
 
 A paying customer sends you their DEVICE CODE (shown in the locked
 Vouchers tab, looks like `ODU-4F2A-91C3-7B60`). You run this from the
@@ -11,7 +11,7 @@ as part of the app; the app only verifies codes.
 
 The secret lives in odu_tracker/license.py (it must, because the app
 verifies codes offline). Rotate it there for a future release only if it
-ever leaks — rotating invalidates every code issued before the rotation.
+ever leaks - rotating invalidates every code issued before the rotation.
 """
 import argparse
 import hashlib

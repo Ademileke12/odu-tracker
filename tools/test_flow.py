@@ -1,4 +1,4 @@
-"""Synthetic end-to-end tests — no router contact required.
+"""Synthetic end-to-end tests - no router contact required.
 
 Mocks the router layer and validates: device ingestion, risk scoring,
 usage series, web API with auth, DNS proxy parsing.
@@ -251,13 +251,13 @@ def test_portal_arm_guards():
     """Arming must never claim success it can't honor.
 
     Regression guards for the "APK portal doesn't activate" incident:
-      (a) Android refuses to arm — it cannot bind :53/:80 — instead of
+      (a) Android refuses to arm - it cannot bind :53/:80 - instead of
           persisting portal_enforced and pointing the LAN's DNS at a phone
           that serves nothing (total lockout, claim page unreachable);
       (b) a stack that failed to bind refuses to arm and NEVER moves the
           router's DHCP DNS to a dead resolver;
       (c) a healthy stack arms, persists the flag and reports the
-          http:// claim-page URL (the portal is HTTP-only — no :443).
+          http:// claim-page URL (the portal is HTTP-only - no :443).
     """
     import socket as _s
     from odu_tracker.web import app as webapp
@@ -336,7 +336,7 @@ def test_portal_arm_guards():
 
 
 def test_base_paywall():
-    """v1.5.0 — the ₦1,500 unlock: gate, Paystack verify, reinstall code."""
+    """v1.5.0 - the ₦1,500 unlock: gate, Paystack verify, reinstall code."""
     from odu_tracker import app_license, paystack
     cfg = Config()
     cfg.set("app_license", None)              # start from a clean slate
@@ -404,7 +404,7 @@ def test_base_paywall():
     assert r.status_code == 200 and j["paid"] is True, j
     assert app_license.is_paid(cfg) is True
 
-    # v1.5.0: the base unlock ALSO opens the Vouchers tab — one price,
+    # v1.5.0: the base unlock ALSO opens the Vouchers tab - one price,
     # every feature (a separately-sold pre-1.5.0 code would count too)
     j = c.get("/api/license").get_json()
     assert j["locked"] is False and j["kind"] == "included", j

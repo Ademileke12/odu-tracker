@@ -520,7 +520,7 @@ function showAuth() {
 const SPLASH_MIN_MS = 1500;
 
 /* ------------------------------------------------------------- paywall
-   v1.5.0 — the ₦1,500 one-time unlock. Shown on FIRST load, before the
+   v1.5.0 - the ₦1,500 one-time unlock. Shown on FIRST load, before the
    router-password login: slide-by-slide feature intro on the left, pay
    button on the right (Paystack Inline), plus the reinstall path where a
    saved licence code is re-entered. */
@@ -529,7 +529,7 @@ let payDeckTmr = null;
 let payPendingRef = null;    // reference of the checkout we opened
 let payDone = false;         // a verify already succeeded for it
 
-/* force-update gate (v1.5.0): remote min_version beats everything —
+/* force-update gate (v1.5.0): remote min_version beats everything -
    updating is what brings the new paywall to older installs. */
 function showUpdate(u) {
   fadeSplash();
@@ -553,13 +553,13 @@ $("#updRetry").onclick = async () => {
   try {
     const d = await api("/api/updatecheck", {method: "POST"});
     if (d && d.update && d.update.required) {
-      showUpdate(d.update);              // still behind — refresh message
+      showUpdate(d.update);              // still behind - refresh message
       st.textContent = `you have ${d.update.current} · latest is ${d.update.latest}`;
     } else {
       location.reload();                 // gate lifted: fresh boot
     }
   } catch (e) {
-    st.textContent = "cannot check right now — try again shortly";
+    st.textContent = "cannot check right now - try again shortly";
   } finally { btn.disabled = false; }
 };
 
@@ -581,7 +581,7 @@ async function loadPayInfo() {
     $("#payDevCode").textContent = d.device_code || "…";
     if (d.paid) renderPayDone(d);          // already unlocked: skip the ask
   } catch (e) {
-    $("#payErr").textContent = "licensing service unreachable — retry shortly";
+    $("#payErr").textContent = "licensing service unreachable - retry shortly";
   }
 }
 
@@ -620,13 +620,13 @@ function loadPaystack(cb) {
   s.src = "https://js.paystack.co/v1/inline.js";
   s.onload = cb;
   s.onerror = () => { $("#payErr").textContent =
-    "cannot load Paystack — check your internet connection"; };
+    "cannot load Paystack - check your internet connection"; };
   document.head.appendChild(s);
 }
 
 async function verifyPay(ref, quiet) {
   if (!ref) {
-    $("#payErr").textContent = "missing payment reference — tap “I'VE PAID” to retry";
+    $("#payErr").textContent = "missing payment reference - tap “I'VE PAID” to retry";
     return;
   }
   const err = $("#payErr");
@@ -637,15 +637,15 @@ async function verifyPay(ref, quiet) {
     const d = await api("/api/applicense/verify", {method: "POST",
       body: JSON.stringify({reference: ref})});
     payDone = true;
-    toast("payment confirmed — welcome aboard");
+    toast("payment confirmed - welcome aboard");
     renderPayDone(d);
   } catch (e) {
-    const msg = (e && e.message) || "verification failed — try again";
+    const msg = (e && e.message) || "verification failed - try again";
     // a bank transfer may still be settling when the popup closed: the
     // quiet path (auto-retry from onClose) gets a gentle hint instead of
-    // a scary error — the charge might just need a few more seconds
+    // a scary error - the charge might just need a few more seconds
     err.textContent = (quiet && /ongoing|not confirmed|failed|not found/i.test(msg))
-      ? "not confirmed yet — if your transfer went through, wait a few seconds and tap “I'VE PAID”"
+      ? "not confirmed yet - if your transfer went through, wait a few seconds and tap “I'VE PAID”"
       : msg;
   } finally {
     btn.disabled = false;
@@ -674,12 +674,12 @@ $("#payBtn").onclick = () => {
       amount: (payInfo && payInfo.price_kobo) || 150000,
       currency: "NGN",
       ref: ref,
-      label: "ODU Tracker — lifetime unlock",
+      label: "ODU Tracker - lifetime unlock",
       onSuccess: (res) => {
         verifyPay((res && (res.reference || res.trxref)) || ref);
       },
       onClose: () => {
-        // bank transfers often settle exactly as the popup closes — check
+        // bank transfers often settle exactly as the popup closes - check
         // our pending reference anyway; harmless if the charge never happened
         if (!payDone && payPendingRef) verifyPay(payPendingRef, true);
       },
@@ -688,10 +688,10 @@ $("#payBtn").onclick = () => {
   });
 };
 
-// manual escape hatch: "I've paid, why no code?" — re-verify the last ref
+// manual escape hatch: "I've paid, why no code?" - re-verify the last ref
 $("#payVerify").onclick = () => {
   if (payPendingRef) verifyPay(payPendingRef);
-  else $("#payErr").textContent = "no payment found yet — tap PAY first";
+  else $("#payErr").textContent = "no payment found yet - tap PAY first";
 };
 
 $("#payActivate").onclick = async () => {
@@ -1109,7 +1109,7 @@ function saveText2(text, ok) {
   document.execCommand("copy"); ta.remove(); toast(ok);
 }
 $("#btnLicCopy").addEventListener("click", () =>
-  saveText2($("#licDevCode").value.trim(), "Device code copied — send it after payment"));
+  saveText2($("#licDevCode").value.trim(), "Device code copied - send it after payment"));
 $("#btnLicUnlock").addEventListener("click", async () => {
   const btn = $("#btnLicUnlock");
   btn.disabled = true;

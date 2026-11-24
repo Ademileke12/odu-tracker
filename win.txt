@@ -1,4 +1,4 @@
-ODU Tracker — Windows build steps
+ODU Tracker - Windows build steps
 
 1) Open PowerShell in the project folder.
 
@@ -15,7 +15,7 @@ ODU Tracker — Windows build steps
    runs electron-builder. Output goes to:
      dist\electron\ODU-Tracker-Setup-1.2.0.exe      (one-click installer)
      dist\electron\ODU-Tracker-Portable-1.2.0.exe   (portable exe)
-   Users just run the Setup exe — no Python needed on their machine.
+   Users just run the Setup exe - no Python needed on their machine.
 
 5) LEGACY PYTHON BUILD (optional):
    .\.venv\Scripts\python tools\make_icon.py       # app icon (assets\icon.ico)

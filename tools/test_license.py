@@ -1,4 +1,4 @@
-"""End-to-end tests for the paid-feature licence gate — no router contact.
+"""End-to-end tests for the paid-feature licence gate - no router contact.
 
 Validates: locked paywall state, 403 on voucher APIs, unlock-code flow,
 device binding (a foreign code / tampered record re-locks), and the

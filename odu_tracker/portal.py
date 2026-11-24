@@ -4,7 +4,7 @@ Listens on 0.0.0.0:80 (one-time privilege setup: tools/enable_priv_ports.sh).
 The DNS proxy points every blocked device's lookups at this machine, so
 whatever URL they open lands here.
 
-Probe handling: ANY GET — regardless of Host or path — returns the claim
+Probe handling: ANY GET - regardless of Host or path - returns the claim
 page with HTTP 200. That is precisely the response Android (generate_204),
 iOS (hotspot-detect.html) and Windows (ncsi.txt) treat as "portal detected",
 so the device pops its sign-in sheet on its own; no per-probe special cases.
@@ -32,7 +32,7 @@ RATE_WINDOW = 300          # ...per 5 minutes per IP
 PAGE = """<!doctype html>
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ODU WiFi — Voucher</title>
+<title>ODU WiFi - Voucher</title>
 <style>
   body{font-family:system-ui,-apple-system,sans-serif;background:#0b1220;
        color:#e6edf7;margin:0;display:flex;justify-content:center;
@@ -136,8 +136,8 @@ def create_portal_app(cfg, poller):
                 mac = None
         mac = mac or voucher.mac_for_ip_local(ip, ttl=5)
         if not mac:
-            # poller hasn't seen the device yet — tell it to retry shortly
-            return jsonify({"error": "device not identified yet — "
+            # poller hasn't seen the device yet - tell it to retry shortly
+            return jsonify({"error": "device not identified yet - "
                                      "check Wi-Fi is on and retry in a few "
                                      "seconds"}), 409
         try:
@@ -172,7 +172,7 @@ def start_portal(cfg, poller):
     _state.update({"running": False, "port": port, "error": None})
     # Probe-bind SYNCHRONOUSLY before claiming success. An unprivileged
     # process (an unrooted Android app, or a desktop user who hasn't run
-    # tools/enable_priv_ports.sh) gets EACCES on :80 — detecting it here
+    # tools/enable_priv_ports.sh) gets EACCES on :80 - detecting it here
     # lets the arm endpoint refuse instead of reporting "armed" while the
     # LAN's DNS is already pointed at a portal that answers nothing (that
     # combination black-holes every device with no page to recover on).
@@ -181,7 +181,7 @@ def start_portal(cfg, poller):
         probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         probe.bind(("0.0.0.0", port))
     except OSError as exc:
-        _state["error"] = (f"cannot bind :{port}: {exc} (privileged port — "
+        _state["error"] = (f"cannot bind :{port}: {exc} (privileged port - "
                            f"run tools/enable_priv_ports.sh once)")
         return _state
     finally:
@@ -193,7 +193,7 @@ def start_portal(cfg, poller):
             serve(create_portal_app(cfg, poller), host="0.0.0.0", port=port,
                   threads=4, clear_untrusted_proxy_headers=True)
         except OSError as exc:
-            _state["error"] = (f"cannot bind :{port}: {exc} (privileged port — "
+            _state["error"] = (f"cannot bind :{port}: {exc} (privileged port - "
                                f"run tools/enable_priv_ports.sh once)")
         except Exception as exc:
             _state["error"] = str(exc)[:200]

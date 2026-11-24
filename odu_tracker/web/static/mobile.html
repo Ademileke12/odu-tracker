@@ -343,7 +343,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   <div class="pdeck" id="pDeck">
     <div class="ps on">
       <b>Every GB, accounted for</b>
-      <span>Month total, live rate, today and hourly charts — straight from
+      <span>Month total, live rate, today and hourly charts - straight from
         your ODU's own counters, kept on this device.</span>
     </div>
     <div class="ps">
@@ -359,7 +359,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
     <div class="ps">
       <b>Guests earn their access</b>
       <span>Arm the captive portal and new devices get no internet until they
-        claim a voucher code. Mint, cap and revoke from here — the Vouchers
+        claim a voucher code. Mint, cap and revoke from here - the Vouchers
         tab is included in this unlock.</span>
     </div>
   </div>
@@ -374,9 +374,9 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
     <div class="pprice"><b>₦1,500</b><span>one-time · for life · one device</span></div>
     <input id="payEmail" type="email" inputmode="email" autocomplete="email"
            placeholder="email for your receipt (optional)">
-    <button class="btn" id="payBtn">PAY ₦1,500 — UNLOCK</button>
+    <button class="btn" id="payBtn">PAY ₦1,500 - UNLOCK</button>
     <div id="payErr"></div>
-    <button class="btn" id="payVerify" hidden>I'VE PAID — VERIFY MY PAYMENT</button>
+    <button class="btn" id="payVerify" hidden>I'VE PAID - VERIFY MY PAYMENT</button>
 
     <details class="palready">
       <summary>Already paid? Enter your licence code</summary>
@@ -387,7 +387,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
     </details>
 
     <div class="pdev">this device's ID<b id="payDevCode">…</b></div>
-    <div class="hint">Save your <b>licence code</b> after paying — it re-unlocks
+    <div class="hint">Save your <b>licence code</b> after paying - it re-unlocks
       this app after a reinstall on this device, and works on no other device.</div>
   </div>
 
@@ -411,7 +411,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
      target="_blank" rel="noopener">⤓ DOWNLOAD THE LATEST VERSION</a>
   <div style="height:10px"></div>
   <button class="btn ghost" id="updRetry">↻ CHECK AGAIN</button>
-  <div class="hint">Install the new build over this one — your licence code
+  <div class="hint">Install the new build over this one - your licence code
      still works, no second payment.</div>
 </div>
 
@@ -478,7 +478,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   <section class="view" id="v-dev">
     <div class="h">Devices <span id="devCount" style="color:var(--ink)">0</span></div>
     <div id="devList"><div class="empty">loading…</div></div>
-    <p class="empty" style="padding:6px 0">Tap a device for actions. Blocked devices stay on Wi-Fi and get parked on the voucher portal. New devices get no internet until they claim a code — enforcement runs on the ODU-Tracker desktop app on this LAN, not on the phone.</p>
+    <p class="empty" style="padding:6px 0">Tap a device for actions. Blocked devices stay on Wi-Fi and get parked on the voucher portal. New devices get no internet until they claim a code - enforcement runs on the ODU-Tracker desktop app on this LAN, not on the phone.</p>
   </section>
 
   <!-- ------------------------------------------------ alerts -->
@@ -552,7 +552,7 @@ async function api(path, opts) {
     showPay(); throw new Error('paid_required');
   }
   // surface the server's error text ("can't run on this phone…", bind
-  // failures) instead of a bare "http 503" — the old toast said "armed"
+  // failures) instead of a bare "http 503" - the old toast said "armed"
   // while the stack had refused to start.
   if (!r.ok) throw new Error((body && body.error) || ('http ' + r.status));
   return body;
@@ -639,7 +639,7 @@ $('#updRetry').addEventListener('click', async () => {
       st.textContent = 'you have ' + d.update.current +
         ' · latest is ' + d.update.latest;
     } else { location.reload(); }        // gate lifted: fresh boot
-  } catch { st.textContent = 'cannot check right now — try again shortly'; }
+  } catch { st.textContent = 'cannot check right now - try again shortly'; }
   finally { btn.disabled = false; }
 });
 
@@ -665,7 +665,7 @@ async function loadPayInfo() {
     payInfo = d;
     $('#payDevCode').textContent = d.device_code || '…';
     if (d.paid) renderPayDone(d);
-  } catch { $('#payErr').textContent = 'licensing service unreachable — retry shortly'; }
+  } catch { $('#payErr').textContent = 'licensing service unreachable - retry shortly'; }
 }
 
 function startPayDeck() {
@@ -703,13 +703,13 @@ function loadPaystack(cb) {
   s.src = 'https://js.paystack.co/v1/inline.js';
   s.onload = cb;
   s.onerror = () => { $('#payErr').textContent =
-    'cannot load Paystack — check your internet connection'; };
+    'cannot load Paystack - check your internet connection'; };
   document.head.appendChild(s);
 }
 
 async function verifyPay(ref, quiet) {
   if (!ref) {
-    $('#payErr').textContent = 'missing payment reference — tap “I\'VE PAID” to retry';
+    $('#payErr').textContent = 'missing payment reference - tap “I\'VE PAID” to retry';
     return;
   }
   const err = $('#payErr'), btn = $('#payBtn');
@@ -722,12 +722,12 @@ async function verifyPay(ref, quiet) {
     payDone = true;
     renderPayDone(d);
   } catch (e) {
-    const msg = (e && e.message) || 'verification failed — try again';
+    const msg = (e && e.message) || 'verification failed - try again';
     // a bank transfer may still be settling when the popup closed: the
     // quiet path (auto-retry from onClose) gets a gentle hint instead of
-    // a scary error — the charge might just need a few more seconds
+    // a scary error - the charge might just need a few more seconds
     err.textContent = (quiet && /ongoing|not confirmed|failed|not found/i.test(msg))
-      ? 'not confirmed yet — if your transfer went through, wait a few seconds and tap “I\'VE PAID”'
+      ? 'not confirmed yet - if your transfer went through, wait a few seconds and tap “I\'VE PAID”'
       : msg;
   } finally { btn.disabled = false; }
 }
@@ -754,9 +754,9 @@ $('#payBtn').addEventListener('click', () => {
       amount: (payInfo && payInfo.price_kobo) || 150000,
       currency: 'NGN',
       ref: ref,
-      label: 'ODU Tracker — lifetime unlock',
+      label: 'ODU Tracker - lifetime unlock',
       onSuccess: (r) => verifyPay((r && (r.reference || r.trxref)) || ref),
-      // bank transfers often settle exactly as the popup closes — check
+      // bank transfers often settle exactly as the popup closes - check
       // our pending reference anyway; harmless if the charge never happened
       onClose: () => { if (!payDone && payPendingRef) verifyPay(payPendingRef, true); },
     });
@@ -764,10 +764,10 @@ $('#payBtn').addEventListener('click', () => {
   });
 });
 
-// manual escape hatch: "I've paid, why no code?" — re-verify the last ref
+// manual escape hatch: "I've paid, why no code?" - re-verify the last ref
 $('#payVerify').addEventListener('click', () => {
   if (payPendingRef) verifyPay(payPendingRef);
-  else $('#payErr').textContent = 'no payment found yet — tap PAY first';
+  else $('#payErr').textContent = 'no payment found yet - tap PAY first';
 });
 
 $('#payActivate').addEventListener('click', async () => {

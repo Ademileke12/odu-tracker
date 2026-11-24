@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ODU Tracker — dedicated Electron shell.
+ * ODU Tracker - dedicated Electron shell.
  *
  * Launches the bundled headless Python engine (PyInstaller build of
  * odu_tracker.headless), waits for the local dashboard to answer, then shows
@@ -33,7 +33,7 @@ const ENGINE_FALLBACK_URL =
   'https://github.com/Ademileke12/odu-tracker/releases/latest/download/' +
   'odu-tracker-engine-windows-x64.exe';
 
-// the dashboard is plain HTML/CSS — no need for GPU accel, and this keeps
+// the dashboard is plain HTML/CSS - no need for GPU accel, and this keeps
 // the app alive on weak/missing-GPU systems (VMs, old desktops, Wayland
 // quirks) instead of aborting with "GPU process isn't usable"
 app.disableHardwareAcceleration();
@@ -327,7 +327,7 @@ async function start() {
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  // Another instance already owns the dashboard — just bow out.
+  // Another instance already owns the dashboard - just bow out.
   app.quit();
 } else {
   app.on('second-instance', () => {

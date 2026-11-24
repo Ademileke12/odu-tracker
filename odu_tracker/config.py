@@ -5,8 +5,8 @@ Everything app-related lives under a per-user data dir:
   Windows: %APPDATA%\OduTracker
   Android: <app-private files dir>/odu-tracker   (see on_android())
 
-Android gotcha (the v1.3.0 boot crash): the platform exports HOME=/data —
-that's a mount POINT, not a writable directory for an app UID — so the
+Android gotcha (the v1.3.0 boot crash): the platform exports HOME=/data -
+that's a mount POINT, not a writable directory for an app UID - so the
 historic `Path.home()/.local/share/...` fallback resolved to
 /data/.local/share/odu-tracker, mkdir() failed, and the engine died before
 the dashboard ever answered. p4a exports ANDROID_PRIVATE (the app's own
@@ -28,7 +28,7 @@ def on_android() -> bool:
     """True inside a python-for-android app process.
 
     p4a's bootstrap exports ANDROID_ARGUMENT/ANDROID_PRIVATE for every app
-    process — that's a more reliable signal than sys.platform, which is
+    process - that's a more reliable signal than sys.platform, which is
     plain "linux" on devices.
     """
     return bool(os.environ.get("ANDROID_ARGUMENT")
@@ -51,7 +51,7 @@ def _try_dir(d: Path):
 def app_dir() -> Path:
     """Resolve (and create) the per-user application data directory.
 
-    Candidates are tried in order and the first WRITABLE one wins — an
+    Candidates are tried in order and the first WRITABLE one wins - an
     unwritable home (Android's /data, a read-only NFS home, ...) must
     degrade to the next location, never crash the app.
     """
@@ -150,8 +150,8 @@ DEFAULTS = {
     "portal_port": 80,               # captive-portal claim page
     "portal_enforced": False,        # hijack only when the admin arms it
     "nickname": "",                # friendly name for this machine's owner, unused now
-    # v1.5.0 — the ₦1,500 base unlock (Paystack). The PUBLIC key ships in
-    # the app; never ship the secret key — point `paystack_verify_url` at
+    # v1.5.0 - the ₦1,500 base unlock (Paystack). The PUBLIC key ships in
+    # the app; never ship the secret key - point `paystack_verify_url` at
     # tools/paystack-worker.js instead (see odu_tracker/paystack.py).
     "paystack_public_key": "",
     "paystack_secret_key": "",

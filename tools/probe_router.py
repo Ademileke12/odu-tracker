@@ -5,7 +5,7 @@ WHY THIS EXISTS
 ---------------
 The voucher system (user enters code -> gets N MB/GB -> blocked at 0) needs
 to count bytes PER DEVICE. cmd 337/355 only report ONE global SIM counter,
-and cmd 223 (device list) carries only mac/ip/hostname — no counters.
+and cmd 223 (device list) carries only mac/ip/hostname - no counters.
 
 This probe answers the one question that decides the design:
     does this firmware expose per-device byte/flow counting anywhere?
@@ -42,7 +42,7 @@ from odu_tracker.config import Config          # noqa: E402
 from odu_tracker.router import OduRouter, RouterError  # noqa: E402
 
 # Never touch these even with GET (defensive belt-and-braces).
-# NOTE: GET is NOT always read-only on this firmware — probing cmd 6 during a
+# NOTE: GET is NOT always read-only on this firmware - probing cmd 6 during a
 # --sweep rebooted the router (its API map has `reboot` with no get variant,
 # and it ignored `method:"GET"`). Every cmd that maps to an action-only
 # function (no getX sibling in the SPA) is therefore excluded outright.

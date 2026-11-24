@@ -25,7 +25,7 @@ source.exclude_patterns = packaging/*,tools/*,site/*,dist/*,build/*,*.md,*.spec,
 # (str) Application versioning
 version = 1.5.0
 
-# (int) versionCode — Android refuses to install an APK whose code is LOWER
+# (int) versionCode - Android refuses to install an APK whose code is LOWER
 # than what's already on the device, so this must only ever go up
 # (1.3.0 shipped without this line and got buildozer's default of 1).
 version.code = 10500
@@ -33,29 +33,29 @@ version.code = 10500
 # (list) Application requirements (kivy = splash screen; pyjnius = WebView)
 # charset-normalizer is a transitive dep of `requests`; from 3.5.x PyPI also
 # ships android-tagged wheels that the p4a build venv's pip refuses
-# (kivy/buildozer#2051) — pin the pure-python release so pip takes the
+# (kivy/buildozer#2051) - pin the pure-python release so pip takes the
 # universal py3-none-any wheel instead.
 requirements = python3,kivy,pyjnius,flask,waitress,requests,urllib3,certifi,charset-normalizer==2.1.1
 
-# (str) Presplash of the application — full-screen 1080x1920 composition
+# (str) Presplash of the application - full-screen 1080x1920 composition
 # (tools/make_icon.py). The old 256x256 icon used here was upscaled to the
 # whole display: "large logo, not scaled". Resolves relative to the build
 # cwd (android_app/), same place packaging expects icon.png.
 presplash.filename = assets/presplash.png
 
-# (str) Icon of the application — 1024x1024 source (launcher mipmaps)
+# (str) Icon of the application - 1024x1024 source (launcher mipmaps)
 icon.filename = assets/icon.png
 
-# (list) Supported orientation — dedicated screen is portrait by default
+# (list) Supported orientation - dedicated screen is portrait by default
 # (switch to `all` or `landscape` if you wall-mount a tablet sideways)
 orientation = portrait
 
 # p4a 2026.5.9 (latest PyPI release) still ships the pip-install stage that
-# breaks itself on fresh runs — its `pip install -U pip` inside the build
+# breaks itself on fresh runs - its `pip install -U pip` inside the build
 # venv leaves a mixed pip state and dies with
 #   ImportError: cannot import name 'BuildDependencyInstallError'
-# (kivy/python-for-android#3339 / #3364). The fixes — PR #3360 (skip the
-# venv self-upgrade) and PR #3366 (drop venv creation, custom pip) — are
+# (kivy/python-for-android#3339 / #3364). The fixes - PR #3360 (skip the
+# venv self-upgrade) and PR #3366 (drop venv creation, custom pip) - are
 # merged on the develop branch only.
 p4a.branch = develop
 
@@ -75,22 +75,22 @@ android.wakelock = True
 # (bool) Fullscreen (hides the status bar)
 fullscreen = 1
 
-# (string) Presplash background color — matches the dark theme
+# (string) Presplash background color - matches the dark theme
 android.presplash_color = #05070B
 
 # (list) Permissions
 android.permissions = INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE, WAKE_LOCK
 
 # The engine + dashboard talk plain http to 127.0.0.1 and to the router
-# (192.168.0.1) — allow cleartext app-wide via a manifest application attr.
+# (192.168.0.1) - allow cleartext app-wide via a manifest application attr.
 android.extra_manifest_application_arguments = ./src/android/extra_manifest_application_arguments.xml
 
 # (bool) Allow backup: settings + tiny sqlite history move via adb backup
 android.allow_backup = True
 
-# (int) Target/minimum Android API — leave defaults (API 36 / min 24, Android 7+)
+# (int) Target/minimum Android API - leave defaults (API 36 / min 24, Android 7+)
 
-# (str) Android NDK version to use — leave empty for buildozer default
+# (str) Android NDK version to use - leave empty for buildozer default
 #android.ndk = 28c
 
 # (str) Android archs to build for

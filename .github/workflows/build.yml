@@ -1,4 +1,4 @@
-# ODU Tracker — build everything, publish everything.
+# ODU Tracker - build everything, publish everything.
 #
 # * every push: artifacts are attached to the workflow run for testing
 # * every tag (v1.2.3 …): a GitHub Release is created with ALL installers:
@@ -203,7 +203,7 @@ jobs:
       - name: Flatten artifacts
         run: |
           # download-artifact@v4 puts each artifact in its own folder under
-          # `in/` — keep the extract dir separate from the upload dir, or the
+          # `in/` - keep the extract dir separate from the upload dir, or the
           # deb/apk (whose artifact names equal the asset names) can never be
           # copied out (cp refuses "cannot overwrite directory").
           mkdir -p rel
@@ -216,14 +216,14 @@ jobs:
         with:
           name: ODU Tracker ${{ github.ref_name }}
           body: |
-            **ODU Tracker ${{ github.ref_name }}** — install-and-use apps for the MTN Broadband 5G ODU (ZLT X28).
+            **ODU Tracker ${{ github.ref_name }}** - install-and-use apps for the MTN Broadband 5G ODU (ZLT X28).
 
             | Platform | File | Notes |
             |---|---|---|
             | Windows | `ODU-Tracker-Setup.exe` | one-click installer, engine bundled |
             | Windows | `ODU-Tracker-Portable.exe` | no install needed |
             | Linux | `odu-tracker-amd64.deb` | `sudo dpkg -i odu-tracker-amd64.deb` |
-            | macOS | `ODU-Tracker-arm64.dmg` | Apple Silicon — open the dmg, drag to Applications |
+            | macOS | `ODU-Tracker-arm64.dmg` | Apple Silicon - open the dmg, drag to Applications |
             | Android | `ODU-Tracker.apk` | sideload, connect to ODU Wi-Fi |
 
             **Licensing:** first launch asks for the one-time **₦1,500**
@@ -233,7 +233,7 @@ jobs:
             Engine-only fallback (auto-used by the Electron shell when missing):
             `odu-tracker-engine-windows-x64.exe`.
 
-            Created by **anakincoco** — srimpkoyonko@gmail.com
+            Created by **anakincoco** - srimpkoyonko@gmail.com
           files: rel/*
           fail_on_unmatched_files: true
           draft: false
@@ -241,7 +241,7 @@ jobs:
 
   # ------------------------------------------------- legacy switch branch
   # Pre-v1.5.0 installs (the whole v1.4.x era) baked in a switch URL that
-  # points at the `main` branch — which didn't exist, so their fetch 404'd
+  # points at the `main` branch - which didn't exist, so their fetch 404'd
   # and remote policy (voucher kill-switch, min_version) never reached any
   # install in the field. Keep `main` fast-forwarded to master so that
   # legacy channel actually works. `main` was removed from the `on.push`

@@ -6,7 +6,7 @@ Two roles, one listener:
      real per-device "visited websites" view without touching the firmware.
   2. Hijack (captive portal): clients whose device has NO active voucher
      claim, or whose voucher is exhausted, get DNS answers pointing at this
-     machine instead of the real site — their HTTP traffic lands on the
+     machine instead of the real site - their HTTP traffic lands on the
      voucher-claim portal (portal.py). Other clients are forwarded upstream.
 
   UDP :53 (was 5353): receive query -> [log] -> deny? sinkhole
@@ -17,7 +17,7 @@ portal IP, AAAA (28) with an empty NOERROR, and every other type (HTTPS/SVCB
 back ipv4hint/ipv6hint and the real address, so the phone browsed normally
 while the soft cut looked armed.
 
-Binding port 53 needs an unprivileged-port raise or a file capability —
+Binding port 53 needs an unprivileged-port raise or a file capability -
 bind failures are recorded in DnsProxy.error and surfaced in the UI rather
 than failing silently (see /api/portal/status).
 """
@@ -78,7 +78,7 @@ def build_portal_reply(query: bytes, qtype: int, portal_ip: str, ttl: int = 60):
 
 
 def _worker(sock, data, addr, upstream, upstream_port):
-    """Per-query forwarder thread — LAN clients never wait on us."""
+    """Per-query forwarder thread - LAN clients never wait on us."""
     reply = None
     up = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     up.settimeout(3.0)
@@ -143,7 +143,7 @@ class DnsProxy(threading.Thread):
         except OSError as exc:
             # port 53/80 need privileges (net.ipv4.ip_unprivileged_port_start)
             self.error = (f"cannot bind UDP {self.port}: {exc} "
-                          f"(privileged port — run tools/enable_priv_ports.sh once)")
+                          f"(privileged port - run tools/enable_priv_ports.sh once)")
             self._ready.set()
             return
         self._ready.set()
@@ -212,7 +212,7 @@ def start_proxy(cfg, deny=None, portal_ip=None) -> "DnsProxy":
                           deny=deny, portal_ip=portal_ip)
     _singleton.start()
     # Wait for the bind outcome (ms in both success and EACCES cases) so the
-    # caller can decide whether the LAN may safely be pointed at us — arming
+    # caller can decide whether the LAN may safely be pointed at us - arming
     # enforcement against a DNS listener that failed to bind would cut every
     # device off with no portal to recover on.
     _singleton._ready.wait(2.0)

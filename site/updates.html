@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#efece4">
 <meta property="og:site_name" content="ODU Tracker">
 <meta property="og:title" content="ODU Tracker · Updates">
-<meta property="og:description" content="Release log, rollout status and how updates reach your install — one page for every ODU Tracker version.">
+<meta property="og:description" content="Release log, rollout status and how updates reach your install - one page for every ODU Tracker version.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='13' fill='%23ffb632'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%230a0a0a' stroke-width='5.5'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%23ffffff' stroke-width='5.5' stroke-linecap='round' stroke-dasharray='50 75.4' transform='rotate(-90 24 24)'/%3E%3Ccircle cx='24' cy='26' r='3' fill='%230a0a0a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -54,7 +54,7 @@
     <p class="section-sub reveal">
       What changed, what's shipping, and how it reaches your install. This page
       is the single source of truth while <b>downloads are paused</b> on the
-      homepage — the app builds themselves are done, the storefront isn't open
+      homepage - the app builds themselves are done, the storefront isn't open
       yet.
     </p>
 
@@ -69,7 +69,7 @@
       <b>⏸ WHY ARE DOWNLOADS PAUSED?</b>
       <span>The ₦1,500 lifetime unlock is being finalised on Paystack in test
         mode. Reopening the buttons before payment works would hand out builds
-        that can't complete checkout — so they stay dark until the live keys
+        that can't complete checkout - so they stay dark until the live keys
         land. Every installer for v1.5.0 is already built, signed off by CI and
         waiting; the <b>Updates</b> page flips to downloads the same day
         payments open.</span>
@@ -81,7 +81,7 @@
   <section class="section" id="log">
     <p class="kicker reveal">// RELEASE LOG</p>
     <h2 class="reveal">THE <span class="hl">CHANGELOG</span></h2>
-    <p class="section-sub reveal">Newest first. Same version on every platform —
+    <p class="section-sub reveal">Newest first. Same version on every platform -
       Windows, Linux, macOS and the Android APK are cut from one tag.</p>
 
     <div class="tl">
@@ -92,19 +92,19 @@
           <span class="wn-tag">CURRENT</span>
         </div>
         <ul>
-          <li><b>₦1,500 one-time lifetime unlock</b> — first launch shows the
+          <li><b>₦1,500 one-time lifetime unlock</b> - first launch shows the
               feature slides, then Paystack (card, transfer, USSD) unlocks the
               whole app on one device. No subscription, no grandfathering:
               older installs pay too.</li>
-          <li><b>Vouchers tab included</b> — the guest-code feature folded into
+          <li><b>Vouchers tab included</b> - the guest-code feature folded into
               the single payment; no separate add-on any more.</li>
-          <li><b>Licence code survives reinstalls</b> — copy it after paying,
+          <li><b>Licence code survives reinstalls</b> - copy it after paying,
               paste it back on the same device; useless on any other machine.</li>
-          <li><b>macOS Apple Silicon .dmg</b> — first Mac build, straight from
+          <li><b>macOS Apple Silicon .dmg</b> - first Mac build, straight from
               CI (unsigned for now: right-click → Open).</li>
-          <li><b>In-app update screen</b> — a remote minimum-version switch can
+          <li><b>In-app update screen</b> - a remote minimum-version switch can
               now force installs to update before anything else loads.</li>
-          <li><b>New homepage</b> — slide-by-slide feature deck, pricing
+          <li><b>New homepage</b> - slide-by-slide feature deck, pricing
               section, ChromeOS install notes; downloads paused until payment
               launch.</li>
         </ul>
@@ -116,11 +116,11 @@
           <span class="tl-date">23 Nov 2026</span>
         </div>
         <ul>
-          <li><b>Default-deny guest Wi-Fi</b> — new devices get no DNS, no web
+          <li><b>Default-deny guest Wi-Fi</b> - new devices get no DNS, no web
               until they claim a voucher on the captive-portal page.</li>
-          <li><b>Safer arming</b> — if the portal can't bind, nothing is saved:
+          <li><b>Safer arming</b> - if the portal can't bind, nothing is saved:
               router DNS never moves, the toggle reverts, you get an alert.</li>
-          <li><b>Phone app: 4 tabs</b> — Vouchers moved to the desktop app;
+          <li><b>Phone app: 4 tabs</b> - Vouchers moved to the desktop app;
               Trust / Soft-cut / Block buttons fit their cards.</li>
         </ul>
       </article>
@@ -131,10 +131,10 @@
           <span class="tl-date">13 Nov 2026</span>
         </div>
         <ul>
-          <li><b>Vouchers go paid</b> — per-device unlock codes, HMAC-verified
+          <li><b>Vouchers go paid</b> - per-device unlock codes, HMAC-verified
               offline; a remote kill-switch file can pause the feature or ban
               leaked codes in the field.</li>
-          <li><b>Shared SIM pool + quotas</b> — cap data per code, revoke
+          <li><b>Shared SIM pool + quotas</b> - cap data per code, revoke
               mid-stream, watch claims live.</li>
         </ul>
       </article>
@@ -145,14 +145,14 @@
           <span class="tl-date">Android era</span>
         </div>
         <ul>
-          <li><b>Fixed the Android boot crash</b> — the app data dir now comes
+          <li><b>Fixed the Android boot crash</b> - the app data dir now comes
               from p4a's ANDROID_PRIVATE instead of HOME, so the engine starts
               on phones.</li>
         </ul>
       </article>
     </div>
 
-    <p class="tl-note reveal">older versions live in the repo's git tags — every
+    <p class="tl-note reveal">older versions live in the repo's git tags - every
       build is reproducible from source.</p>
   </section>
 
@@ -160,12 +160,12 @@
   <section class="section" id="how">
     <p class="kicker reveal">// HOW UPDATES REACH YOUR INSTALL</p>
     <h2 class="reveal">UPDATED <span class="hl">IN PLACE</span></h2>
-    <p class="section-sub reveal">No accounts, no auto-download surprises — you
+    <p class="section-sub reveal">No accounts, no auto-download surprises - you
       stay in control of when the app changes.</p>
 
     <ol class="steps">
-      <li class="reveal"><span class="step-n">01</span><div><b>THE APP ASKS FIRST</b><span>When a release raises the minimum version, your install shows a full-screen <strong>UPDATE REQUIRED</strong> before the dashboard or paywall — with a download button and a <strong>Check again</strong> that re-polls in real time. Ignore it and nothing else runs; that's the point.</span></div></li>
-      <li class="reveal"><span class="step-n">02</span><div><b>INSTALL OVER THE OLD ONE</b><span>Grab the new build for your platform and install it on top — same app, same data, nothing to reconfigure. Windows keeps its settings, Linux re-installs the <code>.deb</code>, phones sideload the APK over the old one.</span></div></li>
+      <li class="reveal"><span class="step-n">01</span><div><b>THE APP ASKS FIRST</b><span>When a release raises the minimum version, your install shows a full-screen <strong>UPDATE REQUIRED</strong> before the dashboard or paywall - with a download button and a <strong>Check again</strong> that re-polls in real time. Ignore it and nothing else runs; that's the point.</span></div></li>
+      <li class="reveal"><span class="step-n">02</span><div><b>INSTALL OVER THE OLD ONE</b><span>Grab the new build for your platform and install it on top - same app, same data, nothing to reconfigure. Windows keeps its settings, Linux re-installs the <code>.deb</code>, phones sideload the APK over the old one.</span></div></li>
       <li class="reveal"><span class="step-n">03</span><div><b>YOUR LICENCE CARRIES OVER</b><span>The ₦1,500 unlock is bound to the device, not the install: your saved <strong>licence code</strong> re-activates after any update or reinstall. One payment, every version from now on.</span></div></li>
     </ol>
   </section>
