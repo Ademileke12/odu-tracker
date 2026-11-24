@@ -294,9 +294,11 @@ push. Sideload onto any Android 7+ phone, connect to the ODU Wi-Fi, done.
 
 ## 🔓 One-time unlock (₦1,500 · Paystack)
 
-From **v1.5.0** the whole app (usage, devices, alerts, speed tests,
-enforcement) is behind **one ₦1,500 lifetime payment**, collected on the
-app's first screen with **Paystack Inline** — card, bank transfer or USSD.
+From **v1.5.0** the whole app — usage, devices, alerts, speed tests,
+enforcement **and the Vouchers tab** — is behind **one ₦1,500 lifetime
+payment**, collected on the app's first screen with **Paystack Inline**
+— card, bank transfer or USSD. There is no grandfathering: installs from
+before v1.5.0 hit the same paywall on their next start.
 
 * First load shows the feature slide deck, a pay button, and this device's
   ID. Paying confirms the transaction **server-side** (`status=success`,
@@ -306,7 +308,18 @@ app's first screen with **Paystack Inline** — card, bank transfer or USSD.
   reinstall on the same device. It validates on no other machine, and the
   unlock code is never exposed before payment.
 * Every data route answers `403 paid_required` until then — enforced in
-  `require_auth`, not just in the UI.
+  `require_auth`, not just in the UI. **The Vouchers tab is included**:
+  `require_license` passes as soon as the base licence is active (codes
+  sold before v1.5.0 keep working too).
+* Force-update gate: `site/voucher-switch.json` carries an optional
+  `min_version` — when it's above the running version, `/api/meta`
+  reports `update.required` and both UIs show a full-screen
+  **UPDATE REQUIRED** screen (download + check-again) *before* the
+  paywall. Set it to push field installs onto a newer build; leave it
+  `""` to never force. Note: installs older than v1.5.0 predate this
+  field — the only lever on those is the voucher `disabled` switch (and
+  their baked URL pointed at a dead `main` branch until v1.5.0, so even
+  that never reached them).
 * Keys: ship only the **public** key (`paystack_public_key`). For
   verification either deploy `tools/paystack-worker.js` (Cloudflare Worker
   holding the secret, set `paystack_verify_url`) or set
@@ -316,10 +329,10 @@ app's first screen with **Paystack Inline** — card, bank transfer or USSD.
 ## 🔐 Paid Voucher feature (access codes)
 
 The **Vouchers tab** (data codes, shared SIM pool, captive-portal gating)
-is a **separate paid add-on** on top of the ₦1,500 base unlock. There is no
-in-app payment for it: buyers chat with the author —
-**srimpkoyonko@gmail.com** or TikTok **@leke_abudu** — pay directly, and
-receive a personal unlock code.
+is **included in the ₦1,500 base unlock from v1.5.0** — one payment opens
+every tab. The historical flow below still applies to **unlock codes sold
+before v1.5.0** (they keep working on their device); new buyers just pay
+in-app.
 
 * A locked install shows a **device code** (`ODU-XXXX-XXXX-XXXX`) in the
   Vouchers tab, derived from the device's own identity.

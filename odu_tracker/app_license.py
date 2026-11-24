@@ -1,7 +1,8 @@
 r"""Base app licence — the ₦1,500 one-time unlock (v1.5.0).
 
-Everything except the Voucher add-on sits behind ONE payment: usage,
-device radar, threat alerts, speed tests, the guest Wi-Fi gate, on every
+The WHOLE app sits behind ONE payment: usage, device radar, threat
+alerts, speed tests, the guest Wi-Fi gate AND the Vouchers tab (v1.5.0
+folded the voucher add-on in — one price opens everything), on every
 platform we ship (Windows / Linux / macOS / Android / Chromebook).
 
 Flow

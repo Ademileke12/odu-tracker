@@ -50,9 +50,18 @@ CFG_KEY = "voucher_license"
 # pause the voucher feature or ban leaked device codes even on installs
 # that are already out there. The app re-checks it at boot + every 30 min
 # and keeps the LAST KNOWN policy when offline (sticky by design).
+# v1.5.0: the file also carries `min_version` — when set above the running
+# version, the app shows a full-screen UPDATE REQUIRED gate (see
+# update_gate() below). NOTE: must track the DEFAULT branch name; `main`
+# 404'd here for the whole v1.4.x era, so the switch never actually reach
+# installs in the field.
 SWITCH_URL = ("https://raw.githubusercontent.com/Ademileke12/odu-tracker/"
-              "main/site/voucher-switch.json")
+              "master/site/voucher-switch.json")
 SWITCH_CFG_KEY = "voucher_switch"
+UPDATE_URL_DEFAULT = ("https://github.com/Ademileke12/odu-tracker/"
+                      "releases/latest")
+UPDATE_MSG_DEFAULT = ("A newer version of ODU Tracker is required — "
+                      "update to keep using the app.")
 
 # Obfuscated HMAC secret (blob ^ mask). Rotate for a future release only
 # if it leaks — rotating invalidates every unlock code issued before it.
@@ -167,6 +176,44 @@ def switch_blocks(cfg):
     return None
 
 
+def _vtuple(v: str) -> tuple:
+    """'1.5.0' -> (1, 5, 0). Non-numeric junk becomes 0 so a malformed
+    remote value can never compare GREATER than a real version."""
+    parts = []
+    for piece in re.findall(r"\d+", str(v))[:3]:
+        parts.append(int(piece))
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts)
+
+
+def update_gate(cfg) -> dict:
+    """Force-update state from the remote policy (v1.5.0).
+
+    When `min_version` in site/voucher-switch.json is set ABOVE the
+    running version, both UIs show a full-screen UPDATE REQUIRED screen
+    (before the paywall — updating is what brings the new paywall).
+    Empty/absent => never forces. Installs older than v1.5.0 don't know
+    about this field; the only lever on those is the voucher switch.
+    """
+    pol = switch_policy(cfg)
+    latest = str(pol.get("min_version") or "").strip()
+    try:
+        needed = bool(latest) and _vtuple(latest) > _vtuple(_version())
+    except Exception:
+        needed = False
+    return {
+        "required": needed,
+        "current": _version(),
+        "latest": latest,
+        "message": (str(pol.get("update_message") or "").strip()
+                    or UPDATE_MSG_DEFAULT),
+        "url": (str(pol.get("update_url") or "").strip()
+                or UPDATE_URL_DEFAULT),
+        "checked_at": pol.get("checked_at"),
+    }
+
+
 def refresh_switch(cfg, url=None, timeout=6.0):
     """Fetch the remote policy. Returns True when the applied policy
     CHANGED, False when unchanged, None when unreachable (last known
@@ -182,13 +229,18 @@ def refresh_switch(cfg, url=None, timeout=6.0):
             "banned": sorted({normalize(b) for b in (data.get("banned") or [])
                               if normalize(b)}),
             "message": str(data.get("message") or "")[:200],
+            # force-update gate (v1.5.0): empty min_version = no forcing
+            "min_version": str(data.get("min_version") or "")[:20],
+            "update_message": str(data.get("update_message") or "")[:200],
+            "update_url": str(data.get("update_url") or "")[:200],
             "checked_at": int(time.time()),
         }
     except Exception:
         return None
     old = switch_policy(cfg)
     changed = (old.get("disabled") != pol["disabled"]
-               or old.get("banned") != pol["banned"])
+               or old.get("banned") != pol["banned"]
+               or old.get("min_version") != pol["min_version"])
     cfg.set(SWITCH_CFG_KEY, pol)
     return changed
 

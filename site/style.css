@@ -493,7 +493,6 @@ h2 {
 /* -------------------------------------------------- voucher access how-to
    Paid-feature walkthrough: 3 steps (reuses .steps) + the desktop paywall
    + contact buttons. */
-.vcenter { max-width: 880px; margin: 64px auto 0; }
 .vnote {
   max-width: 720px; margin: 44px auto 0; text-align: center;
   color: var(--muted); font-size: 14.5px; line-height: 1.75;

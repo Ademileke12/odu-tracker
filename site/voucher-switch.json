@@ -2,5 +2,8 @@
   "disabled": false,
   "banned": [],
   "message": "",
-  "updated": "2026-11-13"
+  "min_version": "",
+  "update_message": "",
+  "update_url": "https://github.com/Ademileke12/odu-tracker/releases/latest",
+  "updated": "2026-11-24"
 }

@@ -403,7 +403,31 @@ def test_base_paywall():
     j = r.get_json()
     assert r.status_code == 200 and j["paid"] is True, j
     assert app_license.is_paid(cfg) is True
-    print("base paywall         ok  (403 paid_required, verify, reinstall)")
+
+    # v1.5.0: the base unlock ALSO opens the Vouchers tab — one price,
+    # every feature (a separately-sold pre-1.5.0 code would count too)
+    j = c.get("/api/license").get_json()
+    assert j["locked"] is False and j["kind"] == "included", j
+    r = c.get("/api/vouchers")
+    assert r.status_code != 403, (r.status_code, r.get_json())
+
+    # force-update gate: remote min_version above the running version
+    # flips /api/meta before login/paywall; unreachable switch URL so the
+    # background refresher can't race this assertion
+    cfg.set("license_switch_url", "http://127.0.0.1:9/nope", persist=False)
+    cfg.set("voucher_switch", {"min_version": "99.0.0"}, persist=False)
+    m = c.get("/api/meta").get_json()
+    assert m["update"]["required"] is True and \
+        m["update"]["latest"] == "99.0.0", m["update"]
+    j = c.post("/api/updatecheck").get_json()
+    assert j["update"]["required"] is True, j          # still forced
+    cfg.set("voucher_switch", {"min_version": ""}, persist=False)
+    m = c.get("/api/meta").get_json()
+    assert m["update"]["required"] is False, m["update"]  # gate lifted
+    cfg.set("voucher_switch", None, persist=False)
+
+    print("base paywall         ok  (403 paid_required, verify, reinstall,\n"
+          "                            vouchers included, update gate)")
 
 
 if __name__ == "__main__":

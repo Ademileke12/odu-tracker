@@ -299,6 +299,24 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   background:var(--panel);border:1.5px solid var(--ink);border-radius:12px;
   padding:14px 16px;box-shadow:3px 3px 0 var(--acc);margin:14px 0 12px;
   width:100%;max-width:330px;text-align:center;word-break:break-all}
+
+/* ---------- force update (v1.5.0) ---------- */
+#upd{display:none;position:fixed;inset:0;z-index:22;background:var(--paper);
+  background-image:radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+  background-size:22px 22px;flex-direction:column;align-items:center;
+  justify-content:center;padding:30px 22px;text-align:center;overflow-y:auto}
+#upd .logo{width:70px;height:70px;border-radius:20px;background:var(--acc);
+  border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);display:grid;
+  place-items:center;font-size:34px;font-weight:900;color:var(--ink);
+  margin-bottom:16px;transform:rotate(-4deg);filter:grayscale(.85);opacity:.8}
+#upd h1{font-size:25px;font-weight:900;letter-spacing:.5px;margin-bottom:8px}
+#upd p{color:var(--mut);font-size:13.5px;line-height:1.6;max-width:300px;
+  margin:0 auto 18px}
+#upd .btn{max-width:330px;width:100%;text-decoration:none;text-align:center}
+#upd .hint{font-size:11px;color:var(--faint);margin-top:16px;max-width:300px;
+  text-align:center;line-height:1.6}
+#updStatus{font-family:var(--mono);font-size:11.5px;color:var(--mut);
+  min-height:16px;margin-bottom:14px}
 @media (min-width:640px){ main{max-width:560px;margin:0 auto} nav{max-width:none} }
 </style>
 </head>
@@ -341,7 +359,8 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
     <div class="ps">
       <b>Guests earn their access</b>
       <span>Arm the captive portal and new devices get no internet until they
-        claim a voucher code. Mint, cap and revoke from here.</span>
+        claim a voucher code. Mint, cap and revoke from here — the Vouchers
+        tab is included in this unlock.</span>
     </div>
   </div>
   <div class="pdots" id="pDots">
@@ -378,6 +397,21 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
     <div style="height:10px"></div>
     <button class="btn" id="doneGo">START USING IT →</button>
   </div>
+</div>
+
+<!-- ================================================ force update (v1.5.0) -->
+<div id="upd">
+  <div class="logo">O</div>
+  <h1>UPDATE REQUIRED</h1>
+  <p id="updMsg">A newer version of ODU Tracker is required to keep using
+     the app.</p>
+  <div id="updStatus"></div>
+  <a class="btn" id="updGo" href="https://github.com/Ademileke12/odu-tracker/releases/latest"
+     target="_blank" rel="noopener">⤓ DOWNLOAD THE LATEST VERSION</a>
+  <div style="height:10px"></div>
+  <button class="btn ghost" id="updRetry">↻ CHECK AGAIN</button>
+  <div class="hint">Install the new build over this one — your licence code
+     still works, no second payment.</div>
 </div>
 
 <!-- ================================================ top -->
@@ -575,9 +609,38 @@ $$('nav button').forEach((b) => b.addEventListener('click', () => openTab(b.data
 /* ------------------------------------------------------- login */
 function showLogin() {
   if ($('#pay').style.display === 'flex') return;   // paywall owns the screen
+  if ($('#upd').style.display === 'flex') return;   // …update gate longer
   $('#login').style.display = 'flex';
 }
 function hideLogin() { $('#login').style.display = 'none'; }
+
+/* ------------------------------------------- force update (v1.5.0) */
+function showUpd(u) {
+  $('#login').style.display = 'none';
+  $('#pay').style.display = 'none';
+  $('#updMsg').textContent = (u && u.message) ||
+    'A newer version of ODU Tracker is required to keep using the app.';
+  $('#updGo').href = (u && u.url) ||
+    'https://github.com/Ademileke12/odu-tracker/releases/latest';
+  $('#updStatus').textContent = (u && u.latest)
+    ? ('you have ' + u.current + ' · latest is ' + u.latest) : '';
+  $('#upd').style.display = 'flex';
+}
+function hideUpd() { $('#upd').style.display = 'none'; }
+
+$('#updRetry').addEventListener('click', async () => {
+  const btn = $('#updRetry'), st = $('#updStatus');
+  btn.disabled = true; st.textContent = 'checking…';
+  try {
+    const d = await api('/api/updatecheck', {method: 'POST'});
+    if (d && d.update && d.update.required) {
+      showUpd(d.update);
+      st.textContent = 'you have ' + d.update.current +
+        ' · latest is ' + d.update.latest;
+    } else { location.reload(); }        // gate lifted: fresh boot
+  } catch { st.textContent = 'cannot check right now — try again shortly'; }
+  finally { btn.disabled = false; }
+});
 
 /* ------------------------------------------------------- paywall (v1.5.0)
    ₦1,500 one-time unlock: slide-by-slide intro + Paystack Inline, shown
@@ -585,6 +648,7 @@ function hideLogin() { $('#login').style.display = 'none'; }
 let payInfo = null, payDeckTmr = null;
 
 function showPay() {
+  if ($('#upd').style.display === 'flex') return;   // update gate outranks
   $('#pay').style.display = 'flex';
   $('#login').style.display = 'none';
   startPayDeck();
@@ -1044,6 +1108,8 @@ $('#resetBtn').addEventListener('click', () => {
   let m = {};
   try { m = await api('/api/meta'); } catch { showLogin(); return; }
   if (m.router_ip) $('#routerIpHint').textContent = m.router_ip;
+  if (m.update && m.update.required) { showUpd(m.update); return; }  // v1.5.0
+  hideUpd();
   if (!m.paid) { showPay(); return; }        // pay first, always (v1.5.0)
   hidePay();
   if (!m.authed) { showLogin(); return; }

@@ -393,6 +393,7 @@ th.right,td.right{text-align:right}
 /* ---------- buttons ---------- */
 .btn{font-family:var(--font);font-weight:700;font-size:.85rem;padding:10px 17px;border-radius:var(--r-sm);
   cursor:pointer;border:1px solid var(--line2);background:var(--panel3);color:var(--text);transition:.15s;white-space:nowrap}
+a.btn{display:inline-block;text-decoration:none;text-align:center}
 .btn:hover{border-color:#3a4c66;transform:translateY(-1px)}
 html[data-theme="light"] .btn:hover{border-color:#c3cfdf}
 .btn.primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#221a02;border:none;

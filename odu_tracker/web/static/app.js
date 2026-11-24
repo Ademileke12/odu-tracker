@@ -512,6 +512,7 @@ const S = {
 /* ---------------------------------------------------------------- auth */
 function showAuth() {
   if (!$("#payView").hidden) return;   // the paywall owns the screen until paid
+  if (!$("#updateView").hidden) return; // …and the update gate owns it longer
   $("#authView").hidden = false;
   $("#mainView").hidden = true;
 }
@@ -526,7 +527,42 @@ const SPLASH_MIN_MS = 1500;
 let payInfo = null;          // last /api/applicense payload
 let payDeckTmr = null;
 
+/* force-update gate (v1.5.0): remote min_version beats everything —
+   updating is what brings the new paywall to older installs. */
+function showUpdate(u) {
+  fadeSplash();
+  $("#noOduView").hidden = true;
+  $("#payView").hidden = true;
+  $("#authView").hidden = true;
+  $("#mainView").hidden = true;
+  $("#updMsg").textContent = (u && u.message) ||
+    "A newer version of ODU Tracker is required.";
+  $("#updGo").href = (u && u.url) ||
+    "https://github.com/Ademileke12/odu-tracker/releases/latest";
+  $("#updStatus").textContent = (u && u.latest)
+    ? `you have ${u.current} · latest is ${u.latest}`
+    : "";
+  $("#updateView").hidden = false;
+}
+
+$("#updRetry").onclick = async () => {
+  const btn = $("#updRetry"), st = $("#updStatus");
+  btn.disabled = true; st.textContent = "checking…";
+  try {
+    const d = await api("/api/updatecheck", {method: "POST"});
+    if (d && d.update && d.update.required) {
+      showUpdate(d.update);              // still behind — refresh message
+      st.textContent = `you have ${d.update.current} · latest is ${d.update.latest}`;
+    } else {
+      location.reload();                 // gate lifted: fresh boot
+    }
+  } catch (e) {
+    st.textContent = "cannot check right now — try again shortly";
+  } finally { btn.disabled = false; }
+};
+
 function showPaywall() {
+  if (!$("#updateView").hidden) return;  // update gate outranks the paywall
   fadeSplash();
   $("#noOduView").hidden = true;
   $("#authView").hidden = true;
@@ -716,6 +752,8 @@ $("#noOduRetry").onclick = async () => {
 };
 
 async function route(meta) {
+  if (meta.update && meta.update.required) { showUpdate(meta.update); return; }
+  $("#updateView").hidden = true;
   if (!meta.paid) { showPaywall(); return; }      // pay first, always
   $("#payView").hidden = true;
   if (!meta.reachable || !meta.odu) { showNoOdu(); return; }

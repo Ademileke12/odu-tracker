@@ -88,19 +88,22 @@ def create_app(cfg: Config, poller: Poller):
 
     def require_license(fn):
         """Paid-feature gate: the Voucher endpoints answer 403 with the
-        device code + contacts until a valid unlock code was entered."""
+        device code + contacts until a valid unlock code was entered.
+        v1.5.0: the ₦1,500 base unlock INCLUDES vouchers — one payment
+        opens everything; a separately-sold voucher code still counts
+        (codes sold before v1.5.0 keep working)."""
         from functools import wraps
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            if not voucher_license.is_unlocked(cfg):
-                return jsonify({
-                    "locked": True,
-                    "error": "voucher_locked",
-                    "device_code": voucher_license.device_code(),
-                    "contact_email": voucher_license.CONTACT_EMAIL,
-                    "contact_tiktok": voucher_license.CONTACT_TIKTOK,
-                }), 403
-            return fn(*args, **kwargs)
+            if app_license.is_paid(cfg) or voucher_license.is_unlocked(cfg):
+                return fn(*args, **kwargs)
+            return jsonify({
+                "locked": True,
+                "error": "voucher_locked",
+                "device_code": voucher_license.device_code(),
+                "contact_email": voucher_license.CONTACT_EMAIL,
+                "contact_tiktok": voucher_license.CONTACT_TIKTOK,
+            }), 403
         return wrapper
 
     # ---------------------------------------------------------------- auth
@@ -161,6 +164,17 @@ def create_app(cfg: Config, poller: Poller):
         tcp_ok, odu = _odu_probe()
         return jsonify({"reachable": tcp_ok, "odu": odu, "ip": cfg.get("router_ip")})
 
+    @app.post("/api/updatecheck")
+    def update_check():
+        """The UPDATE REQUIRED screen's 'check again' button: force a
+        fresh fetch of the remote policy and report the gate state.
+        Public on purpose — it runs before login/paywall."""
+        try:
+            voucher_license.refresh_switch(cfg)
+        except Exception:
+            pass                       # offline: last known policy stays
+        return jsonify({"ok": True, "update": voucher_license.update_gate(cfg)})
+
     @app.get("/api/meta")
     def meta():
         """Used by the UI before auth: does a password exist?
@@ -189,6 +203,8 @@ def create_app(cfg: Config, poller: Poller):
             "version": __import__("odu_tracker").__version__,
             "paid": app_license.is_paid(cfg),
             "price_label": app_license.PRICE_LABEL,
+            # force-update gate from the remote policy (empty = never)
+            "update": voucher_license.update_gate(cfg),
             **lock,
         })
 
@@ -807,8 +823,14 @@ def create_app(cfg: Config, poller: Poller):
     @app.get("/api/license")
     @require_auth
     def license_status():
-        """Paywall state: locked?, device code, contacts (for both UIs)."""
-        return jsonify(voucher_license.status(cfg))
+        """Paywall state: locked?, device code, contacts (for both UIs).
+        v1.5.0: paying the base unlock also opens the Vouchers tab, so
+        report unlocked (kind=included) as soon as the base licence is
+        active — no second code, no add-on purchase."""
+        st = voucher_license.status(cfg)
+        if app_license.is_paid(cfg) and st.get("locked"):
+            st = dict(st, locked=False, kind="included")
+        return jsonify(st)
 
     @app.post("/api/license/unlock")
     @require_auth
