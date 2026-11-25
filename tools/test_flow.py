@@ -430,6 +430,89 @@ def test_base_paywall():
           "                            vouchers included, update gate)")
 
 
+def test_trial():
+    """v1.5.0 - the 24h server-backed trial: pin, gate, expiry, anti-wipe."""
+    from odu_tracker import app_license
+    from odu_tracker import trial as app_trial
+    cfg = Config()
+    cfg.set("app_license", None)              # unpaid: the trial's world
+    cfg.set("trial", None, persist=False)
+    # no real network in tests: switch fetch stays unreachable
+    cfg.set("license_switch_url", "http://127.0.0.1:9/nope", persist=False)
+    from odu_tracker.web.app import create_app
+    app = create_app(cfg, Poller(cfg))
+    c = app.test_client()
+
+    # disarmed (no endpoint): classic pay-on-first-launch, no record minted
+    m = c.get("/api/meta").get_json()
+    assert m["trial"]["active"] is False, m["trial"]
+    assert not cfg.get("trial"), cfg.get("trial")     # never minted
+    with mock.patch("odu_tracker.web.app.OduRouter.login",
+                    return_value={"ok": 1}):
+        c.post("/api/login", json={"password": "x"})
+    r = c.get("/api/devices")
+    assert r.status_code == 403 and \
+        r.get_json()["error"] == "paid_required", (r.status_code, r.get_json())
+
+    # armed but unreachable: a LOCAL 24h window opens (offline first run)
+    cfg.set("trial_api_url", "http://127.0.0.1:9/nope", persist=False)
+    app2 = create_app(cfg, Poller(cfg))
+    c2 = app2.test_client()
+    m = c2.get("/api/meta").get_json()
+    t = m["trial"]
+    assert t["active"] is True and t["remaining_s"] > 23 * 3600, t
+    assert t["source"] == "local" and t["ended"] is False, t
+    with mock.patch("odu_tracker.web.app.OduRouter.login",
+                    return_value={"ok": 1}):
+        c2.post("/api/login", json={"password": "x"})
+    r = c2.get("/api/devices")                  # trial passes the paid gate
+    assert r.status_code != 403, (r.status_code, r.get_json())
+    r = c2.get("/api/vouchers")                 # ...including Vouchers
+    assert r.status_code != 403, (r.status_code, r.get_json())
+
+    # window runs out: the gate slams shut, paywall told "ended"
+    rec = cfg.get("trial")
+    rec["expires_at"] = int(time.time()) - 10
+    cfg.set("trial", rec, persist=False)
+    r = c2.get("/api/devices")
+    j = r.get_json()
+    assert r.status_code == 403 and j["error"] == "paid_required", j
+    assert j["trial"]["ended"] is True and j["trial"]["active"] is False, j
+
+    # clock wound back (last_seen in the future): permanently banned
+    rec["expires_at"] = int(time.time()) + 12 * 3600
+    rec["last_seen"] = int(time.time()) + 3600
+    cfg.set("trial", rec, persist=False)
+    assert app_trial.active(cfg) is False, cfg.get("trial")
+    app_trial.refresh(cfg)                      # even offline the ban sticks
+    assert cfg.get("trial").get("banned") == 1, cfg.get("trial")
+    assert c2.get("/api/devices").status_code == 403
+
+    # anti-reinstall: the SERVER's pinned record survives a local wipe
+    cfg.set("trial", None, persist=False)       # "user cleared app data"
+    pinned = {"started_at": 1700000000,
+              "expires_at": 1700000000 + app_trial.TRIAL_S}
+    with mock.patch.object(app_trial, "_post", return_value=pinned):
+        app_trial.refresh(cfg)
+    got = cfg.get("trial")
+    assert got["started_at"] == pinned["started_at"], got
+    assert got["source"] == "server" and "banned" not in got, got
+    with mock.patch.object(app_trial, "_post", return_value=pinned):
+        app_trial.refresh(cfg)                  # same window, every time
+    assert cfg.get("trial")["started_at"] == pinned["started_at"]
+
+    # paid users never touch the trial machinery
+    cfg.set("app_license", {"code": app_license.expected_code()},
+            persist=False)
+    assert app_license.is_paid(cfg) is True
+    before = dict(cfg.get("trial"))
+    assert app_trial.refresh(cfg) is False, cfg.get("trial")
+    assert cfg.get("trial") == before, cfg.get("trial")
+
+    print("24h trial            ok  (disarmed, local pin, gate, expiry,\n"
+          "                            clock ban, server anti-reinstall)")
+
+
 if __name__ == "__main__":
     test_extract_devices()
     test_parse_usage()
@@ -438,6 +521,7 @@ if __name__ == "__main__":
     test_dns_parser()
     test_sites_flow()
     test_base_paywall()
+    test_trial()
     test_web_api()
     test_default_deny()
     test_portal_arm_guards()

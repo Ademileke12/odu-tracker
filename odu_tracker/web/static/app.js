@@ -38,8 +38,9 @@ async function api(path, opts) {
   try { body = await r.json(); } catch { /* no body */ }
   if (!r.ok) {
     // the ₦2,500 gate: any data route refusing with paid_required flips
-    // the UI back to the paywall (e.g. licence lost after a reinstall)
-    if (r.status === 403 && body && body.error === "paid_required") showPaywall();
+    // the UI back to the paywall (e.g. licence lost after a reinstall).
+    // body.trial tells the paywall whether a window just ran out.
+    if (r.status === 403 && body && body.error === "paid_required") showPaywall(body.trial);
     throw Object.assign(new Error((body && body.error) || `HTTP ${r.status}`), {status: r.status, body});
   }
   return body;
@@ -563,16 +564,63 @@ $("#updRetry").onclick = async () => {
   } finally { btn.disabled = false; }
 };
 
-function showPaywall() {
+function showPaywall(trial) {
   if (!$("#updateView").hidden) return;  // update gate outranks the paywall
   fadeSplash();
   $("#noOduView").hidden = true;
   $("#authView").hidden = true;
   $("#mainView").hidden = true;
+  // 24h trial context: explain an expired window, and offer a way back
+  // into the app while it is still running (the header chip opens this).
+  const onTrial = !!(trial && trial.active);
+  const ended = !!(trial && trial.ended);
+  const note = $("#payTrialNote");
+  note.hidden = !(onTrial || ended);
+  note.textContent = ended
+    ? "Your 24-hour free trial has ended. Unlock for ₦2,500 to keep using ODU Tracker."
+    : "You're on the free trial - everything is unlocked until it runs out.";
+  $("#payTrialBack").hidden = !onTrial;
   $("#payView").hidden = false;
   startPayDeck();
   loadPayInfo();
 }
+
+$("#payTrialBack").onclick = () => { $("#payView").hidden = true; boot(); };
+
+/* ---------------------------------------------------- trial chip (v1.5.0)
+   Countdown in the header while the free trial runs; tapping it opens the
+   paywall (with the way back). The SERVER is the authority - this is only
+   the mirror of /api/meta's trial block, aged by the local clock. */
+let trialState = null, trialPaid = false, trialTick = null;
+
+function updateTrialChip(trial, paid) {
+  trialState = (trial && typeof trial === "object") ? trial : null;
+  trialPaid = !!paid;
+  paintTrialChip();
+  if (!trialTick) trialTick = setInterval(paintTrialChip, 30000);
+}
+
+function paintTrialChip() {
+  const chip = $("#trialChip");
+  if (!chip) return;
+  const st = trialState;
+  if (trialPaid || !st || !st.active || !st.expires_at) {
+    chip.hidden = true;
+    return;
+  }
+  const left = st.expires_at - Math.floor(Date.now() / 1000);
+  if (left <= 0) {
+    // window ran out: flip to the paywall now - the server gate would
+    // 403 the very next data poll anyway
+    showPaywall(Object.assign({}, st, {active: false, ended: true}));
+    return;
+  }
+  const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
+  $("#trialChipTxt").textContent = h > 0 ? `Trial ${h}h ${m}m` : `Trial ${m}m`;
+  chip.hidden = false;
+}
+
+$("#trialChip").onclick = () => showPaywall(trialState);
 
 async function loadPayInfo() {
   try {
@@ -785,8 +833,11 @@ $("#noOduRetry").onclick = async () => {
 async function route(meta) {
   if (meta.update && meta.update.required) { showUpdate(meta.update); return; }
   $("#updateView").hidden = true;
-  if (!meta.paid) { showPaywall(); return; }      // pay first, always
+  const trial = meta.trial || null;
+  // pay first, always - unless the 24h trial still has time on it
+  if (!meta.paid && !(trial && trial.active)) { showPaywall(trial); return; }
   $("#payView").hidden = true;
+  updateTrialChip(trial, meta.paid);
   if (!meta.reachable || !meta.odu) { showNoOdu(); return; }
   fadeSplash();
   if (meta.authed) { enterMain(); return; }

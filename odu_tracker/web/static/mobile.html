@@ -50,6 +50,10 @@ button{font-family:inherit}
 .chip.on i{background:var(--green);box-shadow:0 0 7px var(--green)}
 .chip.bad{color:var(--red);border-color:var(--red)}
 .chip.bad i{background:var(--red)}
+.chip.trial{color:var(--acc);border-color:var(--acc)}
+.chip.trial i{background:var(--acc);box-shadow:0 0 7px var(--acc)}
+[hidden]{display:none!important}   /* hidden attr always wins over display rules */
+#trialChip + .chip{margin-left:8px}  /* keep trial+conn snug at the right edge */
 
 /* ---------- views ---------- */
 main{padding:16px 14px calc(86px + var(--sab))}
@@ -371,10 +375,12 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   </div>
 
   <div id="payStep">
+    <div id="payTrialNote" class="hint" hidden></div>
     <div class="pprice"><b>₦2,500</b><span>one-time · for life · one device</span></div>
     <input id="payEmail" type="email" inputmode="email" autocomplete="email"
            placeholder="email for your receipt (optional)">
     <button class="btn" id="payBtn">PAY ₦2,500 - UNLOCK</button>
+    <button class="btn ghost" id="payTrialBack" type="button" hidden>KEEP USING MY FREE TRIAL</button>
     <div id="payErr"></div>
     <button class="btn" id="payVerify" hidden>I'VE PAID - VERIFY MY PAYMENT</button>
 
@@ -419,6 +425,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
 <header class="top">
   <div class="mark">O</div>
   <b>ODU <i>TRACKER</i></b>
+  <div class="chip trial" id="trialChip" hidden><i></i><span id="trialChipTxt">Trial</span></div>
   <div class="chip" id="conn"><i></i><span>…</span></div>
 </header>
 
@@ -547,9 +554,10 @@ async function api(path, opts) {
   if (r.status === 401) { showLogin(); throw 401; }
   let body = null;
   try { body = await r.json(); } catch { /* no body */ }
-  // the ₦2,500 gate refusing a data route flips the UI back to the paywall
+  // the ₦2,500 gate refusing a data route flips the UI back to the paywall;
+  // body.trial says whether a free-trial window just ran out
   if (r.status === 403 && body && body.error === 'paid_required') {
-    showPay(); throw new Error('paid_required');
+    showPay(body && body.trial); throw new Error('paid_required');
   }
   // surface the server's error text ("can't run on this phone…", bind
   // failures) instead of a bare "http 503" - the old toast said "armed"
@@ -650,14 +658,61 @@ let payInfo = null, payDeckTmr = null;
 let payPendingRef = null;   // reference of the checkout we opened
 let payDone = false;        // a verify already succeeded for it
 
-function showPay() {
+function showPay(trial) {
   if ($('#upd').style.display === 'flex') return;   // update gate outranks
+  // 24h trial context: explain an expired window, and offer a way back
+  // into the app while it is still running (the header chip opens this).
+  const onTrial = !!(trial && trial.active);
+  const ended = !!(trial && trial.ended);
+  const note = $('#payTrialNote');
+  note.hidden = !(onTrial || ended);
+  note.textContent = ended
+    ? 'Your 24-hour free trial has ended. Unlock for ₦2,500 to keep using ODU Tracker.'
+    : "You're on the free trial - everything is unlocked until it runs out.";
+  $('#payTrialBack').hidden = !onTrial;
   $('#pay').style.display = 'flex';
   $('#login').style.display = 'none';
   startPayDeck();
   loadPayInfo();
 }
 function hidePay() { $('#pay').style.display = 'none'; }
+
+$('#payTrialBack').addEventListener('click', () => { hidePay(); location.reload(); });
+
+/* ------------------------------------------- trial chip (v1.5.0)
+   Countdown in the header while the free trial runs; tapping it opens
+   the paywall (with the way back). The SERVER is the authority - this
+   only mirrors /api/meta's trial block, aged by the local clock. */
+let trialState = null, trialPaid = false, trialTick = null;
+
+function updateTrialChip(trial, paid) {
+  trialState = (trial && typeof trial === 'object') ? trial : null;
+  trialPaid = !!paid;
+  paintTrialChip();
+  if (!trialTick) trialTick = setInterval(paintTrialChip, 30000);
+}
+
+function paintTrialChip() {
+  const chip = $('#trialChip');
+  if (!chip) return;
+  const st = trialState;
+  if (trialPaid || !st || !st.active || !st.expires_at) {
+    chip.hidden = true;
+    return;
+  }
+  const left = st.expires_at - Math.floor(Date.now() / 1000);
+  if (left <= 0) {
+    // window ran out: flip to the paywall now - the server gate would
+    // 403 the very next data poll anyway
+    showPay(Object.assign({}, st, {active: false, ended: true}));
+    return;
+  }
+  const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
+  $('#trialChipTxt').textContent = h > 0 ? `Trial ${h}h ${m}m` : `Trial ${m}m`;
+  chip.hidden = false;
+}
+
+$('#trialChip').addEventListener('click', () => showPay(trialState));
 
 async function loadPayInfo() {
   try {
@@ -1138,8 +1193,11 @@ $('#resetBtn').addEventListener('click', () => {
   if (m.router_ip) $('#routerIpHint').textContent = m.router_ip;
   if (m.update && m.update.required) { showUpd(m.update); return; }  // v1.5.0
   hideUpd();
-  if (!m.paid) { showPay(); return; }        // pay first, always (v1.5.0)
+  const trial = m.trial || null;
+  // pay first, always - unless the 24h trial still has time on it (v1.5.0)
+  if (!m.paid && !(trial && trial.active)) { showPay(trial); return; }
   hidePay();
+  updateTrialChip(trial, m.paid);
   if (!m.authed) { showLogin(); return; }
   hideLogin();
   const want = new URLSearchParams(location.search).get('tab');

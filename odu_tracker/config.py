@@ -157,6 +157,10 @@ DEFAULTS = {
     "paystack_secret_key": "",
     "paystack_verify_url": "",
     "paid_amount_kobo": 250000,     # ₦2,500
+    # 24h trial server (v1.5.0): POST /api/trial on the deployed site.
+    # Empty = feature disarmed (classic pay-on-first-launch). Set it to
+    # the live site URL once Vercel + Upstash are up.
+    "trial_api_url": "",
 }
 
 

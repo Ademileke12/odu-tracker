@@ -165,6 +165,7 @@
         <p class="sub">The whole tracker - usage, devices, alerts, speed tests,
            enforcement <b>and the Vouchers tab</b> - forever, on this device.
            No subscription, no renewals, no add-ons.</p>
+        <p class="sub" id="payTrialNote" hidden></p>
 
         <div class="pay-price">
           <b>₦2,500</b><span>one-time</span>
@@ -177,6 +178,7 @@
         </div>
 
         <button class="btn primary block" id="payBtn">PAY ₦2,500 - UNLOCK FOR LIFE</button>
+        <button class="btn block" id="payTrialBack" type="button" hidden>KEEP USING MY FREE TRIAL</button>
         <div class="err" id="payErr"></div>
         <button class="btn block" id="payVerify" type="button" hidden>I'VE PAID - VERIFY MY PAYMENT</button>
 
@@ -249,6 +251,10 @@
         <div class="chip" id="chipStatus"><span class="chip-ic warn">•</span><span>Link</span></div>
         <div class="chip"><b id="chipSignal"></b><span id="chipNet"></span></div>
         <div class="chip"><span>Month</span><b id="chipMonth"></b></div>
+        <button class="chip" id="trialChip" hidden
+                title="Free trial running - tap to unlock for life">
+          <span class="chip-ic warn">⏱</span><span id="trialChipTxt">Trial</span>
+        </button>
         <button class="btn ghost xs" id="btnLogout" title="Sign out">⎋&nbsp;Exit</button>
       </div>
     </header>

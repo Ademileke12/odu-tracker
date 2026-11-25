@@ -252,6 +252,7 @@ body{
 .chip-ic.ok{background:rgba(63,214,142,.15);color:var(--ok)}
 .chip-ic.warn{background:rgba(255,182,50,.16);color:var(--accent)}
 .chip-ic.info{background:rgba(111,167,255,.16);color:var(--info)}
+button.chip{cursor:pointer;font-family:inherit}
 
 main{padding:26px 34px 60px;max-width:1280px;margin:0 auto}
 

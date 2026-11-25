@@ -23,6 +23,7 @@ from odu_tracker import voucher
 from odu_tracker import license as voucher_license
 from odu_tracker import app_license
 from odu_tracker import paystack
+from odu_tracker import trial as app_trial
 import os
 
 def _resolve_static_dir():
@@ -70,18 +71,25 @@ def create_app(cfg: Config, poller: Poller):
         return send_from_directory(os.path.join(STATIC_DIR), "mobile.html")
 
     # ------------------------------------------------------------- helpers
+    # First /api/meta of each process performs the remote fetches (fresh
+    # update policy + trial pinning) - that call IS the app's boot; every
+    # later call reuses the stored answers (no network in the hot path).
+    _boot = {"refreshed": False}
+
     def require_auth(fn):
         from functools import wraps
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if not session.get("auth"):
                 return jsonify({"error": "auth_required"}), 401
-            if not app_license.is_paid(cfg):
+            if not app_license.is_paid(cfg) and not app_trial.active(cfg):
                 # v1.5.0 - the ₦2,500 one-time unlock gates EVERY data
                 # route. Enforced here rather than in the UI so a patched
                 # frontend that skips the paywall still gets nothing.
+                # The 24h trial passes the same gate until it runs out.
                 body = app_license.status(cfg)
                 body["error"] = "paid_required"
+                body["trial"] = app_trial.state(cfg)
                 return jsonify(body), 403
             return fn(*args, **kwargs)
         return wrapper
@@ -95,7 +103,8 @@ def create_app(cfg: Config, poller: Poller):
         from functools import wraps
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            if app_license.is_paid(cfg) or voucher_license.is_unlocked(cfg):
+            if (app_license.is_paid(cfg) or voucher_license.is_unlocked(cfg)
+                    or app_trial.active(cfg)):
                 return fn(*args, **kwargs)
             return jsonify({
                 "locked": True,
@@ -173,12 +182,25 @@ def create_app(cfg: Config, poller: Poller):
             voucher_license.refresh_switch(cfg)
         except Exception:
             pass                       # offline: last known policy stays
-        return jsonify({"ok": True, "update": voucher_license.update_gate(cfg)})
+        app_trial.refresh(cfg)          # never raises; unconfigured = no-op
+        return jsonify({"ok": True,
+                        "update": voucher_license.update_gate(cfg),
+                        "trial": app_trial.state(cfg)})
 
     @app.get("/api/meta")
     def meta():
         """Used by the UI before auth: does a password exist?
            Boot with or without."""
+        if not _boot["refreshed"]:
+            # boot-fresh gates: pull the remote min_version policy and pin
+            # the 24h trial (server-side, so a reinstall can't restart it)
+            # BEFORE route() decides update/paywall/auth.
+            _boot["refreshed"] = True
+            try:
+                voucher_license.refresh_switch(cfg, timeout=3.0)
+            except Exception:
+                pass                   # offline: last known policy stays
+            app_trial.refresh(cfg, timeout=4.0)
         st = poller.status()
         lock = {"attempts_left": None, "lock_secs": None}
         reachable, is_odu = _odu_probe(timeout=3)
@@ -205,6 +227,8 @@ def create_app(cfg: Config, poller: Poller):
             "price_label": app_license.PRICE_LABEL,
             # force-update gate from the remote policy (empty = never)
             "update": voucher_license.update_gate(cfg),
+            # 24h trial state (active / ended / seconds left)
+            "trial": app_trial.state(cfg),
             **lock,
         })
 
@@ -862,6 +886,7 @@ def create_app(cfg: Config, poller: Poller):
     def app_license_status():
         out = app_license.status(cfg)
         out["paystack"] = paystack.configured(cfg)
+        out["trial"] = app_trial.state(cfg)
         return jsonify(out)
 
     @app.post("/api/applicense/verify")
