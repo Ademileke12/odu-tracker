@@ -23,6 +23,11 @@ from odu_tracker.security import normalize_mac, risk_score, vendor_for  # noqa: 
 
 init = store.init()
 
+# the 24h trial ships armed against the LIVE endpoint - tests must never
+# reach production (or open trial gates that break the paywall asserts)
+from odu_tracker import config as _config  # noqa: E402
+_config.DEFAULTS["trial_api_url"] = ""
+
 # start each test run from a clean slate
 store.exec("DELETE FROM devices")
 store.exec("DELETE FROM events")
