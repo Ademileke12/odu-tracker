@@ -11,7 +11,7 @@
 //
 // Contract with odu_tracker/paystack.py:
 //   GET  /verify?reference=OTxxxx
-//   200  {"ok":true,"amount":150000,"currency":"NGN",
+//   200  {"ok":true,"amount":250000,"currency":"NGN",
 //         "email":"buyer@example.com","paid_at":"...","channel":"card"}
 //   4xx  {"ok":false,"error":"..."}
 //
@@ -19,7 +19,7 @@
 // the secret key here, so a forged reference never unlocks anything.
 
 const PAYSTACK = "https://api.paystack.co";
-const EXPECTED_KOBO = 150000; // ₦1,500 - keep in sync with paid_amount_kobo
+const EXPECTED_KOBO = 250000; // ₦2,500 - keep in sync with paid_amount_kobo
 
 export default {
   async fetch(request) {

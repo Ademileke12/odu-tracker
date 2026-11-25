@@ -292,17 +292,17 @@ see `android_app/README.md` - `tools/build_android.sh` locally, or
 `.github/workflows/android-apk.yml` to build a signed APK in CI on every
 push. Sideload onto any Android 7+ phone, connect to the ODU Wi-Fi, done.
 
-## 🔓 One-time unlock (₦1,500 · Paystack)
+## 🔓 One-time unlock (₦2,500 · Paystack)
 
 From **v1.5.0** the whole app - usage, devices, alerts, speed tests,
-enforcement **and the Vouchers tab** - is behind **one ₦1,500 lifetime
+enforcement **and the Vouchers tab** - is behind **one ₦2,500 lifetime
 payment**, collected on the app's first screen with **Paystack Inline**
 - card, bank transfer or USSD. There is no grandfathering: installs from
 before v1.5.0 hit the same paywall on their next start.
 
 * First load shows the feature slide deck, a pay button, and this device's
   ID. Paying confirms the transaction **server-side** (`status=success`,
-  `amount ≥ 150000` kobo, `NGN`) before any licence is written.
+  `amount ≥ 250000` kobo, `NGN`) before any licence is written.
 * Activation stores a **licence code** derived from the device fingerprint;
   the customer copies it after paying and re-enters it to re-unlock after a
   reinstall on the same device. It validates on no other machine, and the
@@ -329,7 +329,7 @@ before v1.5.0 hit the same paywall on their next start.
 ## 🔐 Paid Voucher feature (access codes)
 
 The **Vouchers tab** (data codes, shared SIM pool, captive-portal gating)
-is **included in the ₦1,500 base unlock from v1.5.0** - one payment opens
+is **included in the ₦2,500 base unlock from v1.5.0** - one payment opens
 every tab. The historical flow below still applies to **unlock codes sold
 before v1.5.0** (they keep working on their device); new buyers just pay
 in-app.

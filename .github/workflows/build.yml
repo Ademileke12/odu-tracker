@@ -226,7 +226,7 @@ jobs:
             | macOS | `ODU-Tracker-arm64.dmg` | Apple Silicon - open the dmg, drag to Applications |
             | Android | `ODU-Tracker.apk` | sideload, connect to ODU Wi-Fi |
 
-            **Licensing:** first launch asks for the one-time **₦1,500**
+            **Licensing:** first launch asks for the one-time **₦2,500**
             lifetime unlock (Paystack). Chromebooks: sideload the same APK
             via `adb connect arc && adb install ODU-Tracker.apk`.
 

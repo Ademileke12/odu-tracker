@@ -245,7 +245,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
 #login .hint{font-size:11px;color:var(--faint);margin-top:24px;max-width:300px;
   text-align:center;line-height:1.6}
 
-/* ---------- paywall (v1.5.0 · ₦1,500 one-time unlock) ---------- */
+/* ---------- paywall (v1.5.0 · ₦2,500 one-time unlock) ---------- */
 #pay{display:none;position:fixed;inset:0;z-index:21;background:var(--paper);
   background-image:radial-gradient(var(--dot) 1.2px, transparent 1.2px);
   background-size:22px 22px;flex-direction:column;align-items:center;
@@ -371,10 +371,10 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   </div>
 
   <div id="payStep">
-    <div class="pprice"><b>₦1,500</b><span>one-time · for life · one device</span></div>
+    <div class="pprice"><b>₦2,500</b><span>one-time · for life · one device</span></div>
     <input id="payEmail" type="email" inputmode="email" autocomplete="email"
            placeholder="email for your receipt (optional)">
-    <button class="btn" id="payBtn">PAY ₦1,500 - UNLOCK</button>
+    <button class="btn" id="payBtn">PAY ₦2,500 - UNLOCK</button>
     <div id="payErr"></div>
     <button class="btn" id="payVerify" hidden>I'VE PAID - VERIFY MY PAYMENT</button>
 
@@ -547,7 +547,7 @@ async function api(path, opts) {
   if (r.status === 401) { showLogin(); throw 401; }
   let body = null;
   try { body = await r.json(); } catch { /* no body */ }
-  // the ₦1,500 gate refusing a data route flips the UI back to the paywall
+  // the ₦2,500 gate refusing a data route flips the UI back to the paywall
   if (r.status === 403 && body && body.error === 'paid_required') {
     showPay(); throw new Error('paid_required');
   }
@@ -644,7 +644,7 @@ $('#updRetry').addEventListener('click', async () => {
 });
 
 /* ------------------------------------------------------- paywall (v1.5.0)
-   ₦1,500 one-time unlock: slide-by-slide intro + Paystack Inline, shown
+   ₦2,500 one-time unlock: slide-by-slide intro + Paystack Inline, shown
    on FIRST load before the router-password login. */
 let payInfo = null, payDeckTmr = null;
 let payPendingRef = null;   // reference of the checkout we opened
@@ -751,7 +751,7 @@ $('#payBtn').addEventListener('click', () => {
     const handler = window.PaystackPop.setup({
       key: pk,
       email: email,
-      amount: (payInfo && payInfo.price_kobo) || 150000,
+      amount: (payInfo && payInfo.price_kobo) || 250000,
       currency: 'NGN',
       ref: ref,
       label: 'ODU Tracker - lifetime unlock',

@@ -140,7 +140,7 @@ body{
 }
 .attempt-chip.warn{color:var(--warn);border-color:rgba(255,176,32,.4)}
 
-/* ---------- paywall (v1.5.0 · ₦1,500 one-time unlock) ---------- */
+/* ---------- paywall (v1.5.0 · ₦2,500 one-time unlock) ---------- */
 .pay-deck{display:grid;margin-top:34px}
 .p-slide{
   grid-area:1/1;visibility:hidden;opacity:0;transform:translateY(10px);

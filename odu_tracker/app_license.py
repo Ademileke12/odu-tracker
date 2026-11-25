@@ -1,4 +1,4 @@
-r"""Base app licence - the ₦1,500 one-time unlock (v1.5.0).
+r"""Base app licence - the ₦2,500 one-time unlock (v1.5.0).
 
 The WHOLE app sits behind ONE payment: usage, device radar, threat
 alerts, speed tests, the guest Wi-Fi gate AND the Vouchers tab (v1.5.0
@@ -8,9 +8,9 @@ platform we ship (Windows / Linux / macOS / Android / Chromebook).
 Flow
 ----
   1. First load shows the paywall (feature slides + Pay stack button).
-  2. Paystack Inline collects ₦1,500; the app verifies the reference
+  2. Paystack Inline collects ₦2,500; the app verifies the reference
      against Paystack (see paystack.py) and, once the transaction is
-     confirmed `success` / `NGN` / ≥ 150,000 kobo, activates locally.
+     confirmed `success` / `NGN` / ≥ 250,000 kobo, activates locally.
   3. Activation stores an unlock code derived from THIS device's
      fingerprint - the same code the customer copies down. Reinstalling
      the app on the same device re-enters that code and unlocks again;
@@ -30,8 +30,8 @@ import time
 from odu_tracker.license import _format, _secret, device_code
 
 CFG_KEY = "app_license"
-PRICE_KOBO = 150000          # ₦1,500 in kobo - Paystack's smallest unit
-PRICE_LABEL = "₦1,500"
+PRICE_KOBO = 250000          # ₦2,500 in kobo - Paystack's smallest unit
+PRICE_LABEL = "₦2,500"
 
 
 # --------------------------------------------------------------- code minting

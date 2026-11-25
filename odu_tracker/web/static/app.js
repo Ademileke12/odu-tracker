@@ -37,7 +37,7 @@ async function api(path, opts) {
   let body = null;
   try { body = await r.json(); } catch { /* no body */ }
   if (!r.ok) {
-    // the ₦1,500 gate: any data route refusing with paid_required flips
+    // the ₦2,500 gate: any data route refusing with paid_required flips
     // the UI back to the paywall (e.g. licence lost after a reinstall)
     if (r.status === 403 && body && body.error === "paid_required") showPaywall();
     throw Object.assign(new Error((body && body.error) || `HTTP ${r.status}`), {status: r.status, body});
@@ -520,7 +520,7 @@ function showAuth() {
 const SPLASH_MIN_MS = 1500;
 
 /* ------------------------------------------------------------- paywall
-   v1.5.0 - the ₦1,500 one-time unlock. Shown on FIRST load, before the
+   v1.5.0 - the ₦2,500 one-time unlock. Shown on FIRST load, before the
    router-password login: slide-by-slide feature intro on the left, pay
    button on the right (Paystack Inline), plus the reinstall path where a
    saved licence code is re-entered. */
@@ -671,7 +671,7 @@ $("#payBtn").onclick = () => {
     const handler = window.PaystackPop.setup({
       key: pk,
       email: email,
-      amount: (payInfo && payInfo.price_kobo) || 150000,
+      amount: (payInfo && payInfo.price_kobo) || 250000,
       currency: "NGN",
       ref: ref,
       label: "ODU Tracker - lifetime unlock",

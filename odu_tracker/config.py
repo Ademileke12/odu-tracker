@@ -150,13 +150,13 @@ DEFAULTS = {
     "portal_port": 80,               # captive-portal claim page
     "portal_enforced": False,        # hijack only when the admin arms it
     "nickname": "",                # friendly name for this machine's owner, unused now
-    # v1.5.0 - the ₦1,500 base unlock (Paystack). The PUBLIC key ships in
+    # v1.5.0 - the ₦2,500 base unlock (Paystack). The PUBLIC key ships in
     # the app; never ship the secret key - point `paystack_verify_url` at
     # tools/paystack-worker.js instead (see odu_tracker/paystack.py).
     "paystack_public_key": "",
     "paystack_secret_key": "",
     "paystack_verify_url": "",
-    "paid_amount_kobo": 150000,     # ₦1,500
+    "paid_amount_kobo": 250000,     # ₦2,500
 }
 
 
@@ -170,6 +170,11 @@ class Config:
         # stored 5353 is the old default, not a user choice.
         if int(loaded.get("dns_proxy_port") or 0) == 5353:
             loaded["dns_proxy_port"] = 53
+        # migrate: the launch price was 150000 (₦1,500) and got persisted
+        # into every config written back then - an old-default value is not
+        # a user choice, let the current default (250000) apply.
+        if int(loaded.get("paid_amount_kobo") or 0) == 150000:
+            loaded.pop("paid_amount_kobo", None)
         self._cfg.update(loaded)
         self._cfg.setdefault("setup_done", False)
 

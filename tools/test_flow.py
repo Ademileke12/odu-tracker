@@ -147,7 +147,7 @@ def test_web_api():
         r = c.post("/api/login", json={"password": "anything"})
         assert r.get_json().get("ok"), r.get_json()
     # v1.5.0: signed in, but every data route stays dark until the
-    # ₦1,500 unlock is in place (paid_required, not auth_required)
+    # ₦2,500 unlock is in place (paid_required, not auth_required)
     r = c.get("/api/status")
     assert r.status_code == 403 and r.get_json()["error"] == "paid_required", \
         (r.status_code, r.get_json())
@@ -336,7 +336,7 @@ def test_portal_arm_guards():
 
 
 def test_base_paywall():
-    """v1.5.0 - the ₦1,500 unlock: gate, Paystack verify, reinstall code."""
+    """v1.5.0 - the ₦2,500 unlock: gate, Paystack verify, reinstall code."""
     from odu_tracker import app_license, paystack
     cfg = Config()
     cfg.set("app_license", None)              # start from a clean slate
@@ -345,13 +345,13 @@ def test_base_paywall():
     c = app.test_client()
 
     m = c.get("/api/meta").get_json()
-    assert m["paid"] is False and m["price_label"] == "₦1,500", m
+    assert m["paid"] is False and m["price_label"] == "₦2,500", m
 
     st = c.get("/api/applicense").get_json()
     assert st["paid"] is False and st["unlock_code"] is None, st
     # pre-payment the device code may show, the unlock code must NOT
     assert st["device_code"].startswith("ODU-"), st
-    assert st["price_kobo"] == 150000 and st["paystack"]["public_key"], st
+    assert st["price_kobo"] == 250000 and st["paystack"]["public_key"], st
 
     # signed in but unpaid => nothing to read
     with mock.patch("odu_tracker.web.app.OduRouter.login", return_value={"ok": 1}):
@@ -369,8 +369,8 @@ def test_base_paywall():
         assert r.status_code == 400, r.get_json()
     assert app_license.is_paid(cfg) is False
 
-    # a confirmed ₦1,500 charge activates and hands over the code
-    info = {"reference": "OT123", "amount": 150000, "currency": "NGN",
+    # a confirmed ₦2,500 charge activates and hands over the code
+    info = {"reference": "OT123", "amount": 250000, "currency": "NGN",
             "email": "buyer@example.com"}
     with mock.patch("odu_tracker.web.app.paystack.verify",
                     return_value=(True, info, "")):
@@ -388,7 +388,7 @@ def test_base_paywall():
         ok, _, err = paystack.verify(cfg, "REF123")
         assert not ok and "short" in err, (ok, err)
     with mock.patch("odu_tracker.paystack._get", return_value={
-            "status": True, "data": {"status": "success", "amount": 150000,
+            "status": True, "data": {"status": "success", "amount": 250000,
                                      "currency": "NGN",
                                      "customer": {"email": "a@b.c"}}}):
         ok, pinfo, err = paystack.verify(cfg, "REF123")

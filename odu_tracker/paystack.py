@@ -1,11 +1,11 @@
-r"""Paystack verification client for the ₦1,500 base unlock.
+r"""Paystack verification client for the ₦2,500 base unlock.
 
 Paystack Inline (js.paystack.co) collects the money inside the app's
 first-load paywall; this module CONFIRMS it before any licence is
 written. A payment is accepted only when the transaction is
 
     status  == "success"
-    amount  >= 150,000 kobo   (₦1,500)
+    amount  >= 250,000 kobo   (₦2,500)
     currency == "NGN"
 
 so a ₦100 test charge, a failed card charge or a refunded payment can
@@ -98,7 +98,7 @@ def verify(cfg, reference: str):
             payload = _get(f"{verify_url(cfg)}{sep}reference="
                            + urllib.parse.quote(reference),
                            {"Accept": "application/json"})
-            # worker contract: {"ok": true, "amount": 150000,
+            # worker contract: {"ok": true, "amount": 250000,
             #                   "currency": "NGN", "email": "..."}
             if not payload.get("ok"):
                 return False, {}, str(payload.get("error")

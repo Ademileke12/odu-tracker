@@ -77,7 +77,7 @@ def create_app(cfg: Config, poller: Poller):
             if not session.get("auth"):
                 return jsonify({"error": "auth_required"}), 401
             if not app_license.is_paid(cfg):
-                # v1.5.0 - the ₦1,500 one-time unlock gates EVERY data
+                # v1.5.0 - the ₦2,500 one-time unlock gates EVERY data
                 # route. Enforced here rather than in the UI so a patched
                 # frontend that skips the paywall still gets nothing.
                 body = app_license.status(cfg)
@@ -89,7 +89,7 @@ def create_app(cfg: Config, poller: Poller):
     def require_license(fn):
         """Paid-feature gate: the Voucher endpoints answer 403 with the
         device code + contacts until a valid unlock code was entered.
-        v1.5.0: the ₦1,500 base unlock INCLUDES vouchers - one payment
+        v1.5.0: the ₦2,500 base unlock INCLUDES vouchers - one payment
         opens everything; a separately-sold voucher code still counts
         (codes sold before v1.5.0 keep working)."""
         from functools import wraps
@@ -846,7 +846,7 @@ def create_app(cfg: Config, poller: Poller):
         return jsonify(voucher_license.status(cfg))
 
     # ------------------------------------------------------- base licence
-    # v1.5.0 - the ₦1,500 one-time unlock for everything except vouchers.
+    # v1.5.0 - the ₦2,500 one-time unlock for everything except vouchers.
     # These three routes are PUBLIC on purpose: the paywall is the app's
     # first screen, shown before the router-password login. Every other
     # data route sits behind require_auth, which checks the same licence.
