@@ -38,7 +38,6 @@
     <a href="index.html#download">Download</a>
     <a href="index.html#how">How it works</a>
     <a href="index.html#support">Support</a>
-    <a class="gh" href="https://github.com/Ademileke12/odu-tracker" target="_blank" rel="noopener">GitHub ↗</a>
   </nav>
   <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.5.0</span></span>
   <button class="mode-btn" id="modeBtn" title="Toggle light / dark" aria-label="Toggle theme"><span id="modeIco">☾</span></button>
@@ -53,27 +52,27 @@
     <h2 class="reveal">EVERY UPDATE, <span class="hl">IN ONE PLACE</span></h2>
     <p class="section-sub reveal">
       What changed, what's shipping, and how it reaches your install. This page
-      is the single source of truth while <b>downloads are paused</b> on the
-      homepage - the app builds themselves are done, the storefront isn't open
-      yet.
+      is the single source of truth for the v1.5.0 rollout: <b>downloads are
+      open</b>, the <b>24-hour free trial</b> is live, and payments run in
+      Paystack test mode until the live keys land.
     </p>
 
     <div class="up-status reveal">
       <span class="up-chip ok"><i></i>Current build · v1.5.0</span>
+      <span class="up-chip ok"><i></i>Downloads · open</span>
+      <span class="up-chip ok"><i></i>Trial · 24h live</span>
       <span class="up-chip warn"><i></i>Payments · test mode</span>
-      <span class="up-chip warn"><i></i>Downloads · paused</span>
       <span class="up-chip"><i></i>CI: 5 / 5 green</span>
     </div>
 
     <div class="upd-pause reveal">
-      <b>⏸ WHY ARE DOWNLOADS PAUSED?</b>
-      <span>The ₦2,500 lifetime unlock is being finalised on Paystack in test
-        mode. Reopening the buttons before payment works would hand out builds
-        that can't complete checkout - so they stay dark until the live keys
-        land. Every installer for v1.5.0 is already built, signed off by CI and
-        waiting; the <b>Updates</b> page flips to downloads the same day
-        payments open.</span>
-      <a class="btn btn-black" href="index.html#pricing">SEE THE ₦2,500 UNLOCK →</a>
+      <b>↓ v1.5.0 IS READY TO INSTALL</b>
+      <span>All five installers are built, CI-green and live: Windows setup +
+        portable, Linux .deb, macOS Apple Silicon .dmg, the Android APK - and
+        two ways to run it on a <b>Chromebook</b> (the APK via ADB, or the .deb
+        inside Chrome OS's built-in Linux). First launch opens a <b>24-hour free
+        trial</b> before the one-time ₦2,500 unlock.</span>
+      <a class="btn btn-black" href="index.html#download">GO TO DOWNLOADS →</a>
     </div>
   </section>
 
@@ -93,6 +92,10 @@
           <span class="wn-tag">CURRENT</span>
         </div>
         <ul>
+          <li><b>24-hour free trial</b> - first launch unlocks everything
+              (Vouchers tab included) for 24 hours, pinned server-side per
+              device: wiping app data or reinstalling cannot restart it. Then
+              the one-time ₦2,500 unlock.</li>
           <li><b>₦2,500 one-time lifetime unlock</b> - first launch shows the
               feature slides, then Paystack (card, transfer, USSD) unlocks the
               whole app on one device. No subscription, no grandfathering:
@@ -106,8 +109,8 @@
           <li><b>In-app update screen</b> - a remote minimum-version switch can
               now force installs to update before anything else loads.</li>
           <li><b>New homepage</b> - slide-by-slide feature deck, pricing
-              section, ChromeOS install notes; downloads paused until payment
-              launch.</li>
+              section, ChromeOS install notes and direct download buttons for
+              every platform, Chromebook included.</li>
         </ul>
       </article>
 
@@ -153,8 +156,8 @@
       </article>
     </div>
 
-    <p class="tl-note reveal">older versions live in the repo's git tags - every
-      build is reproducible from source.</p>
+    <p class="tl-note reveal">older versions stay archived - every build is
+      reproducible from source.</p>
   </section>
 
   <!-- ================================================== how updates work -->
@@ -186,8 +189,7 @@
     <p>Created by <b>anakincoco</b> · <a href="mailto:srimpkoyonko@gmail.com">srimpkoyonko@gmail.com</a></p>
     <p class="footer-links">
       <a href="updates.html">Updates</a> ·
-      <a href="https://github.com/Ademileke12/odu-tracker" target="_blank" rel="noopener">Source &amp; releases</a> ·
-      <a href="https://github.com/Ademileke12/odu-tracker/issues" target="_blank" rel="noopener">Report an issue</a>
+      <a href="mailto:srimpkoyonko@gmail.com?subject=ODU%20Tracker%20issue">Report an issue</a>
     </p>
     <p class="fineprint">Not affiliated with MTN or ZLT. Router API reverse-engineered from the vendor's own web UI. All monitoring runs locally.</p>
     <p class="hint">psst, ↑ ↑ ↓ ↓ ← → ← → B A</p>
