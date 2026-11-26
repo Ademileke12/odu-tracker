@@ -5,15 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ODU Tracker · every GB, accounted for</title>
 <meta name="description" content="Install-and-use cockpit for the MTN Broadband 5G ODU (ZLT X28): month usage, live speed, device radar, threat alerts and on-demand speed tests · 100% local, zero cloud.">
-<meta name="theme-color" content="#efece4">
+<meta name="theme-color" content="#ffffff">
 <meta property="og:site_name" content="ODU Tracker">
 <meta property="og:title" content="ODU Tracker · every GB, accounted for">
 <meta property="og:description" content="Month usage, live speed, device radar, threat alerts & speed tests for the MTN 5G ODU. One installer, everything local.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='13' fill='%23ffb632'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%230a0a0a' stroke-width='5.5'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%23ffffff' stroke-width='5.5' stroke-linecap='round' stroke-dasharray='50 75.4' transform='rotate(-90 24 26)'/%3E%3Ccircle cx='24' cy='26' r='3' fill='%230a0a0a'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -30,7 +27,7 @@
     </svg>
     <span class="brand-name">ODU<b>TRACKER</b></span>
   </a>
-  <nav class="topnav">
+  <nav class="topnav" id="topnav">
     <a href="#features">Features</a>
     <a class="nw" href="#whatsnew">What's new <i class="nw-dot"></i></a>
     <a href="updates.html">Updates</a>
@@ -42,6 +39,7 @@
   <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.5.0</span></span>
   <button class="mode-btn" id="modeBtn" title="Toggle light / dark" aria-label="Toggle theme"><span id="modeIco">☾</span></button>
   <a class="topbar-cta" href="updates.html">Updates</a>
+  <button class="nav-btn" id="navBtn" aria-label="Menu" aria-expanded="false" aria-controls="topnav"><span></span><span></span></button>
 </header>
 
 <!-- ================================================ release announcement -->
@@ -50,7 +48,7 @@
     <span class="newsbar-tag">NEW</span>
     <b>v1.5.0 update</b>
     <span class="newsbar-txt">24-hour free trial first, then ₦2,500 once unlocks everything for life - Vouchers tab included - plus a macOS Apple Silicon .dmg</span>
-    <span class="newsbar-go">SEE WHAT'S NEW →</span>
+    <span class="newsbar-go">See what's new →</span>
   </a>
   <button class="newsbar-x" id="newsbarX" aria-label="Dismiss announcement">✕</button>
 </div>
@@ -63,7 +61,7 @@
       <div class="slides reveal" id="slides" role="region" aria-label="What ODU Tracker does">
         <article class="slide on">
           <p class="badge"><i class="dot"></i>LOCAL-ONLY ODU MONITOR</p>
-          <h1>EVERY GB,<br><span class="hl">ACCOUNTED FOR.</span></h1>
+          <h1>Every GB,<br><span class="hl">accounted for.</span></h1>
           <p class="lede">
             One installer for your <b>MTN Broadband 5G ODU</b>, month usage,
             live speed, device radar, threat alerts and on-demand speed tests.
@@ -73,7 +71,7 @@
 
         <article class="slide">
           <p class="badge"><i class="dot"></i>DEVICE RADAR</p>
-          <h1>EVERY DEVICE,<br><span class="hl">ON THE RADAR.</span></h1>
+          <h2>Every device,<br><span class="hl">on the radar.</span></h2>
           <p class="lede">
             Every phone, laptop and IoT gadget on your network - name, IP,
             MAC, vendor and online state, live. Tap one to <b>trust it,
@@ -84,7 +82,7 @@
 
         <article class="slide">
           <p class="badge"><i class="dot"></i>THREAT ENGINE</p>
-          <h1>DANGER GETS<br><span class="hl">FLAGGED.</span></h1>
+          <h2>Danger gets<br><span class="hl">flagged.</span></h2>
           <p class="lede">
             New-device alerts the second someone joins, plus risk scoring for
             <b>randomized MACs, unknown vendors and suspicious hostnames</b> -
@@ -94,7 +92,7 @@
 
         <article class="slide">
           <p class="badge"><i class="dot"></i>GUEST WI-FI GATE</p>
-          <h1>GUESTS EARN<br><span class="hl">THEIR ACCESS.</span></h1>
+          <h2>Guests earn<br><span class="hl">their access.</span></h2>
           <p class="lede">
             A device that just joins your Wi-Fi gets <b>nothing</b> - no DNS,
             no web - until it claims a voucher on your captive-portal page.
@@ -104,7 +102,7 @@
 
         <article class="slide">
           <p class="badge"><i class="dot"></i>ONE-TIME · LIFETIME</p>
-          <h1>₦2,500.<br><span class="hl">THAT'S IT.</span></h1>
+          <h2>₦2,500.<br><span class="hl">That's it.</span></h2>
           <p class="lede">
             First launch gives you <b>24 hours free, everything unlocked</b>.
             After that, one payment unlocks the whole tracker on
@@ -129,8 +127,8 @@
       </div>
 
       <div class="cta-row reveal">
-        <a class="btn btn-black" href="updates.html">UPDATES · WHAT'S NEW →</a>
-        <a class="btn btn-white" href="#features">SEE THE FEATURES</a>
+        <a class="btn btn-black" href="updates.html">See what's new →</a>
+        <a class="btn btn-white" href="#features">See the features</a>
       </div>
       <ul class="tick-strip reveal">
         <li>one payment, yours for life</li>
@@ -176,55 +174,57 @@
           </div>
         </div>
       </div>
-      <span class="sticker s1">₦2,500 FOR LIFE</span>
-      <span class="sticker s2">NO CLOUD</span>
-      <span class="sticker s3">60+ ROUTER CMDS</span>
+      <div class="sticker-row reveal">
+        <span class="sticker s1">₦2,500 for life</span>
+        <span class="sticker s2">No cloud</span>
+        <span class="sticker s3">60+ router commands</span>
+      </div>
     </div>
   </section>
 
   <!-- ================================================== features -->
-  <section id="features" class="section">
+  <section id="features" class="section band">
     <p class="kicker reveal">// WHAT'S INSIDE</p>
-    <h2 class="reveal">THE FULL COCKPIT</h2>
+    <h2 class="reveal">The full cockpit</h2>
     <div class="cards">
       <article class="card reveal">
         <div class="card-ico">%</div>
-        <h3>USAGE TELEMETRY</h3>
+        <h3>Usage telemetry</h3>
         <p>Month total, downlink/uplink split, today, hourly charts and a plan meter, straight from the router's own counters.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">↓↑</div>
-        <h3>SPEED TESTS</h3>
+        <h3>Speed tests</h3>
         <p>On-demand down/up/ping runs with history and averages. Size-selectable so a test never burns your data plan.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">MAC</div>
-        <h3>DEVICE RADAR</h3>
+        <h3>Device radar</h3>
         <p>Every phone, laptop and IoT gadget on your ODU: name, IP, MAC, vendor, Wi-Fi/LAN and online state, live.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">!</div>
-        <h3>THREAT SCORES</h3>
+        <h3>Threat scores</h3>
         <p>New-device alerts plus a risk engine: unknown vendors, randomized MACs, suspicious hostnames, scored low/medium/high.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">✕</div>
-        <h3>ONE-CLICK BLOCK</h3>
+        <h3>One-click block</h3>
         <p>Block or unblock any device with one click, pushed straight to the router's MAC filter. No admin panel detour.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">DNS</div>
-        <h3>SITE TIMELINES</h3>
+        <h3>Site timelines</h3>
         <p>Optional local DNS logging proxy builds per-device website timelines, plus the router's URL block list.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">BAT</div>
-        <h3>BATTERY &amp; SIGNAL</h3>
+        <h3>Battery &amp; signal</h3>
         <p>Internal battery, RSRP/signal bars, network mode (5G NSA…) and ODU health, uptime, CPU, firmware.</p>
       </article>
       <article class="card reveal">
         <div class="card-ico">SQL</div>
-        <h3>LOCAL SAVE FILE</h3>
+        <h3>Local save file</h3>
         <p>Events, alerts and usage history in a local SQLite DB. Your router password never leaves the machine.</p>
       </article>
     </div>
@@ -233,7 +233,7 @@
   <!-- ================================================== what's new -->
   <section id="whatsnew" class="section wn">
     <p class="kicker reveal">// RELEASE NOTES · 24 NOV 2026 · v1.5.0</p>
-    <h2 class="reveal">NEW IN <span class="hl">v1.5.0</span></h2>
+    <h2 class="reveal">New in <span class="hl">v1.5.0</span></h2>
     <p class="section-sub reveal">
       v1.5.0 is the paid release. First launch opens a <b>24-hour free trial</b>
       of everything, then one <b>₦2,500 one-time</b> Paystack payment unlocks
@@ -246,7 +246,7 @@
       <article class="card reveal">
         <div class="card-ico">₦</div>
         <div class="wn-tag">NEW</div>
-        <h3>₦2,500 LIFETIME UNLOCK</h3>
+        <h3>₦2,500 lifetime unlock</h3>
         <p>The first screen walks you through the features, then one Paystack
            payment (card, transfer, USSD) unlocks everything - usage, devices,
            alerts, speed tests, enforcement <b>and the Vouchers tab</b> -
@@ -256,7 +256,7 @@
       <article class="card reveal">
         <div class="card-ico">⏱</div>
         <div class="wn-tag">NEW</div>
-        <h3>24-HOUR FREE TRIAL</h3>
+        <h3>24-hour free trial</h3>
         <p>First launch opens a full-access trial of everything - the Vouchers
            tab included - for 24 hours. It is pinned to your device on our
            server, so wiping the app data or reinstalling cannot restart it.
@@ -265,7 +265,7 @@
       <article class="card reveal">
         <div class="card-ico">⌘</div>
         <div class="wn-tag">NEW</div>
-        <h3>macOS .dmg (APPLE SILICON)</h3>
+        <h3>macOS .dmg (Apple Silicon)</h3>
         <p>A native Apple Silicon disk image joins the release row - same
            bundled engine, no Python or Node needed. It's unsigned for now, so
            right-click → Open on first launch (or clear the quarantine flag).</p>
@@ -273,7 +273,7 @@
       <article class="card reveal">
         <div class="card-ico">✓</div>
         <div class="wn-tag">NEW</div>
-        <h3>CHROMEBOOK SUPPORT</h3>
+        <h3>Chromebook support</h3>
         <p>Two ways, no developer mode and nothing gets wiped: run the
            <b>Android APK</b> through Linux + ADB debugging
            (<code>adb connect arc</code>, then <code>adb install</code> -
@@ -284,7 +284,7 @@
       <article class="card reveal">
         <div class="card-ico">»</div>
         <div class="wn-tag">UPDATED</div>
-        <h3>NEW LANDING PAGE</h3>
+        <h3>New landing page</h3>
         <p>The homepage now opens with a slide-by-slide feature deck instead of
            a static hero, adds a pricing section, and the download row links the
            new Mac build next to Windows, Linux and Android.</p>
@@ -292,15 +292,15 @@
     </div>
 
     <div class="wn-cta reveal">
-      <a class="btn btn-black" href="updates.html">SEE ALL UPDATES →</a>
+      <a class="btn btn-black" href="updates.html">See all updates →</a>
       <span class="wn-meta">6 files · Windows · Linux · macOS · Android, same version everywhere</span>
     </div>
   </section>
 
   <!-- ================================================== previews -->
-  <section id="previews" class="section previews">
+  <section id="previews" class="section band previews">
     <p class="kicker reveal">// SAME COCKPIT, EVERY SCREEN</p>
-    <h2 class="reveal">ONE ENGINE, <span class="hl">EVERY</span> SCREEN</h2>
+    <h2 class="reveal">One engine, <span class="hl">every</span> screen</h2>
     <p class="section-sub reveal">
       The desktop dashboard and the phone app pull from the same engine, so usage,
       devices and alerts agree everywhere. This is the real v1.5.0 interface,
@@ -335,7 +335,7 @@
   <!-- ================================================== voucher access -->
   <section id="voucher" class="section">
     <p class="kicker reveal">// VOUCHERS · INCLUDED FROM v1.5.0</p>
-    <h2 class="reveal">ONE CODE, <span class="hl">ONE DEVICE</span></h2>
+    <h2 class="reveal">One code, <span class="hl">one device</span></h2>
     <p class="section-sub reveal">
       From v1.5.0 the <b>Vouchers</b> feature - guest data codes, the shared SIM
       pool and the claim portal - is <b>included in the ₦2,500 unlock</b>. One
@@ -345,9 +345,9 @@
     </p>
 
     <ol class="steps">
-      <li class="reveal"><span class="step-n">01</span><div><b>PAY ONCE, ON FIRST LAUNCH</b><span>The app opens with the feature slides and one <strong>₦2,500</strong> Paystack payment. Card, bank transfer or USSD - it takes about a minute.</span></div></li>
-      <li class="reveal"><span class="step-n">02</span><div><b>EVERY TAB UNLOCKS</b><span>Usage, devices, alerts, speed tests, enforcement <strong>and the Vouchers tab</strong> open together. Mint codes, cap the shared pool, arm the claim portal - nothing extra to buy.</span></div></li>
-      <li class="reveal"><span class="step-n">03</span><div><b>KEEP YOUR LICENCE CODE</b><span>Copy the code shown after paying. Reinstall the app on the same device and paste it back in - same device, same code, no second payment.</span></div></li>
+      <li class="reveal"><span class="step-n">01</span><div><b>Try it free first</b><span>First launch opens a <strong>24-hour free trial</strong> of everything - Vouchers tab included. Like it? Pay the one-time <strong>₦2,500</strong> with Paystack: card, bank transfer or USSD.</span></div></li>
+      <li class="reveal"><span class="step-n">02</span><div><b>Every tab unlocks</b><span>Usage, devices, alerts, speed tests, enforcement <strong>and the Vouchers tab</strong> open together. Mint codes, cap the shared pool, arm the claim portal - nothing extra to buy.</span></div></li>
+      <li class="reveal"><span class="step-n">03</span><div><b>Keep your licence code</b><span>Copy the code shown after paying. Reinstall the app on the same device and paste it back in - same device, same code, no second payment.</span></div></li>
     </ol>
 
     <p class="vnote reveal">
@@ -358,15 +358,15 @@
     </p>
 
     <div class="vcta reveal">
-      <a class="btn btn-black" href="#pricing">SEE WHAT ₦2,500 UNLOCKS</a>
-      <a class="btn btn-white" href="https://www.tiktok.com/@leke_abudu" target="_blank" rel="noopener">♪ CHAT ON TIKTOK · @LEKE_ABUDU</a>
+      <a class="btn btn-black" href="#pricing">See what ₦2,500 unlocks</a>
+      <a class="btn btn-white" href="https://www.tiktok.com/@leke_abudu" target="_blank" rel="noopener">♪ Chat on TikTok · @leke_abudu</a>
     </div>
   </section>
 
   <!-- ================================================== pricing -->
-  <section id="pricing" class="section">
+  <section id="pricing" class="section price-band">
     <p class="kicker reveal">// PRICING · PAY ONCE, INSIDE THE APP</p>
-    <h2 class="reveal">ONE PRICE, <span class="hl">FOR LIFE</span></h2>
+    <h2 class="reveal">One price, <span class="hl">for life</span></h2>
     <p class="section-sub reveal">
       <b>24 hours free</b>, then <b>₦2,500 once</b> - no subscription, no
       renewals, no monthly charge. Pay right on the app with Paystack (card,
@@ -378,7 +378,7 @@
       <article class="card reveal">
         <div class="card-ico">₦</div>
         <div class="wn-tag">ONE-TIME</div>
-        <h3>THE WHOLE TRACKER</h3>
+        <h3>The whole tracker</h3>
         <p>Usage charts, device radar with block / soft-cut / trust, threat
            alerts, on-demand speed tests, the guest Wi-Fi gate - Windows,
            Linux, macOS, Android and Chromebook. Bound to <b>one device</b>;
@@ -388,7 +388,7 @@
       <article class="card reveal">
         <div class="card-ico">🎟</div>
         <div class="wn-tag">INCLUDED</div>
-        <h3>VOUCHERS TAB</h3>
+        <h3>Vouchers tab</h3>
         <p>Guest data codes, the shared SIM pool, per-code quotas and the
            claim portal - <b>included</b> in the ₦2,500 from v1.5.0. No
            separate purchase, no second unlock code.</p>
@@ -405,7 +405,7 @@
   <!-- ================================================== download -->
   <section id="download" class="section">
     <p class="kicker reveal">// DOWNLOADS · v1.5.0 · DIRECT INSTALLERS</p>
-    <h2 class="reveal">EVERY PLATFORM, <span class="hl">ONE BUILD</span></h2>
+    <h2 class="reveal">Every platform, <span class="hl">one build</span></h2>
     <p class="section-sub reveal">Grab the installer for your machine - Windows,
       Linux, macOS, Android and Chromebook, all cut from the same v1.5.0 tag.
       First launch opens a <b>24-hour free trial</b>, then the one-time
@@ -418,7 +418,7 @@
         <p class="dl-file">YOU GET <b>ODU-Tracker-Setup.exe</b></p>
         <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker-Setup.exe"
            href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-Setup.exe">
-          ⤓ DOWNLOAD <span class="dl-size" data-asset="ODU-Tracker-Setup.exe"></span>
+          ⤓ Download <span class="dl-size" data-asset="ODU-Tracker-Setup.exe"></span>
         </a>
         <p class="dl-alt">one-click installer, engine bundled - no Python needed ·
           <a class="dl-link" data-asset="ODU-Tracker-Portable.exe"
@@ -430,7 +430,7 @@
         <p class="dl-file">YOU GET <b>odu-tracker-amd64.deb</b></p>
         <a class="btn btn-black btn-block dl-link" data-asset="odu-tracker-amd64.deb"
            href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/odu-tracker-amd64.deb">
-          ⤓ DOWNLOAD <span class="dl-size" data-asset="odu-tracker-amd64.deb"></span>
+          ⤓ Download <span class="dl-size" data-asset="odu-tracker-amd64.deb"></span>
         </a>
         <p class="dl-alt"><code>sudo dpkg -i odu-tracker-amd64.deb</code></p>
       </article>
@@ -440,7 +440,7 @@
         <p class="dl-file">YOU GET <b>ODU-Tracker-arm64.dmg</b></p>
         <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker-arm64.dmg"
            href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker-arm64.dmg">
-          ⤓ DOWNLOAD <span class="dl-size" data-asset="ODU-Tracker-arm64.dmg"></span>
+          ⤓ Download <span class="dl-size" data-asset="ODU-Tracker-arm64.dmg"></span>
         </a>
         <p class="dl-alt">drag <b>ODU Tracker</b> to Applications; unsigned builds need
            <b>right-click → Open</b> the first time. Intel Macs: no build yet.</p>
@@ -451,11 +451,11 @@
         <p class="dl-file">YOU GET <b>ODU-Tracker.apk</b></p>
         <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker.apk"
            href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker.apk">
-          ⤓ DOWNLOAD <span class="dl-size" data-asset="ODU-Tracker.apk"></span>
+          ⤓ Download <span class="dl-size" data-asset="ODU-Tracker.apk"></span>
         </a>
         <p class="dl-alt">sideload it, allow your browser to “install unknown apps”</p>
         <details class="dl-help">
-          <summary>REDMI / MIUI WON'T INSTALL? OPEN THIS</summary>
+          <summary>Redmi / MIUI won't install? Open this</summary>
           <ol>
             <li><b>"Error while parsing package"</b> almost always means the download was cut
                 short, not a bad file. If your file is smaller than the size shown when
@@ -475,7 +475,7 @@
         <p class="dl-file">YOU GET <b>APK or .deb</b></p>
         <a class="btn btn-black btn-block dl-link" data-asset="ODU-Tracker.apk"
            href="https://github.com/Ademileke12/odu-tracker/releases/latest/download/ODU-Tracker.apk">
-          ⤓ DOWNLOAD APK <span class="dl-size" data-asset="ODU-Tracker.apk"></span>
+          ⤓ Download APK <span class="dl-size" data-asset="ODU-Tracker.apk"></span>
         </a>
         <p class="dl-alt"><b>Way 1 · Android app:</b> turn on
            <b>Settings → Developers → Linux + ADB debugging</b>, then
@@ -498,17 +498,17 @@
   </section>
 
   <!-- ================================================== how -->
-  <section id="how" class="section">
+  <section id="how" class="section band">
     <p class="kicker reveal">// FIRST START</p>
-    <h2 class="reveal">ONLINE IN THREE STEPS</h2>
+    <h2 class="reveal">Online in three steps</h2>
     <ol class="steps">
-      <li class="reveal"><span class="step-n">01</span><div><b>INSTALL</b><span>Run the installer for your platform. Everything ships inside, no Python, no Node, no admin panel.</span></div></li>
-      <li class="reveal"><span class="step-n">02</span><div><b>CONNECT</b><span>Join the ODU's Wi-Fi / Ethernet. The app probes <code>192.168.0.1</code> and confirms it's really your ODU.</span></div></li>
-      <li class="reveal"><span class="step-n">03</span><div><b>DRIVE</b><span>Sign in once with your ODU admin password, the app keeps its own session and starts logging immediately.</span></div></li>
+      <li class="reveal"><span class="step-n">01</span><div><b>Install</b><span>Run the installer for your platform. Everything ships inside, no Python, no Node, no admin panel.</span></div></li>
+      <li class="reveal"><span class="step-n">02</span><div><b>Connect</b><span>Join the ODU's Wi-Fi / Ethernet. The app probes <code>192.168.0.1</code> and confirms it's really your ODU.</span></div></li>
+      <li class="reveal"><span class="step-n">03</span><div><b>Drive</b><span>Sign in once with your ODU admin password, the app keeps its own session and starts logging immediately.</span></div></li>
     </ol>
 
     <div class="warn reveal">
-      <span class="warn-badge">⚠ PENALTY BOX</span>
+      <span class="warn-badge">⚠ Penalty box</span>
       <p>The ODU firmware allows only <b>3 wrong login attempts</b>, then locks the web login for ~26 h.
       The app stores your password locally and re-auths silently, so never brute-force it,
       in the app or anywhere else.</p>
@@ -522,10 +522,10 @@
   <!-- ================================================== support -->
   <section id="support" class="section support">
     <p class="kicker reveal">// OPTIONAL</p>
-    <h2 class="reveal">WANT TO SUPPORT THE DEVELOPER?</h2>
+    <h2 class="reveal">Want to support the developer?</h2>
     <p class="section-sub reveal">₦2,500 once unlocks the app for life - if it helped you anyway, a tip is welcome.</p>
     <div class="support-card reveal">
-      <span class="support-badge">SEND DONATIONS TO</span>
+      <span class="support-badge">Send donations to</span>
       <p class="support-acct" id="supportAcct">9018873250</p>
       <dl class="support-meta">
         <div><dt>Bank</dt><dd>OPay</dd></div>

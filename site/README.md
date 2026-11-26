@@ -8,7 +8,7 @@ publishes.
 ```
 site/
 ├── index.html          # the page (hero + mock + features + downloads + how-to)
-├── style.css           # cream/dot-grid styling + dark mode
+├── style.css           # premium-minimal (Apple-like) tokens, light/dark themes
 ├── script.js           # theme toggle, release fetch, reveal, stats beacon, konami egg
 ├── vercel.json         # noindex + no-store headers for /admin
 ├── admin/index.html    # password-gated stats dashboard

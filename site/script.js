@@ -18,10 +18,29 @@ function applyMode(dark) {
 
 let storedDark = false;
 try { storedDark = localStorage.getItem('odu-mode') === 'dark'; } catch { /* ignore */ }
+// ?theme=dark / ?theme=light previews a theme without touching the toggle
+try {
+  const q = new URLSearchParams(location.search).get('theme');
+  if (q) storedDark = q === 'dark';
+} catch { /* ignore */ }
 applyMode(storedDark);
 
 modeBtn?.addEventListener('click', () => {
   applyMode(!document.body.classList.contains('dark'));
+});
+
+/* ------------------------------------------------ mobile nav menu */
+const navBtn = document.getElementById('navBtn');
+const topnav = document.getElementById('topnav');
+navBtn?.addEventListener('click', () => {
+  const open = !!topnav?.classList.toggle('open');
+  navBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+topnav?.addEventListener('click', (e) => {
+  if (e.target.closest('a')) {
+    topnav.classList.remove('open');
+    navBtn?.setAttribute('aria-expanded', 'false');
+  }
 });
 
 /* ------------------------------------------------ light ads
