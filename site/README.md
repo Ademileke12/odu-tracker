@@ -15,6 +15,8 @@ site/
 └── api/                # Vercel serverless functions (Node, zero deps)
     ├── _lib.js         #   Upstash REST client, PBKDF2 auth, signed session cookies
     ├── track.js        #   POST - public beacon: page views + download clicks
+    ├── trial.js        #   POST - 24h trial window, pinned per device on the server
+    ├── verify.js       #   GET  - Paystack tx verification (holds the secret key)
     ├── login.js        #   POST - password check (rate-limited per IP)
     ├── logout.js       #   POST - clears the session cookie
     └── stats.js        #   GET  - auth-gated: counters + real GitHub download counts
@@ -46,16 +48,17 @@ It lives at `<your-site>/admin` and is excluded from search engines.
 1. **Upstash KV** - [console.upstash.com](https://console.upstash.com) →
    *Create Database* (free plan) → copy the **REST** URL + token.
 2. **Vercel env vars** - project → *Settings → Environment Variables*, add
-   all four from `.env.example` with your real values:
+   all five from `.env.example` with your real values:
    `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`,
-   `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`.
+   `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`, `PAYSTACK_SECRET_KEY`.
 3. **Deploy** (or redeploy) - the `api/` folder is picked up
    automatically; no framework preset needed.
 4. Visit `https://<your-site>/admin`, log in with the generated password,
    and confirm the KPIs render. Done.
 
 Without the env vars the site still works fully - `/api/track` fails
-silently and `/admin` answers `503 backend not configured`.
+silently, `/admin` answers `503 backend not configured`, and `/api/verify`
+reports payment verification unavailable (the app then cannot unlock).
 
 ## Monetization (light ads)
 

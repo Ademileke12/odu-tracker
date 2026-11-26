@@ -16,12 +16,14 @@ Where the keys live
   * PUBLIC key (pk_...) is safe to ship - it only opens the checkout
     popup. Override with the `paystack_public_key` config key.
   * SECRET key (sk_...) must never ship in an app everyone downloads:
-    it can list every customer's transactions. Two supported setups:
-      1. RECOMMENDED: deploy `tools/paystack-worker.js` (a ~40-line
-         Cloudflare Worker, free tier) and set `paystack_verify_url`
-         to it - the app then asks the worker to verify, and the
-         secret key stays on the worker.
-      2. Direct: set `paystack_secret_key` (config) or the
+    it can list every customer's transactions. The shipped setup:
+      1. SHIPPED: `paystack_verify_url` points at the site's
+         serverless endpoint (site/api/verify.js on Vercel), which
+         holds PAYSTACK_SECRET_KEY as an env var - the app asks it
+         to verify and the secret never leaves the server.
+      2. Alternative: deploy `tools/paystack-worker.js` (a ~40-line
+         Cloudflare Worker) and point `paystack_verify_url` at it.
+      3. Direct: set `paystack_secret_key` (config) or the
          PAYSTACK_SECRET_KEY env var in a build only you distribute
          to buyers you trust.
 """
@@ -35,16 +37,10 @@ import urllib.request
 from odu_tracker.app_license import PRICE_KOBO
 
 DIRECT_BASE = "https://api.paystack.co"
-# Paystack TEST public key - safe to ship (it can only open the checkout
-# popup on test cards). Swap for the pk_live_... key before selling for
-# real, or override at runtime with the `paystack_public_key` config key.
-DEFAULT_PUBLIC_KEY = "pk_test_632321e234398026f1e8b4ace852c17fde34b9fc"
-# Paystack TEST secret key - shipped ONLY in this pre-sale test release so
-# verification runs end-to-end on test cards (a test secret cannot move
-# real money). Before the live release: DELETE this default and point
-# `paystack_verify_url` at tools/paystack-worker.js instead - a live
-# secret must never ship inside a download everyone gets.
-DEFAULT_TEST_SECRET_KEY = "sk_test_6df7a6a248c187c355f2bf5a66e3d7175becfc26"
+# Paystack LIVE public key - safe to ship: it only opens the checkout
+# popup, and every charge is re-verified server-side (verify_url()).
+# Override at runtime with the `paystack_public_key` config key.
+DEFAULT_PUBLIC_KEY = "pk_live_0dedf15a5ed33527a0685fc002ba927518d58e0b"
 USER_AGENT = "odu-tracker-pay/1.0"
 
 _REF_RE = re.compile(r"^[A-Za-z0-9._-]{3,64}$")
@@ -57,15 +53,17 @@ def public_key(cfg) -> str:
 
 
 def verify_url(cfg) -> str:
-    """Worker endpoint when configured, else '' (verify directly)."""
+    """Remote verify endpoint (site/api/verify.js) when configured,
+    else '' (verify directly with paystack_secret_key)."""
     return str(cfg.get("paystack_verify_url")
                or os.environ.get("PAYSTACK_VERIFY_URL") or "").strip()
 
 
 def secret_key(cfg) -> str:
+    # Direct mode only: the shipped setup verifies through
+    # `paystack_verify_url` and never holds a secret in the app.
     return (str(cfg.get("paystack_secret_key")
-                or os.environ.get("PAYSTACK_SECRET_KEY")
-                or DEFAULT_TEST_SECRET_KEY).strip())
+                or os.environ.get("PAYSTACK_SECRET_KEY") or "").strip())
 
 
 def configured(cfg) -> dict:

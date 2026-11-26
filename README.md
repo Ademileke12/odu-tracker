@@ -320,11 +320,13 @@ before v1.5.0 hit the same paywall on their next start.
   field - the only lever on those is the voucher `disabled` switch (and
   their baked URL pointed at a dead `main` branch until v1.5.0, so even
   that never reached them).
-* Keys: ship only the **public** key (`paystack_public_key`). For
-  verification either deploy `tools/paystack-worker.js` (Cloudflare Worker
-  holding the secret, set `paystack_verify_url`) or set
-  `paystack_secret_key` / `PAYSTACK_SECRET_KEY` on builds you control.
-  See `odu_tracker/paystack.py`.
+* Keys: ship only the **public** key (`paystack_public_key`, baked in
+  `odu_tracker/paystack.py`). Verification runs on the site's serverless
+  endpoint (`site/api/verify.js`), which holds the secret as the
+  `PAYSTACK_SECRET_KEY` Vercel env var, wired up through the default
+  `paystack_verify_url`. Alternatives: deploy `tools/paystack-worker.js`
+  (Cloudflare Worker) or set `paystack_secret_key` / `PAYSTACK_SECRET_KEY`
+  on builds you control. See `odu_tracker/paystack.py`.
 
 ## 🔐 Paid Voucher feature (access codes)
 

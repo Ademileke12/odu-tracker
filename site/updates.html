@@ -5,15 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ODU Tracker · Updates</title>
 <meta name="description" content="Every ODU Tracker release in one place: v1.5.0 lifetime unlock, macOS build, release log and how in-app updates reach your install.">
-<meta name="theme-color" content="#efece4">
+<meta name="theme-color" content="#ffffff">
 <meta property="og:site_name" content="ODU Tracker">
 <meta property="og:title" content="ODU Tracker · Updates">
 <meta property="og:description" content="Release log, rollout status and how updates reach your install - one page for every ODU Tracker version.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='13' fill='%23ffb632'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%230a0a0a' stroke-width='5.5'/%3E%3Ccircle cx='24' cy='26' r='12' fill='none' stroke='%23ffffff' stroke-width='5.5' stroke-linecap='round' stroke-dasharray='50 75.4' transform='rotate(-90 24 24)'/%3E%3Ccircle cx='24' cy='26' r='3' fill='%230a0a0a'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -30,7 +27,7 @@
     </svg>
     <span class="brand-name">ODU<b>TRACKER</b></span>
   </a>
-  <nav class="topnav">
+  <nav class="topnav" id="topnav">
     <a href="index.html#features">Features</a>
     <a class="nw" href="index.html#whatsnew">What's new <i class="nw-dot"></i></a>
     <a class="cur" href="updates.html">Updates</a>
@@ -42,6 +39,7 @@
   <span class="verchip" title="Latest release"><i class="dot"></i><span id="vertext">v1.5.0</span></span>
   <button class="mode-btn" id="modeBtn" title="Toggle light / dark" aria-label="Toggle theme"><span id="modeIco">☾</span></button>
   <a class="topbar-cta" href="index.html">Home</a>
+  <button class="nav-btn" id="navBtn" aria-label="Menu" aria-expanded="false" aria-controls="topnav"><span></span><span></span></button>
 </header>
 
 <main id="top">
@@ -49,24 +47,24 @@
   <!-- ================================================== status -->
   <section class="section">
     <p class="kicker reveal">// UPDATES · RELEASE NOTES · ROLLOUT STATUS</p>
-    <h2 class="reveal">EVERY UPDATE, <span class="hl">IN ONE PLACE</span></h2>
+    <h2 class="reveal">Every update, <span class="hl">in one place</span></h2>
     <p class="section-sub reveal">
       What changed, what's shipping, and how it reaches your install. This page
       is the single source of truth for the v1.5.0 rollout: <b>downloads are
-      open</b>, the <b>24-hour free trial</b> is live, and payments run in
-      Paystack test mode until the live keys land.
+      open</b>, the <b>24-hour free trial</b> is live, and payments run
+      live on Paystack - one <b>₦2,500</b> charge unlocks everything.
     </p>
 
     <div class="up-status reveal">
       <span class="up-chip ok"><i></i>Current build · v1.5.0</span>
       <span class="up-chip ok"><i></i>Downloads · open</span>
       <span class="up-chip ok"><i></i>Trial · 24h live</span>
-      <span class="up-chip warn"><i></i>Payments · test mode</span>
+      <span class="up-chip ok"><i></i>Payments · live</span>
       <span class="up-chip"><i></i>CI: 5 / 5 green</span>
     </div>
 
     <div class="upd-pause reveal">
-      <b>↓ v1.5.0 IS READY TO INSTALL</b>
+      <b>↓ v1.5.0 is ready to install</b>
       <span>All five installers are built, CI-green and live: Windows setup +
         portable, Linux .deb, macOS Apple Silicon .dmg, the Android APK - and
         two ways to run it on a <b>Chromebook</b> (the APK via ADB, or the .deb
@@ -77,9 +75,9 @@
   </section>
 
   <!-- ================================================== release log -->
-  <section class="section" id="log">
+  <section class="section band" id="log">
     <p class="kicker reveal">// RELEASE LOG</p>
-    <h2 class="reveal">THE <span class="hl">CHANGELOG</span></h2>
+    <h2 class="reveal">The <span class="hl">changelog</span></h2>
     <p class="section-sub reveal">Newest first. Same version on every platform -
       Windows, Linux, macOS and the Android APK are cut from one tag.
       Chromebooks run the APK or the Linux .deb - no separate build.</p>
@@ -163,14 +161,14 @@
   <!-- ================================================== how updates work -->
   <section class="section" id="how">
     <p class="kicker reveal">// HOW UPDATES REACH YOUR INSTALL</p>
-    <h2 class="reveal">UPDATED <span class="hl">IN PLACE</span></h2>
+    <h2 class="reveal">Updated <span class="hl">in place</span></h2>
     <p class="section-sub reveal">No accounts, no auto-download surprises - you
       stay in control of when the app changes.</p>
 
     <ol class="steps">
-      <li class="reveal"><span class="step-n">01</span><div><b>THE APP ASKS FIRST</b><span>When a release raises the minimum version, your install shows a full-screen <strong>UPDATE REQUIRED</strong> before the dashboard or paywall - with a download button and a <strong>Check again</strong> that re-polls in real time. Ignore it and nothing else runs; that's the point.</span></div></li>
-      <li class="reveal"><span class="step-n">02</span><div><b>INSTALL OVER THE OLD ONE</b><span>Grab the new build for your platform and install it on top - same app, same data, nothing to reconfigure. Windows keeps its settings, Linux re-installs the <code>.deb</code>, phones sideload the APK over the old one.</span></div></li>
-      <li class="reveal"><span class="step-n">03</span><div><b>YOUR LICENCE CARRIES OVER</b><span>The ₦2,500 unlock is bound to the device, not the install: your saved <strong>licence code</strong> re-activates after any update or reinstall. One payment, every version from now on.</span></div></li>
+      <li class="reveal"><span class="step-n">01</span><div><b>The app asks first</b><span>When a release raises the minimum version, your install shows a full-screen <strong>UPDATE REQUIRED</strong> before the dashboard or paywall - with a download button and a <strong>Check again</strong> that re-polls in real time. Ignore it and nothing else runs; that's the point.</span></div></li>
+      <li class="reveal"><span class="step-n">02</span><div><b>Install over the old one</b><span>Grab the new build for your platform and install it on top - same app, same data, nothing to reconfigure. Windows keeps its settings, Linux re-installs the <code>.deb</code>, phones sideload the APK over the old one.</span></div></li>
+      <li class="reveal"><span class="step-n">03</span><div><b>Your licence carries over</b><span>The ₦2,500 unlock is bound to the device, not the install: your saved <strong>licence code</strong> re-activates after any update or reinstall. One payment, every version from now on.</span></div></li>
     </ol>
   </section>
 

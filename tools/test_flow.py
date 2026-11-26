@@ -27,6 +27,9 @@ init = store.init()
 # reach production (or open trial gates that break the paywall asserts)
 from odu_tracker import config as _config  # noqa: E402
 _config.DEFAULTS["trial_api_url"] = ""
+# payment verification likewise ships pointed at the live site endpoint -
+# the paywall tests drive the direct path with a fake secret, so disarm
+_config.DEFAULTS["paystack_verify_url"] = ""
 
 # start each test run from a clean slate
 store.exec("DELETE FROM devices")

@@ -150,12 +150,13 @@ DEFAULTS = {
     "portal_port": 80,               # captive-portal claim page
     "portal_enforced": False,        # hijack only when the admin arms it
     "nickname": "",                # friendly name for this machine's owner, unused now
-    # v1.5.0 - the ₦2,500 base unlock (Paystack). The PUBLIC key ships in
-    # the app; never ship the secret key - point `paystack_verify_url` at
-    # tools/paystack-worker.js instead (see odu_tracker/paystack.py).
+    # v1.5.0 - the ₦2,500 base unlock (Paystack). The PUBLIC key ships
+    # in the app (odu_tracker/paystack.py); the SECRET never does -
+    # verification runs on the site's serverless endpoint, which reads
+    # PAYSTACK_SECRET_KEY from Vercel env (see site/api/verify.js).
     "paystack_public_key": "",
     "paystack_secret_key": "",
-    "paystack_verify_url": "",
+    "paystack_verify_url": "https://odu-tracker-site.vercel.app/api/verify",
     "paid_amount_kobo": 250000,     # ₦2,500
     # 24h trial server (v1.5.0): POST /api/trial on the deployed site.
     # Empty = feature disarmed (classic pay-on-first-launch).
@@ -178,6 +179,11 @@ class Config:
         # a user choice, let the current default (250000) apply.
         if int(loaded.get("paid_amount_kobo") or 0) == 150000:
             loaded.pop("paid_amount_kobo", None)
+        # migrate: payment verification moved to the site's serverless
+        # endpoint - a stored "" is the old default, not a user choice,
+        # let the current default apply.
+        if loaded.get("paystack_verify_url") == "":
+            loaded.pop("paystack_verify_url", None)
         self._cfg.update(loaded)
         self._cfg.setdefault("setup_done", False)
 
