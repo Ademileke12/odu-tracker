@@ -924,6 +924,9 @@ body.dark .phn { background: #2c2c2e; border-color: #2c2c2e; }
   text-underline-offset: 3px;
 }
 .dl-link:hover { text-decoration-color: currentColor; }
+/* inside a .btn the standalone link styling must not win:
+   btn-black paints bg=--fg, so text has to stay --bg or it goes black-on-black */
+.btn.dl-link { color: var(--bg); text-decoration: none; }
 .dl-size { font-weight: 500; opacity: .72; font-size: .92em; }
 .dl-help summary {
   cursor: pointer;
