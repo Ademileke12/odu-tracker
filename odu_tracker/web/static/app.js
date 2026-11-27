@@ -541,7 +541,7 @@ function showUpdate(u) {
   $("#updMsg").textContent = (u && u.message) ||
     "A newer version of ODU Tracker is required.";
   $("#updGo").href = (u && u.url) ||
-    "https://github.com/Ademileke12/odu-tracker/releases/latest";
+    "https://odu-tracker-site.vercel.app/#download";
   $("#updStatus").textContent = (u && u.latest)
     ? `you have ${u.current} · latest is ${u.latest}`
     : "";

@@ -413,7 +413,7 @@ nav .bdg{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);
   <p id="updMsg">A newer version of ODU Tracker is required to keep using
      the app.</p>
   <div id="updStatus"></div>
-  <a class="btn" id="updGo" href="https://github.com/Ademileke12/odu-tracker/releases/latest"
+  <a class="btn" id="updGo" href="https://odu-tracker-site.vercel.app/#download"
      target="_blank" rel="noopener">⤓ DOWNLOAD THE LATEST VERSION</a>
   <div style="height:10px"></div>
   <button class="btn ghost" id="updRetry">↻ CHECK AGAIN</button>
@@ -630,7 +630,7 @@ function showUpd(u) {
   $('#updMsg').textContent = (u && u.message) ||
     'A newer version of ODU Tracker is required to keep using the app.';
   $('#updGo').href = (u && u.url) ||
-    'https://github.com/Ademileke12/odu-tracker/releases/latest';
+    'https://odu-tracker-site.vercel.app/#download';
   $('#updStatus').textContent = (u && u.latest)
     ? ('you have ' + u.current + ' · latest is ' + u.latest) : '';
   $('#upd').style.display = 'flex';

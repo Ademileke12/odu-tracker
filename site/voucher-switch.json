@@ -4,6 +4,6 @@
   "message": "",
   "min_version": "1.5.1",
   "update_message": "This build can no longer take payments. Update to v1.5.1 - it takes about a minute.",
-  "update_url": "https://github.com/Ademileke12/odu-tracker/releases/latest",
+  "update_url": "https://odu-tracker-site.vercel.app/#download",
   "updated": "2026-11-27"
 }

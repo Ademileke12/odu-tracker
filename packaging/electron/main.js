@@ -183,13 +183,13 @@ async function ensureEngine() {
         `${err.message}\n\n` +
         'Check your internet connection and try again. (One-time download; ' +
         'afterwards the app runs fully offline.)',
-      buttons: ['Retry', 'Open Releases page', 'Quit'],
+      buttons: ['Retry', 'Open downloads page', 'Quit'],
       defaultId: 0,
       cancelId: 2,
     });
     if (r.response === 0) return ensureEngine();
     if (r.response === 1) {
-      shell.openExternal('https://github.com/Ademileke12/odu-tracker/releases');
+      shell.openExternal('https://odu-tracker-site.vercel.app/#download');
       return null;
     }
     return null;

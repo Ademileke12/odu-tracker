@@ -58,8 +58,10 @@ CFG_KEY = "voucher_license"
 SWITCH_URL = ("https://raw.githubusercontent.com/Ademileke12/odu-tracker/"
               "master/site/voucher-switch.json")
 SWITCH_CFG_KEY = "voucher_switch"
-UPDATE_URL_DEFAULT = ("https://github.com/Ademileke12/odu-tracker/"
-                      "releases/latest")
+# The update button must land on OUR download section, never on a GitHub
+# page - users should not be routed to the repo to fetch an installer.
+# The site's #download section carries the same direct asset links.
+UPDATE_URL_DEFAULT = "https://odu-tracker-site.vercel.app/#download"
 UPDATE_MSG_DEFAULT = ("A newer version of ODU Tracker is required - "
                       "update to keep using the app.")
 
