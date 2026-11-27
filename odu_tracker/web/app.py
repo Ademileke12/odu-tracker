@@ -17,7 +17,8 @@ from odu_tracker.config import Config, on_android
 from odu_tracker import dns_proxy as _dp
 from odu_tracker import portal as _portal
 from odu_tracker.poller import Poller
-from odu_tracker.router import OduRouter, RouterError, LoginLocked
+from odu_tracker.router import (OduRouter, RouterError, LoginLocked,
+                                open_router, probe_kind)
 from odu_tracker.security import normalize_mac
 from odu_tracker import voucher
 from odu_tracker import license as voucher_license
@@ -122,9 +123,10 @@ def create_app(cfg: Config, poller: Poller):
         remember = bool((request.json or {}).get("remember", True))
         if not pw:
             return jsonify({"error": "password required"}), 400
-        probe = OduRouter(ip=cfg.get("router_ip"),
-                          username=cfg.get("router_username") or "admin",
-                          password=pw)
+        probe = open_router(ip=cfg.get("router_ip"),
+                            username=cfg.get("router_username") or "admin",
+                            password=pw,
+                            kind=cfg.get("router_kind") or "")
         try:
             probe.login(pw)
         except LoginLocked as exc:
@@ -136,6 +138,8 @@ def create_app(cfg: Config, poller: Poller):
         # success: store, start poller
         cfg.password = pw
         cfg.set("setup_done", True)
+        if getattr(probe, "kind", "") and probe.kind != (cfg.get("router_kind") or ""):
+            cfg.set("router_kind", probe.kind)   # remember ZLT vs ZTE
         poller.update_router_creds(password=pw)
         poller.start()
         session["auth"] = True
@@ -149,29 +153,45 @@ def create_app(cfg: Config, poller: Poller):
         return jsonify({"ok": True})
 
     # ------------------------------------------------ ODU presence probe
+    def _feat(name) -> bool:
+        """Current router's capability flag (poller.router.features).
+        Missing flags default True so test doubles keep old behavior."""
+        return bool(getattr(getattr(poller, "router", None), "features",
+                            {}).get(name, True))
+
+    def _no_feat(name):
+        return jsonify({
+            "ok": False,
+            "error": f"not available on this router ({name} needs an MTN "
+                     "ODU / ZLT - FibreX-class routers are monitor-only)",
+        }), 501
+
     def _odu_probe(ip=None, timeout=2.5):
-        """(tcp_ok, is_odu) - is 192.168.0.1 up *and* does it speak ZLT?"""
+        """(tcp_ok, supported, kind) - is the router at ip up, and does it
+        speak ZLT (ODU) or ZTE LuQUID (FibreX class)?
+
+        `supported` is True for either known platform: the UI's
+        "no ODU found" screen must not fire on a working FibreX gateway.
+        """
         ip = ip or cfg.get("router_ip")
         import socket as _s
         try:
             s = _s.create_connection((ip, 80), timeout=timeout)
             s.close()
         except OSError:
-            return False, False
+            return False, False, ""
+        known = cfg.get("router_kind") or ""
         try:
-            probe = OduRouter(ip=ip, timeout=timeout)
-            resp = probe.build(232, "GET")
-            keys = set(resp or {}) if isinstance(resp, dict) else set()
-            odu = not not (keys & {"sessionid", "buffer", "token", "boot_time",
-                                   "netx_login_time", "success"})
-            return True, odu
+            tcp_ok, kind = probe_kind(ip, timeout=timeout, known=known)
         except Exception:
-            return True, False
+            tcp_ok, kind = True, ""
+        return tcp_ok, kind in ("zlt", "zte"), kind
 
     @app.get("/api/check")
     def check_conn():
-        tcp_ok, odu = _odu_probe()
-        return jsonify({"reachable": tcp_ok, "odu": odu, "ip": cfg.get("router_ip")})
+        tcp_ok, odu, kind = _odu_probe()
+        return jsonify({"reachable": tcp_ok, "odu": odu, "kind": kind,
+                        "ip": cfg.get("router_ip")})
 
     @app.post("/api/updatecheck")
     def update_check():
@@ -203,8 +223,9 @@ def create_app(cfg: Config, poller: Poller):
             app_trial.refresh(cfg, timeout=4.0)
         st = poller.status()
         lock = {"attempts_left": None, "lock_secs": None}
-        reachable, is_odu = _odu_probe(timeout=3)
-        if reachable and is_odu:
+        reachable, is_odu, kind = _odu_probe(timeout=3)
+        kind = kind or (cfg.get("router_kind") or "")
+        if reachable and is_odu and kind == "zlt":
             try:
                 probe = OduRouter(ip=cfg.get("router_ip"))
                 resp = probe.build(232, "GET")   # unauthenticated handshake (safe)
@@ -214,10 +235,21 @@ def create_app(cfg: Config, poller: Poller):
                 }
             except Exception:
                 pass
+        # Capability flags for the UI: vouchers/portal/blocking only exist on
+        # ZLT (ODU) hardware; a confirmed ZTE gateway is monitoring only.
+        # Unknown kind ("" = fingerprint not run yet, or router offline) keeps
+        # FULL features, matching _feat()'s missing-flag default: hiding the
+        # enforcement UI from an ODU user who has not been fingerprinted would
+        # be a regression, and the server-side _feat() gates still refuse any
+        # command the connected router cannot actually perform.
+        is_zlt = kind != "zte"
+        feats = {"zlt": is_zlt, "vouchers": is_zlt, "portal": is_zlt}
         return jsonify({
             "setup_done": cfg.get("setup_done") and cfg.has_password,
             "authed": bool(session.get("auth")),
             "router_ip": cfg.get("router_ip"),
+            "router_kind": kind,
+            "features": feats,
             "poll_running": st["running"],
             "router_logged_in": st["logged_in"],
             "reachable": reachable,
@@ -248,7 +280,7 @@ def create_app(cfg: Config, poller: Poller):
         sys_status = data.get("sys_status") or {}
         home = data.get("home_info") or {}
         runtime = data.get("runtime") or {}
-        flow = data.get("flow") or {}
+        flow = data.get("flow") or data.get("flow_new") or {}
         battery = data.get("battery") or {}
         network = data.get("network") or {}
         usage_now = store.current_usage()
@@ -366,6 +398,10 @@ def create_app(cfg: Config, poller: Poller):
         if not m:
             return jsonify({"error": "bad mac"}), 400
         want = bool((request.json or {}).get("blocked", True))
+        if not _feat("vouchers"):
+            # ZTE/FibreX: no cmd 278 gate in the firmware - blocking here
+            # would flip the DB badge while the device keeps full internet.
+            return _no_feat("device blocking (router MAC gate)")
         result = {"db": True}
         if want:
             # try to add to router MAC blacklist or whitelist depending on mode
@@ -392,6 +428,8 @@ def create_app(cfg: Config, poller: Poller):
         if not m:
             return jsonify({"error": "bad mac"}), 400
         want = bool((request.json or {}).get("softcut", True))
+        if not _feat("portal"):
+            return _no_feat("soft cut (captive portal)")
         store.set_softcut(m, want)
         voucher.invalidate_softcut_cache()  # apply immediately to DNS proxy
         state = "yes" if want else "no"
@@ -415,6 +453,9 @@ def create_app(cfg: Config, poller: Poller):
         only; wired clients bypass it.
         """
         try:
+            if not _feat("vouchers"):
+                return {"ok": False, "error": "MAC gate needs an MTN ODU "
+                                              "(ZLT) - not on this router"}
             if block:
                 return voucher.gate_deny(poller.router, mac)
             return voucher.gate_allow(poller.router, mac)
@@ -528,9 +569,10 @@ def create_app(cfg: Config, poller: Poller):
         pw = (request.json or {}).get("password", "")
         if not pw:
             return jsonify({"error": "password required"}), 400
-        probe = OduRouter(ip=cfg.get("router_ip"),
-                          username=cfg.get("router_username") or "admin",
-                          password=pw)
+        probe = open_router(ip=cfg.get("router_ip"),
+                            username=cfg.get("router_username") or "admin",
+                            password=pw,
+                            kind=cfg.get("router_kind") or "")
         try:
             probe.login(pw)
         except Exception as exc:
@@ -666,6 +708,8 @@ def create_app(cfg: Config, poller: Poller):
     def portal_enforce():
         """Arm/disarm the captive portal (DNS hijack for unclaimed devices)."""
         enabled = bool((request.json or {}).get("enabled", True))
+        if enabled and not _feat("portal"):
+            return _no_feat("captive portal / voucher gate")
         if not enabled:
             cfg.set("portal_enforced", False)
             dns_align = _align_portal_dns(_my_ip(), enforced=False)
@@ -753,6 +797,8 @@ def create_app(cfg: Config, poller: Poller):
         """Point the router's DHCP DNS at this app (per-device site tracking)
         or restore the values the router had before we changed anything."""
         mode = (request.json or {}).get("mode", "app")
+        if not _feat("portal"):
+            return _no_feat("router DHCP DNS push")
         if mode == "app" and on_android():
             # Same lockout rule as /api/portal/enforce: the phone cannot bind
             # :53, so pointing the LAN's DHCP DNS here kills every device's
@@ -923,8 +969,12 @@ def create_app(cfg: Config, poller: Poller):
             "pool": voucher.pool_status(getattr(poller, "router", None)),
         }
         if request.args.get("gate") and getattr(poller, "router", None):
-            out["gate"] = voucher.gate_status(poller.router)
-            out["wps"] = voucher.wps_status(poller.router)
+            if _feat("vouchers"):
+                out["gate"] = voucher.gate_status(poller.router)
+                out["wps"] = voucher.wps_status(poller.router)
+            else:
+                out["unsupported"] = ("MAC gate/WPS need an MTN ODU (ZLT) - "
+                                      "this router is monitor-only")
         return jsonify(out)
 
     @app.post("/api/vouchers")
@@ -1045,6 +1095,8 @@ def create_app(cfg: Config, poller: Poller):
         enable = bool(body.get("enable", True))
         if not getattr(poller, "router", None):
             return jsonify({"error": "router not logged in"}), 503
+        if not _feat("vouchers"):
+            return _no_feat("SIM data cap (cmd 337)")
         res = voucher.pool_set(poller.router, enable)
         store.exec("INSERT INTO events(ts, kind, level, detail) VALUES(?,?,?,?)",
                    (store.now(), "voucher_pool", "warning" if enable else "info",
@@ -1061,6 +1113,8 @@ def create_app(cfg: Config, poller: Poller):
         gate to be enforced by the firmware."""
         if not getattr(poller, "router", None):
             return jsonify({"error": "router not logged in"}), 503
+        if not _feat("vouchers"):
+            return _no_feat("WPS control (cmd 132)")
         res = voucher.wps_off(poller.router)
         store.exec("INSERT INTO events(ts, kind, level, detail) VALUES(?,?,?,?)",
                    (store.now(), "voucher_wps", "warning",

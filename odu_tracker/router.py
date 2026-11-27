@@ -110,6 +110,12 @@ def _ota_session_id() -> str:
 class OduRouter:
     """Thread-safe client for one router. Re-logins automatically on NO_AUTH."""
 
+    kind = "zlt"
+    # capability flags: everything this protocol can enforce. The poller and
+    # web app gate ZLT-only features (vouchers, captive portal, blocking)
+    # on these, so a ZTE/FibreX driver degrades honestly instead of 500ing.
+    features = {"zlt": True, "vouchers": True, "portal": True}
+
     def __init__(self, ip="192.168.0.1", username="admin", password="", timeout=10):
         self.ip = ip
         self.username = username
@@ -282,3 +288,60 @@ class OduRouter:
             except Exception as exc:
                 out[name] = {"success": False, "error": str(exc)}
         return out
+
+
+# ----------------------------------------------------------------- factory
+ZTE_ROOT_MARKERS = (
+    "_sessionTOKEN", "logintoken_lua.lua", "Frm_Username",
+    "login_sec.gch", "ZTE web server",
+)
+ZLT_KEYS = {"sessionid", "buffer", "token", "boot_time",
+            "netx_login_time", "success"}
+
+
+def probe_kind(ip, timeout=2.0, known=""):
+    """(port80_open, kind) with kind in {'zlt', 'zte', ''}.
+
+    `known` (the stored router_kind after the first successful login)
+    short-circuits the fingerprint to a bare TCP check.
+    """
+    import socket
+    try:
+        s = socket.create_connection((ip, 80), timeout=timeout)
+        s.close()
+    except OSError:
+        return False, (known or "")
+    if known in ("zlt", "zte"):
+        return True, known
+    try:  # ZLT handshake first (today's default platform)
+        resp = OduRouter(ip=ip, timeout=timeout).build(232, "GET")
+        keys = set(resp) if isinstance(resp, dict) else set()
+        if keys & ZLT_KEYS:
+            return True, "zlt"
+    except Exception:
+        pass
+    try:  # ZTE LuQUID: the root page fingerprints itself
+        page = requests.get(f"http://{ip}/", timeout=timeout).text
+        if any(m in page for m in ZTE_ROOT_MARKERS):
+            return True, "zte"
+    except Exception:
+        pass
+    return True, ""
+
+
+def open_router(ip="192.168.0.1", username="admin", password="", timeout=10,
+                kind=""):
+    """Build the right driver for the router at ip.
+
+    kind='' fingerprints the router; an unreachable or unrecognized router
+    still gets an OduRouter, so login() reports the reachability error
+    exactly as before (preserves today's behavior everywhere).
+    """
+    if kind not in ("zlt", "zte"):
+        _tcp, kind = probe_kind(ip, timeout=min(float(timeout), 2.0))
+    if kind == "zte":
+        from .router_zte import ZteRouter
+        return ZteRouter(ip=ip, username=username, password=password,
+                         timeout=timeout)
+    return OduRouter(ip=ip, username=username, password=password,
+                     timeout=timeout)

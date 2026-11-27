@@ -117,17 +117,22 @@ def cmd_autostart(args):
 
 
 def _login_or_prompt(cfg):
-    from odu_tracker.router import OduRouter, RouterError
+    from odu_tracker.router import RouterError, open_router
     while True:
         pw = cfg.password
         if not pw:
             import getpass
             pw = getpass.getpass(f"Router admin password ({cfg.get('router_ip')}): ")
-        r = OduRouter(ip=cfg.get("router_ip"), username=cfg.get("router_username") or "admin", password=pw)
+        r = open_router(ip=cfg.get("router_ip"),
+                        username=cfg.get("router_username") or "admin",
+                        password=pw, kind=cfg.get("router_kind") or "")
         try:
             r.login(pw)
             if not cfg.has_password:
                 cfg.password = pw
+            if getattr(r, "kind", "") and r.kind != (cfg.get("router_kind") or ""):
+                cfg.set("router_kind", r.kind)
+                print(f"  router platform: {r.kind}")
             return r
         except RouterError as exc:
             print(f"  !! {exc}")

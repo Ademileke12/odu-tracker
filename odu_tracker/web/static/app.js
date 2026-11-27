@@ -508,6 +508,8 @@ const S = {
   usageHours: 24, ratesMinutes: 30,
   lastStatus: null, devices: [],
   tmrs: {},
+  feat: {zlt: true, vouchers: true, portal: true},   // router capabilities
+  routerKind: "",
 };
 
 /* ---------------------------------------------------------------- auth */
@@ -833,6 +835,12 @@ $("#noOduRetry").onclick = async () => {
 async function route(meta) {
   if (meta.update && meta.update.required) { showUpdate(meta.update); return; }
   $("#updateView").hidden = true;
+  // router capability flags (from /api/meta): ZLT/ODU = full product,
+  // ZTE/FibreX class = monitor only (no vouchers / captive portal / MAC
+  // gate). Missing flags default to full so an older engine still works.
+  S.feat = Object.assign({zlt: true, vouchers: true, portal: true},
+                         meta.features || {});
+  S.routerKind = meta.router_kind || (S.feat.zlt ? "zlt" : "");
   const trial = meta.trial || null;
   // pay first, always - unless the 24h trial still has time on it
   if (!meta.paid && !(trial && trial.active)) { showPaywall(trial); return; }
@@ -887,12 +895,23 @@ function enterMain() {
   $("#authView").hidden = true;
   $("#mainView").hidden = false;
   bindNav();
+  applyFeatureGates();
   refreshAll();
   startTimers();
   // deep link: /?tab=vouchers opens straight on that tab (support links,
   // scripted captures)
   const want = new URLSearchParams(location.search).get("tab");
   if (want && $(`main [data-view="${want}"]`)) go(want);
+}
+
+/* Router capability gates: a FibreX/ZTE gateway is monitor-only - the
+   Vouchers tab (codes, SIM data cap, MAC gate, captive portal) has nothing
+   to enforce there, so the tab is hidden instead of erroring on every poll. */
+function applyFeatureGates() {
+  if (S.feat.vouchers) return;
+  $$("[data-tabs] .navlink").forEach(el => {
+    if (el.dataset.tab === "vouchers") el.hidden = true;
+  });
 }
 
 /* ---------------------------------------------------------------- nav */
@@ -907,6 +926,7 @@ function bindNav() {
   });
 }
 function go(tab) {
+  if (tab === "vouchers" && !S.feat.vouchers) tab = "dashboard";
   $$("[data-tabs] .navlink").forEach(el => el.classList.toggle("active", el.dataset.tab === tab));
   $$("main [data-view]").forEach(el => el.hidden = el.dataset.view !== tab);
   const titles = {

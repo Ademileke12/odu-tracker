@@ -1027,8 +1027,8 @@ async function refreshDevices() {
       ${tags}
       <div class="actions">
         <button class="btn ghost" data-act="trust">${x.trusted ? 'UNTRUST' : 'TRUST'}</button>
-        <button class="btn ${x.softcut ? 'ghost' : 'warn'}" data-act="softcut">${x.softcut ? 'LIFT CUT' : 'SOFT CUT'}</button>
-        <button class="btn ${x.blocked ? 'ghost' : 'warn'}" data-act="block">${x.blocked ? 'LIFT BLOCK' : 'BLOCK'}</button>
+        ${(S.feat.portal !== false) ? `<button class="btn ${x.softcut ? 'ghost' : 'warn'}" data-act="softcut">${x.softcut ? 'LIFT CUT' : 'SOFT CUT'}</button>` : ''}
+        ${(S.feat.vouchers !== false) ? `<button class="btn ${x.blocked ? 'ghost' : 'warn'}" data-act="block">${x.blocked ? 'LIFT BLOCK' : 'BLOCK'}</button>` : ''}
       </div>
     </div>`;
   }).join('') || '<div class="empty">no devices seen yet</div>';
@@ -1198,6 +1198,11 @@ $('#resetBtn').addEventListener('click', () => {
   if (!m.paid && !(trial && trial.active)) { showPay(trial); return; }
   hidePay();
   updateTrialChip(trial, m.paid);
+  // router capability flags: on a FibreX/ZTE gateway there is no cmd 278
+  // MAC gate and no captive portal, so the enforcement buttons are hidden
+  // instead of failing every tap (see odu_tracker/web/app.py _no_feat).
+  S.feat = Object.assign({ zlt: true, vouchers: true, portal: true },
+                         m.features || {});
   if (!m.authed) { showLogin(); return; }
   hideLogin();
   const want = new URLSearchParams(location.search).get('tab');

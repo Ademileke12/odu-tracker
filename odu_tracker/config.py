@@ -161,6 +161,10 @@ DEFAULTS = {
     # 24h trial server (v1.5.0): POST /api/trial on the deployed site.
     # Empty = feature disarmed (classic pay-on-first-launch).
     "trial_api_url": "https://odu-tracker-site.vercel.app/api/trial",
+    # detected router platform after the first successful login:
+    # "zlt" = MTN ODU (full features), "zte" = FibreX class (monitor only),
+    # "" = fingerprint at next login (see router.open_router).
+    "router_kind": "",
 }
 
 

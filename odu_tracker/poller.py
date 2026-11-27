@@ -16,7 +16,7 @@ import traceback
 
 from . import store
 from .config import Config, on_android
-from .router import OduRouter, RouterError
+from .router import OduRouter, RouterError, open_router
 from .security import normalize_mac, risk_score, vendor_for
 from . import voucher
 
@@ -124,10 +124,11 @@ class Poller:
     # ------------------------------------------------------------- controls
     def start(self):
         if self._thread is None:
-            self.router = OduRouter(
+            self.router = open_router(
                 ip=self.cfg.get("router_ip"),
                 username=self.cfg.get("router_username") or "admin",
                 password=self.cfg.password,
+                kind=self.cfg.get("router_kind") or "",
             )
             self._thread = threading.Thread(target=self._run, name="odu-poller", daemon=True)
             self._thread.start()
@@ -148,11 +149,17 @@ class Poller:
             self.cfg.set("router_ip", ip)
         if password:
             self.cfg.password = password
-        self.router = OduRouter(
+        self.router = open_router(
             ip=self.cfg.get("router_ip"),
             username=self.cfg.get("router_username") or "admin",
             password=self.cfg.password,
+            kind=self.cfg.get("router_kind") or "",
         )
+
+    def feat(self, name) -> bool:
+        """Router capability flag (see router.OduRouter.features).
+        Missing flags default True so test doubles keep old behavior."""
+        return bool(getattr(self.router, "features", {}).get(name, True))
 
     # ---------------------------------------------------------- worker loop
     def _run(self):
@@ -164,8 +171,13 @@ class Poller:
                 if not self.router.logged_in:
                     try:
                         self.router.login()
-                        store.add_alert("success", "Connected to ODU",
-                                        f"Logged in as {self.router.username}@{self.router.ip}")
+                        if self.router.kind != (self.cfg.get("router_kind") or ""):
+                            self.cfg.set("router_kind", self.router.kind)
+                        store.add_alert(
+                            "success", "Connected to router",
+                            f"Logged in as {self.router.username}@{self.router.ip}"
+                            + (" (MTN ODU / ZLT)" if self.router.kind == "zlt"
+                               else " (ZTE / FibreX class)"))
                     except RouterError as exc:
                         store.add_alert("danger", "Login failed", str(exc))
                         time.sleep(30)
@@ -224,8 +236,10 @@ class Poller:
 
         # portal-aware soft cut: the moment the hijack path is fully up,
         # re-admit devices still held by a stale cmd278 deny so they can
-        # rejoin the SSID and reach the claim page (self-service recovery)
-        soft = self._portal_soft_cut()
+        # rejoin the SSID and reach the claim page (self-service recovery).
+        # ZTE/FibreX routers have no cmd 278 deny and no DHCP DNS push, so
+        # the whole enforcement loop is skipped there (feat flag).
+        soft = self._portal_soft_cut() if self.feat("portal") else False
         if soft and not self._soft_prev:
             threading.Thread(target=self._lift_soft_denies, daemon=True,
                              name="soft-lift").start()
@@ -234,7 +248,7 @@ class Poller:
         # a router reboot silently reverts its DHCP DNS to its own IP,
         # which KILLS the hijack (and with it the soft cut) while every
         # status flag still says "enforced". self-heal it.
-        if self.cfg.get("portal_enforced"):
+        if self.cfg.get("portal_enforced") and self.feat("portal"):
             self._repoint_dns_if_drifted()
         self.last_fast = snap
 
@@ -251,6 +265,8 @@ class Poller:
         the self-service recovery loop. cmd 278 remains available for the
         manual Devices-tab block only.
         """
+        if not self.feat("vouchers"):
+            return          # no voucher codes / portal on this router
         try:
             counter_mb = (usage["used"] or 0) * 1024.0
             newly = voucher.attribute_usage(counter_mb, seen_now)
@@ -364,6 +380,9 @@ class Poller:
         """
         if self.router is None:
             return {"ok": False, "error": "no router"}
+        if not self.feat("portal"):
+            return {"ok": False, "error": "router cannot push DHCP DNS "
+                                          "(no ZLT cmd 3 support)"}
         cur = self.router.cmd(3, "GET") or {}
         if (str(cur.get("main_dns") or "") == main
                 and str(cur.get("vice_dns") or "") == vice):
@@ -430,6 +449,8 @@ class Poller:
         """
         try:
             if self.router is None or not self.router.logged_in:
+                return
+            if not self.feat("vouchers"):
                 return
             manual = {r["mac"] for r in
                       store.q("SELECT mac FROM devices WHERE blocked=1")}

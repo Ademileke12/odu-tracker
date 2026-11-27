@@ -79,6 +79,248 @@ def test_risk():
     print("risk_score           ok", "(high:", score, "| low:", sc2, ")")
 
 
+def test_zte_driver():
+    """FibreX / ZTE LuQUID driver: page parsing, snapshot contract, gates.
+
+    Fixtures are shaped from the real F6600P DOM contract (template_ divs,
+    MACAddress:/IPAddress: spans, <span class="form-action"> endpoints,
+    ajax_response_xml_root XML) - no router contact.
+    """
+    from odu_tracker.router import (OduRouter, RouterError, open_router,
+                                    probe_kind)
+    from odu_tracker.router_zte import (ZteRouter, _devices_from_scan,
+                                        _devices_from_xml, _field_of,
+                                        _parse_page, parse_luquid)
+
+    # ---- field classification: indexed span ids AND bare XML ParaNames
+    assert _field_of("MACAddress:3") == ("mac", "3")
+    assert _field_of("MACAddress") == ("mac", "")
+    assert _field_of("InBytes") == ("bytes", "")
+    assert _field_of("HostName_7")[0] == "host"
+    assert _field_of("IPAddress")[0] == "ip"
+    assert _field_of("Rssi_5G") == (None, None)
+
+    # ---- page -> devices (the dashboard's template-block rendering)
+    lan_page = """
+    <html><head><title>LAN</title></head><body>
+    <div id="lan_info">
+      <span class="form-action">/common_page/lan_info_lua.lua</span>
+      <div id="template_lan_info_0">
+        <span id="MACAddress:0">AA:BB:CC:11:22:33</span>
+        <span id="IPAddress:0">192.168.1.50</span>
+        <span id="HostName:0">Ade-phone</span>
+        <span id="InBytes:0">123456/65432</span>
+      </div>
+      <div id="template_lan_info_1">
+        <span id="MACAddress:1">40:ec:99:aa:bb:01</span>
+        <span id="IPAddress:1">192.168.1.51</span>
+        <span id="HostName:1">Desktop</span>
+        <span id="InBytes:1">1000/2000</span>
+      </div>
+      <div id="template_lan_info_2">
+        <span id="MACAddress:2">not-a-mac</span>
+        <span id="IPAddress:2">192.168.1.52</span>
+      </div>
+    </div></body></html>
+    """
+    devs = _devices_from_scan(_parse_page(lan_page), "lan")
+    assert len(devs) == 2, devs          # the malformed row is dropped
+    assert devs[0]["mac"] == "AA:BB:CC:11:22:33"
+    assert devs[0]["ip"] == "192.168.1.50"
+    assert devs[0]["hostname"] == "Ade-phone"
+    assert devs[0]["iface"] == "lan"
+    assert devs[0]["rx"] == 123456.0 and devs[0]["tx"] == 65432.0
+
+    # ---- table fallback (some firmwares render DHCP leases as a table)
+    tbl_page = """
+    <div id="DHCPHostInfo"><table>
+    <tr><th>IP</th><th>MAC</th><th>Host</th></tr>
+    <tr><td>192.168.1.60</td><td>AA:BB:CC:11:22:44</td><td>Printer</td></tr>
+    </table></div>
+    """
+    tdevs = _devices_from_scan(_parse_page(tbl_page), "")
+    assert len(tdevs) == 1, tdevs
+    assert tdevs[0]["mac"] == "AA:BB:CC:11:22:44"
+    assert tdevs[0]["ip"] == "192.168.1.60"
+    assert tdevs[0]["hostname"] == "Printer"
+
+    # ---- XML data endpoint -> devices
+    xml = """<ajax_response_xml_root>
+    <OBJ_Wlan_ClientStat_ID>
+    <Instance>
+      <ParaName>MACAddress</ParaName><ParaValue>40:EC:99:AA:BB:02</ParaValue>
+      <ParaName>IPAddress</ParaName><ParaValue>192.168.1.70</ParaValue>
+      <ParaName>HostName</ParaName><ParaValue>Tablet</ParaValue>
+      <ParaName>InBytes</ParaName><ParaValue>5000/6000</ParaValue>
+    </Instance>
+    </OBJ_Wlan_ClientStat_ID>
+    </ajax_response_xml_root>"""
+    parsed = parse_luquid(xml)
+    assert "OBJ_Wlan_ClientStat_ID" in parsed, parsed
+    xdevs = _devices_from_xml(parsed, "wifi")
+    assert len(xdevs) == 1, xdevs
+    assert xdevs[0]["mac"] == "40:EC:99:AA:BB:02"
+    assert xdevs[0]["hostname"] == "Tablet"
+    assert xdevs[0]["rx"] == 5000.0 and xdevs[0]["tx"] == 6000.0
+
+    # ---- snapshot_all must satisfy the poller's extraction contract
+    class FakeZte(ZteRouter):
+        """Driver with its HTTP layer replaced by fixtures."""
+
+        def __init__(self):
+            super().__init__(password="x")
+            self._pages = {"lan": "/lan", "wlan": "/wlan", "dhcp": "/dhcp",
+                           "topology": "/topo", "home": "/home"}
+            self._discovered = True
+
+        def _page_endpoints(self, role):
+            # non-empty endpoint list is what makes _collect_devices visit
+            # the role at all (a None page alone is skipped)
+            return {"lan": lan_page, "dhcp": tbl_page}.get(role), \
+                ["/ep/" + role]
+
+        def _fetch_endpoint(self, ep, referer_url):
+            return xml if referer_url == "/wlan" else None
+
+        def _ensure(self):
+            pass
+
+        def _home_info(self):
+            return {"data": {"ModelName": "ZXHN F6600P",
+                             "SerialNumber": "ZTE123456"}}
+
+    z = FakeZte()
+    snap = z.snapshot_all()
+    assert set(snap) >= {"all_device", "home_info", "flow_new"}, snap.keys()
+    got = extract_devices(snap["all_device"])
+    macs = {d["mac"] for d in got}
+    assert {"AA:BB:CC:11:22:33", "40:EC:99:AA:BB:01",
+            "AA:BB:CC:11:22:44", "40:EC:99:AA:BB:02"} <= macs, macs
+    u = parse_usage(snap["flow_new"])
+    assert u and u["total"] is None, u      # FibreX is unlimited: no quota
+    assert u["used"] >= 0, u
+    # bytes counted exactly once: 123456+65432 + 1000+2000 + 5000+6000
+    expect_mb = (123456 + 65432 + 1000 + 2000 + 5000 + 6000) / 1048576.0
+    assert abs(snap["flow_new"]["mon_download_flow"] - expect_mb) < 0.01, \
+        snap["flow_new"]
+    # peak-hold: a device leaving must not walk the counter backwards
+    z._usage_peak_mb = 99.0
+    assert z.snapshot_all()["flow_new"]["mon_download_flow"] >= 99.0
+    z.reset_usage()
+    assert z.current_usage_mb() == 0.0
+
+    # ---- ZLT-only API is refused loudly, not silently wrong
+    for fn in (lambda: z.cmd(3, "GET"), lambda: z.cmd(278, "GET"),
+               lambda: z.build(232, "GET")):
+        try:
+            fn()
+            raise AssertionError("ZTE driver must refuse ZLT commands")
+        except RouterError:
+            pass
+
+    # ---- capability flags drive the gates
+    assert z.kind == "zte" and z.features["vouchers"] is False
+    assert OduRouter.kind == "zlt" and OduRouter.features["vouchers"] is True
+
+    cfg = Config()
+    p = Poller(cfg)
+    p.router = z
+    assert p.feat("vouchers") is False and p.feat("portal") is False
+    res = p.push_dhcp_dns("192.168.1.99", "192.168.1.99")
+    assert res["ok"] is False and "ZLT" in res["error"], res
+    p.router = OduRouter(password="x")
+    assert p.feat("vouchers") is True
+
+    # ---- factory + fingerprint
+    assert isinstance(open_router(ip="192.168.1.1", kind="zte"), ZteRouter)
+    assert isinstance(open_router(ip="192.168.0.1", kind="zlt"), OduRouter)
+    with mock.patch("odu_tracker.router.probe_kind",
+                    return_value=(True, "zte")):
+        assert isinstance(open_router(ip="192.168.1.1"), ZteRouter)
+    with mock.patch("socket.create_connection") as cc, \
+            mock.patch("odu_tracker.router.OduRouter.build",
+                       side_effect=RuntimeError("not zlt")), \
+            mock.patch("odu_tracker.router.requests.get") as rg:
+        cc.return_value.close = lambda: None
+        rg.return_value.text = '<html>var x = {_sessionTOKEN", "abc123"}</html>'
+        assert probe_kind("192.168.1.1") == (True, "zte")
+    with mock.patch("socket.create_connection") as cc, \
+            mock.patch("odu_tracker.router.OduRouter.build",
+                       return_value={"success": "1"}):
+        cc.return_value.close = lambda: None
+        assert probe_kind("192.168.0.1") == (True, "zlt")
+    with mock.patch("socket.create_connection") as cc:
+        cc.return_value.close = lambda: None
+        assert probe_kind("192.168.1.1", known="zte") == (True, "zte")
+
+    # ---- /api/meta capability flags: an UNKNOWN kind must keep FULL
+    # features. Mobile has no "no ODU" gate (desktop does), so sending
+    # false/true/false here silently hides Block + Soft-cut from an ODU
+    # user whose router has not been fingerprinted yet.
+    #
+    # trial_api_url must be EMPTY (disarmed), not an unreachable host:
+    # refresh() treats any non-empty URL as armed, and on failure
+    # trial._bootstrap_local() PERSISTS a 24h trial into the shared config
+    # file, which would hand test_base_paywall a live trial and turn its
+    # expected 403 into a 200.
+    from odu_tracker.web.app import create_app
+    mcfg = Config()
+    mcfg.set("router_kind", "", persist=False)
+    mcfg.set("license_switch_url", "http://127.0.0.1:9/nope", persist=False)
+    mcfg.set("trial_api_url", "", persist=False)
+    mcfg.set("trial", None, persist=False)     # never leave a minted record
+    mc = create_app(mcfg, Poller(mcfg)).test_client()
+
+    def _meta(kind):
+        with mock.patch("socket.create_connection") as cc, \
+                mock.patch("odu_tracker.web.app.probe_kind",
+                           return_value=(True, kind)):
+            cc.return_value.close = lambda: None
+            return mc.get("/api/meta").get_json()
+
+    full = {"zlt": True, "vouchers": True, "portal": True}
+    off = {"zlt": False, "vouchers": False, "portal": False}
+    unknown = _meta("")
+    assert unknown["features"] == full, unknown["features"]
+    assert unknown["router_kind"] == "", unknown["router_kind"]
+    assert _meta("zlt")["features"] == full, _meta("zlt")["features"]
+    zte = _meta("zte")
+    assert zte["features"] == off, zte["features"]
+    assert zte["router_kind"] == "zte", zte["router_kind"]
+
+    # ---- discover() must not re-enter itself. A slow GPON ONT needs
+    # ~105 s for the 70-page crawl, past the 60-120 s idle session, so the
+    # mid-crawl bounce reaches login() -> discover() again. Guarded, that
+    # inner call must return at once instead of nesting a second crawl.
+    zr = ZteRouter(ip="192.168.1.1")
+    crawls = {"n": 0}
+
+    def _nesting_crawl(cap):
+        crawls["n"] += 1
+        zr.discover()                      # the old code re-entered here
+    zr._crawl = _nesting_crawl
+    zr.discover()
+    assert crawls["n"] == 1, f"discover re-entered {crawls['n']} times"
+    assert zr._discovering is False, "guard flag must clear after the crawl"
+
+    # a crawl that dies must leave _discovered False so it retries later
+    zr2 = ZteRouter(ip="192.168.1.1")
+
+    def _dies(cap):
+        raise RuntimeError("router went away mid-crawl")
+    zr2._crawl = _dies
+    try:
+        zr2.discover()
+    except RuntimeError:
+        pass
+    assert zr2._discovered is False, "a failed crawl must stay retryable"
+    assert zr2._discovering is False, "guard flag must clear on failure"
+
+    print("zte driver           ok (page/XML parse, snapshot contract,\n"
+          "                            byte accounting, gates, factory,\n"
+          "                            meta defaults, no re-entrancy)")
+
+
 def seed_poller_pass():
     """Run Poller.fast_poll against a fake router; verify Store rows."""
     cfg = Config()
@@ -525,6 +767,7 @@ if __name__ == "__main__":
     test_extract_devices()
     test_parse_usage()
     test_risk()
+    test_zte_driver()
     seed_poller_pass()
     test_dns_parser()
     test_sites_flow()
